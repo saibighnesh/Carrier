@@ -1,46 +1,105 @@
-# Carrier
+# 📨 Carrier
 
-**Send a picture through a text-only chat.**
+> Send a picture through a text-only chat.
 
-Carrier turns an image into plain text you can paste into any messenger — even one that blocks photos, like in-flight messaging. The recipient pastes the text back into their copy of Carrier and the picture reappears. Optionally lock it with a password.
+Carrier compresses an image, encodes it as plain text, and lets you paste it into any messenger — even one that blocks photos entirely (like in-flight Wi-Fi chat). The recipient pastes it back and the image reappears. Optionally encrypt it with a password.
 
-Everything runs in the browser on your device. No servers, no uploads, no tracking. Save the single HTML file and it works offline — on a plane, on a train, anywhere.
+**Everything runs in your browser. No servers. No uploads. No tracking.**  
+Save the single `index.html` file and it works offline — on a plane, on a train, anywhere.
 
-## Why
+---
 
-Many networks let text flow freely but block or throttle images — airline Wi-Fi messaging being the classic case. Carrier smuggles an image through the text channel by compressing it, encoding it as text, and (optionally) encrypting it.
+## Demo
 
-## How it works
+| Step | What happens |
+|------|-------------|
+| Drop an image | Carrier compresses it to fit a chat message |
+| Copy the text | Paste it into any messenger as plain text |
+| Recipient pastes | Carrier reassembles and decodes it back into the image |
 
-The size problem is the whole challenge: a messaging app caps a single message at roughly 65,000 characters, and turning bytes into text inflates them. Carrier solves this with three stacked techniques:
+---
 
-1. **Compression** — the image is downscaled and re-encoded (WebP, falling back to JPEG) until it fits a target byte budget. This is the heavy lifting: multi-megabyte photos routinely shrink to tens of kilobytes while staying recognizable.
-2. **Encoding** — the compressed bytes are turned into Base64 text, which is safe to paste into any messaging app.
-3. **Chunking** — if the result still exceeds one message, Carrier splits it into numbered parts (`PXT/<id>/1/3`, `2/3`, `3/3`) that reassemble in any order on the receiving side, with missing-part detection.
+## Features
 
-Privacy is optional and layered on top: when a password is set, the payload is encrypted with **AES-256-GCM**, using a key derived from the password via **PBKDF2** (SHA-256, 250k iterations). Authenticated encryption means a wrong password or any tampering fails loudly instead of producing garbage.
+- **Single file** — one `index.html`, zero dependencies, no build step
+- **Smart compression** — auto-resizes and re-encodes (WebP → JPEG fallback) to hit a target size
+- **Auto-fit** — one click finds the best quality/dimension combo to land in a single message
+- **Multi-part chunking** — if the image is still too big, splits into numbered parts (`PXT/id/1/3`, `2/3`, `3/3`) that reassemble in any order
+- **AES-256-GCM encryption** — optional password lock using browser-native Web Crypto (PBKDF2, 250k iterations)
+- **Fully offline** — no network calls at all; works without internet after first load
+- **Accessible** — keyboard navigable, screen reader announcements for chunk progress
 
-## Usage
+---
 
-1. Open `index.html` in any modern browser (or visit the GitHub Pages link if enabled).
-2. **Send:** drop an image, adjust quality or hit *Auto-fit to 1 message*, optionally set a password, then copy the text into your chat.
-3. **Receive:** paste the text, enter the password if it's locked, and reveal/download the image.
+## How to Use
 
-No build step, no dependencies. It's one self-contained file.
+### Send
+1. Open `index.html` in any modern browser
+2. Drop or click to choose an image (JPG, PNG, WebP, GIF)
+3. Adjust **Quality** and **Max size**, or click **⚡ Auto-fit to 1 message**
+4. Optionally set a password under **Lock it**
+5. Copy the text and paste into your chat
 
-## Tech
+### Receive
+1. Switch to the **← Receive** tab
+2. Paste the Carrier message(s) — any order, all parts in one box
+3. Enter the password if it was locked
+4. Click **Reveal image** → download
 
-- Browser-native [Web Crypto API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API) for encryption and key derivation
-- `<canvas>` for resizing and re-encoding images
-- Vanilla HTML/CSS/JS — zero external libraries, fully offline
+---
 
-## Security notes
+## How It Works
 
-- Send the password through a *different* channel than the text itself — otherwise the lock adds nothing.
-- The character limit defaults to WhatsApp's ~65k; tune the `MSG_LIMIT` constant for other platforms.
-- This is a personal project for everyday privacy and convenience, not a substitute for an audited secure-messaging tool.
+The core challenge: most messaging apps cap a single message at ~60,000–65,000 characters, and raw image bytes converted to text are too large to fit. Carrier solves this with three stacked techniques:
+
+```
+Image file
+    │
+    ▼  1. COMPRESS
+    │  Canvas resize + WebP/JPEG re-encode until it fits target bytes
+    │
+    ▼  2. ENCODE
+    │  Binary → Base64 (safe to paste anywhere)
+    │
+    ▼  3. CHUNK  (if still > 1 message)
+       Split into PXT/<id>/<n>/<total>/<data> parts
+```
+
+### Encryption (optional)
+When a password is set:
+- Salt (16 bytes) + IV (12 bytes) generated randomly per send
+- Key derived via **PBKDF2** (SHA-256, 250,000 iterations)
+- Payload encrypted with **AES-256-GCM** (authenticated — wrong password fails loudly)
+
+### Payload format
+```
+Magic "PXT1" (4 bytes) | flags (1 byte) | body
+```
+- `flags = 0` → plain: `mimeLen(1) | mime | imageBytes`
+- `flags = 1` → encrypted: `salt(16) | iv(12) | ciphertext`
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Encryption | [Web Crypto API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API) — AES-256-GCM, PBKDF2 |
+| Compression | `<canvas>` — resize + WebP/JPEG encode |
+| Language | Vanilla HTML / CSS / JS |
+| Dependencies | None |
+| Runtime | Any modern browser (Chrome, Firefox, Safari, Edge) |
+
+---
+
+## Security Notes
+
+- **Password channel** — send the password through a *different* channel than the Carrier text, otherwise the lock adds nothing
+- **Message limit** — default is 60,000 chars (safe for WhatsApp); tune `MSG_LIMIT` in the source for other platforms (Telegram: ~4,096, SMS: ~160)
+- **Scope** — this is convenience privacy for everyday use, not a substitute for audited secure-messaging tools like Signal
+
+---
 
 ## License
 
 MIT — see [LICENSE](LICENSE).
-# Carrier
