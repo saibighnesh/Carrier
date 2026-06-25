@@ -451,7 +451,7 @@ $("#autofit").addEventListener("click", async ()=>{
 $("#copyAll").addEventListener("click", ()=>{
   navigator.clipboard.writeText(lastChunks.join("\n\n"));
   const b = $("#copyAll"); b.textContent = "Copied all ✓";
-  setTimeout(()=>b.textContent="Copy all messages",1400);
+  setTimeout(()=>b.textContent="Copy all messages",2000);
 });
 
 /* file input */
