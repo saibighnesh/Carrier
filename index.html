@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Carrier — send a picture through a text-only chat</title>
+<style>
+  :root{
+    --bg:#0d1420; --panel:#151f30; --panel2:#1b2740;
+    --line:#26344c; --ink:#e7edf6; --muted:#8b9bb4; --faint:#5d6e8a;
+    --send:#e6a92e; --send-dim:#3a3013; --recv:#3fc0a0; --recv-dim:#10342c;
+    --danger:#e5614c; --ok:#3fc0a0;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --r:10px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:var(--bg); color:var(--ink); font-family:var(--sans);
+    line-height:1.55; -webkit-font-smoothing:antialiased;
+    padding:24px 16px 64px;
+  }
+  .wrap{max-width:720px;margin:0 auto}
+  header{margin-bottom:22px}
+  .brand{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+  .brand h1{
+    font-size:22px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;
+    margin:0;font-family:var(--mono)
+  }
+  .brand .tag{color:var(--muted);font-size:13px}
+  .lede{color:var(--muted);font-size:13.5px;margin:10px 0 0;max-width:60ch}
+
+  .modes{display:flex;gap:6px;margin:22px 0 18px;background:var(--panel);
+    border:1px solid var(--line);border-radius:var(--r);padding:5px}
+  .modes button{
+    flex:1;background:transparent;border:0;color:var(--muted);
+    font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;
+    padding:10px;border-radius:7px;cursor:pointer;transition:.15s
+  }
+  .modes button:hover{color:var(--ink)}
+  .modes button[aria-selected="true"][data-m="send"]{background:var(--send-dim);color:var(--send)}
+  .modes button[aria-selected="true"][data-m="recv"]{background:var(--recv-dim);color:var(--recv)}
+  .modes button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+    padding:18px;margin-bottom:14px}
+  .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--faint);margin:0 0 9px;display:block}
+
+  .drop{
+    border:1.5px dashed var(--line);border-radius:var(--r);padding:26px 18px;text-align:center;
+    color:var(--muted);cursor:pointer;transition:.15s;background:var(--bg)
+  }
+  .drop:hover,.drop.over{border-color:var(--send);color:var(--ink)}
+  .drop strong{color:var(--ink);font-weight:500}
+  .drop small{display:block;margin-top:6px;color:var(--faint);font-size:12px}
+
+  .preview{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+  .preview img{max-width:160px;max-height:160px;border-radius:8px;border:1px solid var(--line);
+    background:#0008}
+  .controls{flex:1;min-width:240px}
+
+  .row{display:flex;align-items:center;gap:12px;margin:14px 0}
+  .row label{font-size:13px;color:var(--muted);min-width:74px}
+  input[type=range]{flex:1;accent-color:var(--send)}
+  select,input[type=password],textarea{
+    background:var(--bg);color:var(--ink);border:1px solid var(--line);
+    border-radius:8px;padding:9px 11px;font-family:var(--sans);font-size:14px;width:100%
+  }
+  textarea{font-family:var(--mono);font-size:12px;line-height:1.5;resize:vertical}
+  select:focus,input:focus,textarea:focus{outline:none;border-color:var(--send)}
+  .recv select:focus,.recv input:focus,.recv textarea:focus{border-color:var(--recv)}
+
+  .btn{font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;
+    background:transparent;border:1px solid var(--line);color:var(--ink);
+    padding:10px 14px;border-radius:8px;cursor:pointer;transition:.15s}
+  .btn:hover{border-color:var(--ink)}
+  .btn:active{transform:scale(.98)}
+  .btn.amber{border-color:var(--send);color:var(--send)}
+  .btn.amber:hover{background:var(--send-dim)}
+  .btn.teal{border-color:var(--recv);color:var(--recv)}
+  .btn.teal:hover{background:var(--recv-dim)}
+  .btn:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+  .btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+
+  .meter{margin:16px 0 4px}
+  .meter .track{height:8px;background:var(--bg);border:1px solid var(--line);
+    border-radius:6px;overflow:hidden}
+  .meter .fill{height:100%;background:var(--send);width:0%;transition:width .25s}
+  .meter.over .fill{background:var(--danger)}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-top:14px}
+  .stat{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+  .stat .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+  .stat .v{font-size:18px;font-weight:500;margin-top:3px}
+  .stat .v small{font-size:12px;color:var(--muted);font-weight:400}
+
+  .chunks{display:flex;flex-direction:column;gap:10px;margin-top:6px}
+  .chunk{background:var(--bg);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .chunk .head{display:flex;align-items:center;justify-content:space-between;
+    padding:8px 12px;border-bottom:1px solid var(--line)}
+  .chunk .pill{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--send)}
+  .chunk .data{font-family:var(--mono);font-size:11px;color:var(--muted);
+    padding:10px 12px;max-height:78px;overflow:auto;word-break:break-all;white-space:pre-wrap}
+  .copyone{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
+    background:transparent;border:1px solid var(--line);color:var(--muted);
+    padding:5px 9px;border-radius:6px;cursor:pointer}
+  .copyone:hover{color:var(--ink);border-color:var(--ink)}
+
+  .note{font-size:12.5px;color:var(--muted);margin-top:12px}
+  .note.warn{color:var(--send)}
+  .note.err{color:var(--danger)}
+  .note.ok{color:var(--ok)}
+  .hidden{display:none}
+
+  .progress{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:10px}
+  .progress b{color:var(--recv)}
+  .result{margin-top:16px;text-align:center}
+  .result img{max-width:100%;border-radius:10px;border:1px solid var(--line)}
+
+  footer{color:var(--faint);font-size:11.5px;text-align:center;margin-top:30px;line-height:1.7}
+  footer code{font-family:var(--mono);color:var(--muted)}
+  a{color:var(--recv)}
+  @media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <h1>Carrier</h1>
+      <span class="tag">send a picture through a text-only chat</span>
+    </div>
+    <p class="lede">Turns an image into plain text you can paste into any messenger — even one that blocks photos, like in-flight chat. Add a password to lock it. Runs entirely on your device; nothing is uploaded.</p>
+  </header>
+
+  <div class="modes" role="tablist" aria-label="Mode">
+    <button data-m="send" role="tab" aria-selected="true">Send →</button>
+    <button data-m="recv" role="tab" aria-selected="false">← Receive</button>
+  </div>
+
+  <!-- ============ SEND ============ -->
+  <section id="send">
+    <div class="panel">
+      <span class="lbl">1 · Pick an image</span>
+      <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose an image">
+        <strong>Drop an image here</strong> or click to choose
+        <small>JPG, PNG, WebP — gets compressed to fit the text pipe</small>
+      </div>
+      <input type="file" id="file" accept="image/*" class="hidden">
+    </div>
+
+    <div class="panel hidden" id="tunePanel">
+      <span class="lbl">2 · Squeeze to fit</span>
+      <div class="preview">
+        <img id="thumb" alt="Compressed preview">
+        <div class="controls">
+          <div class="row">
+            <label for="quality">Quality</label>
+            <input type="range" id="quality" min="20" max="92" value="70" step="1">
+            <span id="qval" style="font-family:var(--mono);font-size:12px;min-width:30px;text-align:right">70</span>
+          </div>
+          <div class="row">
+            <label for="maxdim">Max size</label>
+            <select id="maxdim">
+              <option value="1280">1280 px</option>
+              <option value="1024">1024 px</option>
+              <option value="768" selected>768 px</option>
+              <option value="512">512 px</option>
+              <option value="384">384 px</option>
+            </select>
+          </div>
+          <div class="btnrow">
+            <button class="btn amber" id="autofit">⚡ Auto-fit to 1 message</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="meter" id="meter">
+        <div class="track"><div class="fill" id="meterFill"></div></div>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="k">Image now</div><div class="v" id="sizeOut">—</div></div>
+        <div class="stat"><div class="k">As text</div><div class="v" id="charOut">—</div></div>
+        <div class="stat"><div class="k">Messages</div><div class="v" id="msgOut">—</div></div>
+      </div>
+      <p class="note" id="fitNote"></p>
+    </div>
+
+    <div class="panel hidden" id="lockPanel">
+      <span class="lbl">3 · Lock it (optional)</span>
+      <input type="password" id="pass" placeholder="Password — leave blank to send unlocked" autocomplete="new-password">
+      <p class="note">If set, the receiver needs this exact password. Share it through a different channel than the text itself.</p>
+    </div>
+
+    <div class="panel hidden" id="outPanel">
+      <span class="lbl">4 · Copy &amp; paste into your chat</span>
+      <div class="btnrow" style="margin-bottom:12px">
+        <button class="btn amber" id="copyAll">Copy all messages</button>
+      </div>
+      <div class="chunks" id="chunks"></div>
+    </div>
+  </section>
+
+  <!-- ============ RECEIVE ============ -->
+  <section id="recv" class="recv hidden">
+    <div class="panel">
+      <span class="lbl">1 · Paste what you received</span>
+      <textarea id="inbox" rows="7" placeholder="Paste the Carrier message(s) here — any order is fine"></textarea>
+      <p class="progress" id="prog"></p>
+    </div>
+    <div class="panel">
+      <span class="lbl">2 · Password (if it's locked)</span>
+      <input type="password" id="rpass" placeholder="Password" autocomplete="off">
+      <div class="btnrow" style="margin-top:12px">
+        <button class="btn teal" id="reveal">Reveal image</button>
+      </div>
+      <p class="note" id="rNote"></p>
+      <div class="result hidden" id="result">
+        <img id="rimg" alt="Recovered image">
+        <div class="btnrow" style="justify-content:center;margin-top:12px">
+          <button class="btn teal" id="save">Download image</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Built offline with the browser's <code>Web Crypto</code> (AES-256-GCM + PBKDF2) and <code>canvas</code> compression.<br>
+    No servers, no tracking, no uploads. Save this file and it works on a plane.
+  </footer>
+</div>
+
+<script>
+"use strict";
+const MSG_LIMIT = 60000;          // safe chars per message
+const TARGET_1MSG = 44000;        // target compressed bytes to land in one message
+const MAGIC = [0x50,0x58,0x54,0x31]; // "PXT1"
+
+const $ = s => document.querySelector(s);
+const fmtKB = b => b < 1024 ? b + " B" : (b/1024).toFixed(b<1024*100?1:0) + " KB";
+
+/* ---------- byte <-> base64 ---------- */
+function bytesToB64(bytes){
+  let bin = "", chunk = 0x8000;
+  for(let i=0;i<bytes.length;i+=chunk)
+    bin += String.fromCharCode.apply(null, bytes.subarray(i, i+chunk));
+  return btoa(bin);
+}
+function b64ToBytes(b64){
+  const bin = atob(b64), out = new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+/* ---------- container (mime + image, optional encryption) ---------- */
+function buildPlain(mime, img){
+  const m = new TextEncoder().encode(mime);
+  const out = new Uint8Array(1 + m.length + img.length);
+  out[0] = m.length; out.set(m,1); out.set(img,1+m.length);
+  return out;
+}
+function parsePlain(bytes){
+  const mlen = bytes[0];
+  const mime = new TextDecoder().decode(bytes.subarray(1,1+mlen));
+  return { mime, img: bytes.subarray(1+mlen) };
+}
+async function deriveKey(password, salt){
+  const base = await crypto.subtle.importKey("raw",
+    new TextEncoder().encode(password), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey(
+    { name:"PBKDF2", salt, iterations:250000, hash:"SHA-256" },
+    base, { name:"AES-GCM", length:256 }, false, ["encrypt","decrypt"]);
+}
+async function pack(img, mime, password){
+  const plain = buildPlain(mime, img);
+  let flags = 0, body;
+  if(password){
+    flags = 1;
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const iv   = crypto.getRandomValues(new Uint8Array(12));
+    const key  = await deriveKey(password, salt);
+    const ct   = new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv}, key, plain));
+    body = new Uint8Array(28 + ct.length);
+    body.set(salt,0); body.set(iv,16); body.set(ct,28);
+  } else body = plain;
+  const c = new Uint8Array(5 + body.length);
+  c.set(MAGIC,0); c[4] = flags; c.set(body,5);
+  return bytesToB64(c);
+}
+async function unpack(b64, password){
+  let c; try { c = b64ToBytes(b64.trim()); } catch { throw new Error("That text isn't valid — a chunk may be missing or mistyped."); }
+  for(let i=0;i<4;i++) if(c[i]!==MAGIC[i]) throw new Error("This doesn't look like a Carrier message.");
+  const flags = c[4], body = c.subarray(5);
+  let plain;
+  if(flags & 1){
+    if(!password) throw new Error("This message is locked. Enter the password.");
+    const salt = body.subarray(0,16), iv = body.subarray(16,28), ct = body.subarray(28);
+    const key = await deriveKey(password, salt);
+    try { plain = new Uint8Array(await crypto.subtle.decrypt({name:"AES-GCM",iv}, key, ct)); }
+    catch { throw new Error("Wrong password — or the text was altered in transit."); }
+  } else plain = body;
+  return parsePlain(plain);
+}
+
+/* ---------- chunking ---------- */
+function chunkify(b64){
+  const sid = Math.random().toString(16).slice(2,6);
+  const per = MSG_LIMIT - 24;
+  const total = Math.max(1, Math.ceil(b64.length / per));
+  const out = [];
+  for(let i=0;i<total;i++)
+    out.push(`PXT/${sid}/${i+1}/${total}/` + b64.slice(i*per,(i+1)*per));
+  return out;
+}
+function reassemble(text){
+  const re = /PXT\/([0-9a-f]{4})\/(\d+)\/(\d+)\/([A-Za-z0-9+/=]+)/g;
+  const parts = [...text.matchAll(re)];
+  if(!parts.length) return null;
+  const sid = parts[0][1];
+  const group = parts.filter(p => p[1] === sid);
+  const total = parseInt(group[0][3],10);
+  const map = new Map();
+  for(const p of group) map.set(parseInt(p[2],10), p[4]);
+  const missing = [];
+  let s = "";
+  for(let i=1;i<=total;i++){ if(map.has(i)) s += map.get(i); else missing.push(i); }
+  return { s, total, have: map.size, missing };
+}
+
+/* ---------- compression ---------- */
+let srcImage = null, srcMime = "image/webp";
+function loadImage(file){
+  return new Promise((res,rej)=>{
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      const img = new Image();
+      img.onload = ()=>res(img);
+      img.onerror = ()=>rej(new Error("Couldn't decode that image — try a JPG or PNG."));
+      img.src = reader.result;
+    };
+    reader.onerror = ()=>rej(new Error("Couldn't read that file."));
+    reader.readAsDataURL(file);
+  });
+}
+function drawScaled(img, maxDim){
+  let w = img.naturalWidth, h = img.naturalHeight;
+  const s = Math.min(1, maxDim / Math.max(w,h));
+  w = Math.max(1,Math.round(w*s)); h = Math.max(1,Math.round(h*s));
+  const cv = document.createElement("canvas");
+  cv.width = w; cv.height = h;
+  cv.getContext("2d").drawImage(img,0,0,w,h);
+  return cv;
+}
+function encodeCanvas(cv, q){
+  return new Promise(res=>{
+    cv.toBlob(b=>{
+      if(b){ srcMime = "image/webp"; res(b); }
+      else cv.toBlob(b2=>{ srcMime = "image/jpeg"; res(b2); }, "image/jpeg", q);
+    }, "image/webp", q);
+  });
+}
+async function compressOnce(maxDim, quality){
+  const cv = drawScaled(srcImage, maxDim);
+  const blob = await encodeCanvas(cv, quality/100);
+  return new Uint8Array(await blob.arrayBuffer());
+}
+async function autoFit(){
+  const dims = [1280,1024,768,512,384,256];
+  for(const d of dims){
+    const cv = drawScaled(srcImage, d);
+    let lo = 0.25, hi = 0.92, pick = null;
+    for(let i=0;i<7;i++){
+      const q = (lo+hi)/2;
+      const blob = await encodeCanvas(cv, q);
+      if(blob.size <= TARGET_1MSG){ pick = {q:Math.round(q*100), d}; lo = q; }
+      else hi = q;
+    }
+    if(pick) return pick;
+  }
+  return { q:25, d:256 };
+}
+
+/* ---------- SEND ui ---------- */
+let lastChunks = [];
+async function refresh(){
+  if(!srcImage) return;
+  const q = +$("#quality").value, d = +$("#maxdim").value;
+  const img = await compressOnce(d, q);
+  // preview
+  const blob = new Blob([img], {type:srcMime});
+  $("#thumb").src = URL.createObjectURL(blob);
+  // pack with current password to get true size
+  const pw = $("#pass").value;
+  const b64 = await pack(img, srcMime, pw);
+  lastChunks = chunkify(b64);
+  // stats
+  $("#sizeOut").innerHTML = fmtKB(img.length);
+  $("#charOut").innerHTML = b64.length.toLocaleString() + " <small>chars</small>";
+  $("#msgOut").textContent = lastChunks.length;
+  // meter (fill of one message)
+  const ratio = Math.min(1, b64.length / MSG_LIMIT);
+  const meter = $("#meter"), fill = $("#meterFill");
+  fill.style.width = (ratio*100).toFixed(0) + "%";
+  meter.classList.toggle("over", lastChunks.length > 1);
+  const note = $("#fitNote");
+  if(lastChunks.length === 1){
+    note.className = "note ok";
+    note.textContent = "Fits in a single message. ✓";
+  } else {
+    note.className = "note warn";
+    note.textContent = `Too big for one message — will send as ${lastChunks.length} parts. Lower the quality or size to fit fewer.`;
+  }
+  renderChunks();
+  $("#lockPanel").classList.remove("hidden");
+  $("#outPanel").classList.remove("hidden");
+}
+function renderChunks(){
+  const box = $("#chunks"); box.innerHTML = "";
+  lastChunks.forEach((c,i)=>{
+    const el = document.createElement("div");
+    el.className = "chunk";
+    const preview = c.length > 280 ? c.slice(0,280) + " …" : c;
+    el.innerHTML =
+      `<div class="head"><span class="pill">MESSAGE ${i+1} / ${lastChunks.length}</span>
+       <button class="copyone" data-i="${i}">Copy</button></div>
+       <div class="data">${preview}</div>`;
+    box.appendChild(el);
+  });
+  box.querySelectorAll(".copyone").forEach(b=>{
+    b.onclick = ()=>{ navigator.clipboard.writeText(lastChunks[+b.dataset.i]);
+      b.textContent = "Copied"; setTimeout(()=>b.textContent="Copy",1200); };
+  });
+}
+
+let debounce;
+function queueRefresh(){ clearTimeout(debounce); debounce = setTimeout(refresh, 180); }
+
+$("#quality").addEventListener("input", e=>{ $("#qval").textContent = e.target.value; queueRefresh(); });
+$("#maxdim").addEventListener("change", queueRefresh);
+$("#pass").addEventListener("input", queueRefresh);
+$("#autofit").addEventListener("click", async ()=>{
+  if(!srcImage) return;
+  $("#autofit").textContent = "Fitting…";
+  const best = await autoFit();
+  $("#maxdim").value = String(best.d);
+  $("#quality").value = best.q; $("#qval").textContent = best.q;
+  await refresh();
+  $("#autofit").textContent = "⚡ Auto-fit to 1 message";
+});
+$("#copyAll").addEventListener("click", ()=>{
+  navigator.clipboard.writeText(lastChunks.join("\n\n"));
+  const b = $("#copyAll"); b.textContent = "Copied all ✓";
+  setTimeout(()=>b.textContent="Copy all messages",1400);
+});
+
+/* file input */
+const drop = $("#drop"), fileInput = $("#file");
+drop.addEventListener("click", ()=>fileInput.click());
+drop.addEventListener("keydown", e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();fileInput.click();} });
+["dragover","dragenter"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("over");}));
+["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("over");}));
+drop.addEventListener("drop", e=>{ const f=e.dataTransfer.files[0]; if(f) handleFile(f); });
+fileInput.addEventListener("change", e=>{ const f=e.target.files[0]; if(f) handleFile(f); });
+async function handleFile(file){
+  if(!file.type.startsWith("image/")){ alert("Please choose an image file."); return; }
+  try{
+    srcImage = await loadImage(file);
+    $("#tunePanel").classList.remove("hidden");
+    drop.querySelector("strong").textContent = file.name;
+    await refresh();
+    $("#tunePanel").scrollIntoView({behavior:"smooth",block:"nearest"});
+  }catch(err){ alert(err.message); }
+}
+
+/* ---------- RECEIVE ui ---------- */
+function updateProgress(){
+  const r = reassemble($("#inbox").value);
+  const p = $("#prog");
+  if(!r){ p.innerHTML = ""; return; }
+  if(r.missing.length===0)
+    p.innerHTML = `Got all <b>${r.total}</b> part${r.total>1?"s":""}. Ready to reveal.`;
+  else
+    p.innerHTML = `Got <b>${r.have}</b> of <b>${r.total}</b> — still need part ${r.missing.join(", ")}.`;
+}
+$("#inbox").addEventListener("input", updateProgress);
+
+let recovered = null;
+$("#reveal").addEventListener("click", async ()=>{
+  const note = $("#rNote"); note.className = "note"; note.textContent = "";
+  const r = reassemble($("#inbox").value);
+  if(!r){ note.className="note err"; note.textContent="No Carrier message found in the box above."; return; }
+  if(r.missing.length){ note.className="note err";
+    note.textContent = `Missing part ${r.missing.join(", ")} — paste the remaining message(s) first.`; return; }
+  try{
+    const { mime, img } = await unpack(r.s, $("#rpass").value);
+    const blob = new Blob([img], {type: mime || "image/webp"});
+    const url = URL.createObjectURL(blob);
+    $("#rimg").src = url;
+    recovered = { url, mime: mime || "image/webp" };
+    $("#result").classList.remove("hidden");
+    note.className="note ok"; note.textContent="Recovered. ✓";
+  }catch(err){ note.className="note err"; note.textContent = err.message; $("#result").classList.add("hidden"); }
+});
+$("#save").addEventListener("click", ()=>{
+  if(!recovered) return;
+  const ext = recovered.mime.includes("jpeg") ? "jpg" : recovered.mime.includes("png") ? "png" : "webp";
+  const a = document.createElement("a");
+  a.href = recovered.url; a.download = "carrier-image." + ext; a.click();
+});
+
+/* ---------- mode toggle ---------- */
+document.querySelectorAll(".modes button").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    const m = btn.dataset.m;
+    document.querySelectorAll(".modes button").forEach(b=>b.setAttribute("aria-selected", b===btn));
+    $("#send").classList.toggle("hidden", m!=="send");
+    $("#recv").classList.toggle("hidden", m!=="recv");
+  });
+});
+</script>
+</body>
+</html>
