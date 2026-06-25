@@ -431,7 +431,7 @@ function renderChunks(){
   });
   box.querySelectorAll(".copyone").forEach(b=>{
     b.onclick = ()=>{ navigator.clipboard.writeText(lastChunks[+b.dataset.i]);
-      b.textContent = "Copied"; setTimeout(()=>b.textContent="Copy",1200); };
+      b.textContent = "Copied"; setTimeout(()=>b.textContent="Copy",1500); };
   });
 }
 
