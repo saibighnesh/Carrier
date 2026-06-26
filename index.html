@@ -485,6 +485,7 @@ async function handleFile(file){
     $("#tunePanel").classList.remove("hidden");
     drop.querySelector("strong").textContent = file.name;
     drop.querySelector("small").textContent = `${fmtKB(file.size)} · ${srcImage.naturalWidth}×${srcImage.naturalHeight}`;
+    $("#thumb").alt = `Compressed preview of ${file.name}`;
     await refresh();
     $("#tunePanel").scrollIntoView({behavior:"smooth",block:"nearest"});
   }catch(err){ showDropErr(err.message); }
