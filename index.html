@@ -394,6 +394,9 @@ async function refresh(){
   if(!srcImage) return;
   const q = +$("#quality").value, d = +$("#maxdim").value;
   const img = await compressOnce(d, q);
+  const sc = Math.min(1, d / Math.max(srcImage.naturalWidth, srcImage.naturalHeight));
+  const cw = Math.max(1, Math.round(srcImage.naturalWidth*sc));
+  const ch = Math.max(1, Math.round(srcImage.naturalHeight*sc));
   // preview
   if(thumbUrl) URL.revokeObjectURL(thumbUrl);
   const blob = new Blob([img], {type:srcMime});
@@ -404,7 +407,7 @@ async function refresh(){
   const b64 = await pack(img, srcMime, pw);
   lastChunks = chunkify(b64);
   // stats
-  $("#sizeOut").innerHTML = fmtKB(img.length);
+  $("#sizeOut").innerHTML = fmtKB(img.length) + ` <small>${cw}×${ch}</small>`;
   $("#charOut").innerHTML = b64.length.toLocaleString() + " <small>chars</small>";
   $("#msgOut").textContent = lastChunks.length;
   // meter (fill of one message)
