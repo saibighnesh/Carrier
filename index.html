@@ -245,7 +245,7 @@ const TARGET_1MSG = 44000;        // target compressed bytes to land in one mess
 const MAGIC = [0x50,0x58,0x54,0x31]; // "PXT1"
 
 const $ = s => document.querySelector(s);
-const fmtKB = b => b < 1024 ? b + " B" : (b/1024).toFixed(b<1024*100?1:0) + " KB";
+const fmtKB = b => b < 1024 ? b + " B" : b < 1048576 ? (b/1024).toFixed(b<102400?1:0) + " KB" : (b/1048576).toFixed(1) + " MB";
 
 /* ---------- byte <-> base64 ---------- */
 function bytesToB64(bytes){
