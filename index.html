@@ -432,6 +432,7 @@ function renderChunks(){
     const preview = c.length > 280 ? c.slice(0,280) + " …" : c;
     el.innerHTML =
       `<div class="head"><span class="pill">MESSAGE ${i+1} / ${lastChunks.length}</span>
+       <span style="font-family:var(--mono);font-size:10px;color:var(--faint);margin-right:auto;padding-left:10px">${c.length.toLocaleString()} chars</span>
        <button type="button" class="copyone" data-i="${i}" aria-label="Copy message ${i+1} of ${lastChunks.length}">Copy</button></div>
        <div class="data" tabindex="0">${preview}</div>`;
     box.appendChild(el);
