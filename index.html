@@ -357,6 +357,7 @@ function drawScaled(img, maxDim){
   const cv = document.createElement("canvas");
   cv.width = w; cv.height = h;
   cv.getContext("2d").drawImage(img,0,0,w,h);
+  cv._w = w; cv._h = h;
   return cv;
 }
 function encodeCanvas(cv, q){
@@ -370,7 +371,7 @@ function encodeCanvas(cv, q){
 async function compressOnce(maxDim, quality){
   const cv = drawScaled(srcImage, maxDim);
   const blob = await encodeCanvas(cv, quality/100);
-  return new Uint8Array(await blob.arrayBuffer());
+  return Object.assign(new Uint8Array(await blob.arrayBuffer()), {_w: cv._w, _h: cv._h});
 }
 async function autoFit(){
   const dims = [1280,1024,768,512,384,256];
@@ -394,9 +395,6 @@ async function refresh(){
   if(!srcImage) return;
   const q = +$("#quality").value, d = +$("#maxdim").value;
   const img = await compressOnce(d, q);
-  const sc = Math.min(1, d / Math.max(srcImage.naturalWidth, srcImage.naturalHeight));
-  const cw = Math.max(1, Math.round(srcImage.naturalWidth*sc));
-  const ch = Math.max(1, Math.round(srcImage.naturalHeight*sc));
   // preview
   if(thumbUrl) URL.revokeObjectURL(thumbUrl);
   const blob = new Blob([img], {type:srcMime});
@@ -407,7 +405,7 @@ async function refresh(){
   const b64 = await pack(img, srcMime, pw);
   lastChunks = chunkify(b64);
   // stats
-  $("#sizeOut").innerHTML = fmtKB(img.length) + ` <small>${cw}×${ch}</small>`;
+  $("#sizeOut").innerHTML = fmtKB(img.length) + ` <small>${img._w}×${img._h}</small>`;
   $("#charOut").innerHTML = b64.length.toLocaleString() + " <small>chars</small>";
   $("#msgOut").textContent = lastChunks.length;
   // meter (fill of one message)
@@ -444,8 +442,12 @@ function renderChunks(){
     box.appendChild(el);
   });
   box.querySelectorAll(".copyone").forEach(b=>{
-    b.onclick = ()=>{ navigator.clipboard.writeText(lastChunks[+b.dataset.i]);
-      b.textContent = "Copied"; setTimeout(()=>b.textContent="Copy",1500); };
+    b.onclick = async ()=>{
+      try{
+        await navigator.clipboard.writeText(lastChunks[+b.dataset.i]);
+        b.textContent = "Copied"; setTimeout(()=>b.textContent="Copy",1500);
+      }catch{ b.textContent = "Failed"; setTimeout(()=>b.textContent="Copy",1500); }
+    };
   });
 }
 
@@ -457,19 +459,26 @@ $("#maxdim").addEventListener("change", queueRefresh);
 $("#pass").addEventListener("input", queueRefresh);
 $("#autofit").addEventListener("click", async ()=>{
   if(!srcImage) return;
-  $("#autofit").textContent = "Fitting…";
-  $("#autofit").setAttribute("aria-busy","true");
-  const best = await autoFit();
-  $("#maxdim").value = String(best.d);
-  $("#quality").value = best.q; $("#qval").textContent = best.q;
-  await refresh();
-  $("#autofit").textContent = "⚡ Auto-fit to 1 message";
-  $("#autofit").removeAttribute("aria-busy");
+  const btn = $("#autofit");
+  btn.textContent = "Fitting…";
+  btn.setAttribute("aria-busy","true");
+  try{
+    const best = await autoFit();
+    $("#maxdim").value = String(best.d);
+    $("#quality").value = best.q; $("#qval").textContent = best.q;
+    await refresh();
+  } finally {
+    btn.textContent = "⚡ Auto-fit to 1 message";
+    btn.removeAttribute("aria-busy");
+  }
 });
-$("#copyAll").addEventListener("click", ()=>{
-  navigator.clipboard.writeText(lastChunks.join("\n\n"));
-  const b = $("#copyAll"); b.textContent = "Copied all ✓";
-  setTimeout(()=>b.textContent="Copy all messages",2000);
+$("#copyAll").addEventListener("click", async ()=>{
+  const b = $("#copyAll");
+  try{
+    await navigator.clipboard.writeText(lastChunks.join("\n\n"));
+    b.textContent = "Copied all ✓";
+    setTimeout(()=>b.textContent="Copy all messages",2000);
+  }catch{ b.textContent = "Copy failed — check permissions"; setTimeout(()=>b.textContent="Copy all messages",2500); }
 });
 
 /* file input */
@@ -479,7 +488,7 @@ drop.addEventListener("keydown", e=>{ if(e.key==="Enter"||e.key===" "){e.prevent
 ["dragover","dragenter"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("over");}));
 ["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("over");}));
 drop.addEventListener("drop", e=>{ const f=e.dataTransfer.files[0]; if(f) handleFile(f); });
-fileInput.addEventListener("change", e=>{ const f=e.target.files[0]; if(f) handleFile(f); });
+fileInput.addEventListener("change", e=>{ const f=e.target.files[0]; if(f) handleFile(f); else clearDropErr(); });
 function showDropErr(msg){ const e=$("#dropErr"); e.textContent=msg; e.classList.remove("hidden"); }
 function clearDropErr(){ $("#dropErr").classList.add("hidden"); }
 async function handleFile(file){
@@ -542,6 +551,7 @@ document.querySelectorAll(".modes button").forEach(btn=>{
     document.querySelectorAll(".modes button").forEach(b=>b.setAttribute("aria-selected", b===btn));
     $("#send").classList.toggle("hidden", m!=="send");
     $("#recv").classList.toggle("hidden", m!=="recv");
+    if(m === "send") clearDropErr();
   });
 });
 </script>
