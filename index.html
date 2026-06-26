@@ -496,7 +496,8 @@ function updateProgress(){
   else
     p.innerHTML = `Got <b>${r.have}</b> of <b>${r.total}</b> — still need part ${r.missing.join(", ")}.`;
 }
-$("#inbox").addEventListener("input", updateProgress);
+let progDebounce;
+$("#inbox").addEventListener("input", ()=>{ clearTimeout(progDebounce); progDebounce=setTimeout(updateProgress,80); });
 
 let recovered = null;
 $("#reveal").addEventListener("click", async ()=>{
