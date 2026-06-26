@@ -451,11 +451,13 @@ $("#pass").addEventListener("input", queueRefresh);
 $("#autofit").addEventListener("click", async ()=>{
   if(!srcImage) return;
   $("#autofit").textContent = "Fitting…";
+  $("#autofit").setAttribute("aria-busy","true");
   const best = await autoFit();
   $("#maxdim").value = String(best.d);
   $("#quality").value = best.q; $("#qval").textContent = best.q;
   await refresh();
   $("#autofit").textContent = "⚡ Auto-fit to 1 message";
+  $("#autofit").removeAttribute("aria-busy");
 });
 $("#copyAll").addEventListener("click", ()=>{
   navigator.clipboard.writeText(lastChunks.join("\n\n"));
