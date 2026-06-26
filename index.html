@@ -182,7 +182,7 @@
       </div>
 
       <div class="meter" id="meter">
-        <div class="track"><div class="fill" id="meterFill"></div></div>
+        <div class="track" id="meterTrack" role="progressbar" aria-label="Message size" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="fill" id="meterFill"></div></div>
       </div>
       <div class="stats">
         <div class="stat"><div class="k">Image now</div><div class="v" id="sizeOut">—</div></div>
@@ -408,7 +408,9 @@ async function refresh(){
   // meter (fill of one message)
   const ratio = Math.min(1, b64.length / MSG_LIMIT);
   const meter = $("#meter"), fill = $("#meterFill");
-  fill.style.width = (ratio*100).toFixed(0) + "%";
+  const pct = (ratio*100).toFixed(0);
+  fill.style.width = pct + "%";
+  $("#meterTrack").setAttribute("aria-valuenow", pct);
   meter.classList.toggle("over", lastChunks.length > 1);
   const note = $("#fitNote");
   if(lastChunks.length === 1){
