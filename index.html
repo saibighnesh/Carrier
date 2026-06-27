@@ -567,6 +567,7 @@ document.querySelectorAll(".modes button").forEach(btn=>{
     $("#send").classList.toggle("hidden", m!=="send");
     $("#recv").classList.toggle("hidden", m!=="recv");
     if(m === "send") clearDropErr();
+    document.title = m === "send" ? "Carrier — Send image" : "Carrier — Receive image";
   });
 });
 </script>
