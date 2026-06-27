@@ -219,7 +219,7 @@
     </div>
     <div class="panel">
       <span class="lbl">2 · Password (if it's locked)</span>
-      <input type="password" id="rpass" placeholder="Password" autocomplete="off" aria-label="Decryption password">
+      <input type="password" id="rpass" placeholder="Password" autocomplete="off" aria-label="Decryption password" enterkeyhint="go">
       <div class="btnrow" style="margin-top:12px">
         <button type="button" class="btn teal" id="reveal" aria-label="Decrypt and reveal the received image">Reveal image</button>
       </div>
@@ -546,6 +546,8 @@ $("#save").addEventListener("click", ()=>{
   const a = document.createElement("a");
   a.href = recovered.url; a.download = "carrier-image." + ext; a.click();
 });
+
+$("#rpass").addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); $("#reveal").click(); } });
 
 /* ---------- mode toggle ---------- */
 document.querySelectorAll(".modes button").forEach(btn=>{
