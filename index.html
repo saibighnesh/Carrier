@@ -548,6 +548,13 @@ $("#save").addEventListener("click", ()=>{
 });
 
 $("#rpass").addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); $("#reveal").click(); } });
+$("#inbox").addEventListener("keydown", e=>{
+  if(e.key==="Escape"){
+    $("#inbox").value=""; updateProgress();
+    $("#result").classList.add("hidden");
+    $("#rNote").className="note"; $("#rNote").textContent="";
+  }
+});
 
 /* ---------- mode toggle ---------- */
 document.querySelectorAll(".modes button").forEach(btn=>{
