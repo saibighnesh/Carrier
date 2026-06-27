@@ -533,6 +533,7 @@ $("#reveal").addEventListener("click", async ()=>{
     const blob = new Blob([img], {type: mime || "image/webp"});
     const url = URL.createObjectURL(blob);
     $("#rimg").src = url;
+    $("#rimg").alt = `Recovered image (${(img.length/1024).toFixed(1)} KB, ${mime || "image/webp"})`;
     recovered = { url, mime: mime || "image/webp" };
     $("#result").classList.remove("hidden");
     $("#result").scrollIntoView({behavior:"smooth",block:"nearest"});
