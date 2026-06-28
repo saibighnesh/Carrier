@@ -444,7 +444,8 @@ function renderChunks(){
       `<div class="head"><span class="pill" title="Part ${i+1} of ${lastChunks.length}">${pillLabel}</span>
        <span style="font-family:var(--mono);font-size:10px;color:var(--faint);margin-right:auto;padding-left:10px">${c.length.toLocaleString()} chars</span>
        <button type="button" class="copyone" data-i="${i}" aria-label="Copy message ${i+1} of ${lastChunks.length}">Copy</button></div>
-       <div class="data" tabindex="0">${preview}</div>`;
+       <div class="data" tabindex="0"></div>`;
+    el.querySelector(".data").textContent = preview;
     box.appendChild(el);
   });
   box.querySelectorAll(".copyone").forEach(b=>{
