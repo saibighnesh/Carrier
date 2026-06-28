@@ -406,7 +406,7 @@ async function refresh(){
   thumbUrl = URL.createObjectURL(blob);
   $("#thumb").src = thumbUrl;
   // pack with current password to get true size
-  const pw = $("#pass").value;
+  const pw = $("#pass").value.trim();
   const b64 = await pack(img, srcMime, pw);
   lastChunks = chunkify(b64);
   // stats
@@ -533,7 +533,7 @@ $("#reveal").addEventListener("click", async ()=>{
     if(!r){ note.className="note err"; note.textContent="No Carrier message found in the box above."; return; }
     if(r.missing.length){ note.className="note err";
       note.textContent = `Missing part ${r.missing.join(", ")} — paste the remaining message(s) first.`; return; }
-    const { mime, img } = await unpack(r.s, $("#rpass").value);
+    const { mime, img } = await unpack(r.s, $("#rpass").value.trim());
     if(recovered) URL.revokeObjectURL(recovered.url);
     const blob = new Blob([img], {type: mime || "image/webp"});
     const url = URL.createObjectURL(blob);
