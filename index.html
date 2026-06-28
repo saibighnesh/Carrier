@@ -528,6 +528,8 @@ let recovered = null, revealing = false;
 $("#reveal").addEventListener("click", async ()=>{
   if(revealing) return;
   revealing = true;
+  const revBtn = $("#reveal");
+  revBtn.textContent = "Revealing…"; revBtn.setAttribute("aria-busy","true");
   const note = $("#rNote"); note.className = "note"; note.textContent = "";
   try{
     const r = reassemble($("#inbox").value);
@@ -545,7 +547,7 @@ $("#reveal").addEventListener("click", async ()=>{
     $("#result").scrollIntoView({behavior:"smooth",block:"nearest"});
     note.className="note ok"; note.textContent="Recovered. ✓";
   }catch(err){ note.className="note err"; note.textContent = err.message; $("#result").classList.add("hidden"); }
-  finally { revealing = false; }
+  finally { revealing = false; revBtn.textContent = "Reveal image"; revBtn.removeAttribute("aria-busy"); }
 });
 $("#save").addEventListener("click", ()=>{
   if(!recovered) return;
