@@ -499,6 +499,7 @@ function clearDropErr(){ $("#dropErr").classList.add("hidden"); }
 async function handleFile(file){
   clearDropErr();
   if(!file.type.startsWith("image/")){ showDropErr("Please choose an image file."); return; }
+  fileInput.value = "";
   try{
     srcImage = await loadImage(file);
     $("#tunePanel").classList.remove("hidden");
