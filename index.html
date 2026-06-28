@@ -557,6 +557,7 @@ $("#save").addEventListener("click", ()=>{
 });
 
 $("#rpass").addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); $("#reveal").click(); } });
+document.addEventListener("keydown", e=>{ if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)&&!$("#recv").classList.contains("hidden")){ e.preventDefault(); $("#reveal").click(); } });
 $("#inbox").addEventListener("keydown", e=>{
   if(e.key==="Escape"){
     $("#inbox").value=""; updateProgress();
