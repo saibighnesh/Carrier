@@ -494,7 +494,7 @@ drop.addEventListener("keydown", e=>{ if(e.key==="Enter"||e.key===" "){e.prevent
 ["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("over");}));
 drop.addEventListener("drop", e=>{ const f=e.dataTransfer.files[0]; if(f) handleFile(f); });
 fileInput.addEventListener("change", e=>{ const f=e.target.files[0]; if(f) handleFile(f); else clearDropErr(); });
-function showDropErr(msg){ const e=$("#dropErr"); e.textContent=msg; e.classList.remove("hidden"); e.scrollIntoView({behavior:"smooth",block:"nearest"}); }
+function showDropErr(msg){ const e=$("#dropErr"); e.classList.remove("hidden"); e.textContent=msg; e.scrollIntoView({behavior:"smooth",block:"nearest"}); }
 function clearDropErr(){ $("#dropErr").classList.add("hidden"); }
 async function handleFile(file){
   clearDropErr();
@@ -523,14 +523,16 @@ function updateProgress(){
 let progDebounce;
 $("#inbox").addEventListener("input", ()=>{ clearTimeout(progDebounce); progDebounce=setTimeout(updateProgress,80); });
 
-let recovered = null;
+let recovered = null, revealing = false;
 $("#reveal").addEventListener("click", async ()=>{
+  if(revealing) return;
+  revealing = true;
   const note = $("#rNote"); note.className = "note"; note.textContent = "";
-  const r = reassemble($("#inbox").value);
-  if(!r){ note.className="note err"; note.textContent="No Carrier message found in the box above."; return; }
-  if(r.missing.length){ note.className="note err";
-    note.textContent = `Missing part ${r.missing.join(", ")} — paste the remaining message(s) first.`; return; }
   try{
+    const r = reassemble($("#inbox").value);
+    if(!r){ note.className="note err"; note.textContent="No Carrier message found in the box above."; return; }
+    if(r.missing.length){ note.className="note err";
+      note.textContent = `Missing part ${r.missing.join(", ")} — paste the remaining message(s) first.`; return; }
     const { mime, img } = await unpack(r.s, $("#rpass").value);
     if(recovered) URL.revokeObjectURL(recovered.url);
     const blob = new Blob([img], {type: mime || "image/webp"});
@@ -542,6 +544,7 @@ $("#reveal").addEventListener("click", async ()=>{
     $("#result").scrollIntoView({behavior:"smooth",block:"nearest"});
     note.className="note ok"; note.textContent="Recovered. ✓";
   }catch(err){ note.className="note err"; note.textContent = err.message; $("#result").classList.add("hidden"); }
+  finally { revealing = false; }
 });
 $("#save").addEventListener("click", ()=>{
   if(!recovered) return;
@@ -554,6 +557,7 @@ $("#rpass").addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefau
 $("#inbox").addEventListener("keydown", e=>{
   if(e.key==="Escape"){
     $("#inbox").value=""; updateProgress();
+    $("#rpass").value="";
     $("#result").classList.add("hidden");
     $("#rNote").className="note"; $("#rNote").textContent="";
   }
@@ -567,7 +571,7 @@ document.querySelectorAll(".modes button").forEach(btn=>{
     $("#send").classList.toggle("hidden", m!=="send");
     $("#recv").classList.toggle("hidden", m!=="recv");
     if(m === "send") clearDropErr();
-    document.title = m === "send" ? "Carrier — Send image" : "Carrier — Receive image";
+    document.title = m === "send" ? "Carrier — send images through text-only chats" : "Carrier — Receive image";
   });
 });
 </script>
