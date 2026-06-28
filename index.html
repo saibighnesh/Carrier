@@ -548,6 +548,7 @@ $("#reveal").addEventListener("click", async ()=>{
     $("#result").classList.remove("hidden");
     $("#result").scrollIntoView({behavior:"smooth",block:"nearest"});
     note.className="note ok"; note.textContent="Recovered. ✓";
+    setTimeout(()=>$("#save").focus(), 400);
   }catch(err){ note.className="note err"; note.textContent = err.message; $("#result").classList.add("hidden"); }
   finally { revealing = false; revBtn.textContent = "Reveal image"; revBtn.removeAttribute("aria-busy"); }
 });
