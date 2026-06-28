@@ -570,6 +570,11 @@ $("#inbox").addEventListener("keydown", e=>{
   }
 });
 
+window.addEventListener("pagehide", ()=>{
+  if(thumbUrl) URL.revokeObjectURL(thumbUrl);
+  if(recovered) URL.revokeObjectURL(recovered.url);
+});
+
 /* ---------- mode toggle ---------- */
 document.querySelectorAll(".modes button").forEach(btn=>{
   btn.addEventListener("click", ()=>{
