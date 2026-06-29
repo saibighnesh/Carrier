@@ -399,9 +399,12 @@ async function autoFit(){
 }
 
 /* ---------- SEND ui ---------- */
-let lastChunks = [], thumbUrl = null;
+let lastChunks = [], thumbUrl = null, refreshing = false, pendingRefresh = false;
 async function refresh(){
   if(!srcImage) return;
+  if(refreshing){ pendingRefresh = true; return; }
+  refreshing = true;
+  try {
   const q = +$("#quality").value, d = +$("#maxdim").value;
   const img = await compressOnce(d, q);
   // preview
@@ -438,6 +441,10 @@ async function refresh(){
   $("#lockPanel").classList.remove("hidden");
   $("#outPanel").classList.remove("hidden");
   if(outWasHidden) $("#outPanel").scrollIntoView({behavior:"smooth",block:"nearest"});
+  } finally {
+    refreshing = false;
+    if(pendingRefresh){ pendingRefresh = false; queueRefresh(); }
+  }
 }
 function renderChunks(){
   const box = $("#chunks"); box.innerHTML = "";
