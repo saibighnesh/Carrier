@@ -170,7 +170,7 @@
           <div class="row">
             <label for="quality">Quality</label>
             <input type="range" id="quality" min="20" max="92" value="70" step="1" aria-label="Image quality">
-            <output id="qval" for="quality" style="font-family:var(--mono);font-size:12px;min-width:30px;text-align:right">70</output>
+            <output id="qval" for="quality" style="font-family:var(--mono);font-size:12px;min-width:36px;text-align:right">70%</output>
           </div>
           <div class="row">
             <label for="maxdim">Max size</label>
@@ -462,7 +462,7 @@ function renderChunks(){
 let debounce;
 function queueRefresh(){ clearTimeout(debounce); debounce = setTimeout(refresh, 180); }
 
-$("#quality").addEventListener("input", e=>{ $("#qval").textContent = e.target.value; queueRefresh(); });
+$("#quality").addEventListener("input", e=>{ $("#qval").textContent = e.target.value + "%"; queueRefresh(); });
 $("#maxdim").addEventListener("change", queueRefresh);
 $("#pass").addEventListener("input", queueRefresh);
 $("#autofit").addEventListener("click", async ()=>{
@@ -473,7 +473,7 @@ $("#autofit").addEventListener("click", async ()=>{
   try{
     const best = await autoFit();
     $("#maxdim").value = String(best.d);
-    $("#quality").value = best.q; $("#qval").textContent = best.q;
+    $("#quality").value = best.q; $("#qval").textContent = best.q + "%";
     await refresh();
   } finally {
     btn.textContent = "⚡ Auto-fit to 1 message";
