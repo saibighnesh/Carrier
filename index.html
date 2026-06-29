@@ -193,7 +193,8 @@
         <div class="track" id="meterTrack" role="progressbar" aria-label="Message size" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="fill" id="meterFill"></div></div>
       </div>
       <div class="stats">
-        <div class="stat"><div class="k" title="Compressed image size and pixel dimensions">Image now</div><div class="v" id="sizeOut">—</div></div>
+        <div class="stat"><div class="k" title="Original image pixel dimensions">Original</div><div class="v" id="origOut">—</div></div>
+        <div class="stat"><div class="k" title="Compressed image size and pixel dimensions">Compressed</div><div class="v" id="sizeOut">—</div></div>
         <div class="stat"><div class="k" title="Total Base64 characters to send">As text</div><div class="v" id="charOut">—</div></div>
         <div class="stat"><div class="k" title="Number of chat messages needed">Messages</div><div class="v" id="msgOut">—</div></div>
       </div>
@@ -412,6 +413,7 @@ async function refresh(){
   const b64 = await pack(img, srcMime, pw);
   lastChunks = chunkify(b64);
   // stats
+  $("#origOut").innerHTML = `<small>${srcImage.naturalWidth}×${srcImage.naturalHeight}</small>`;
   $("#sizeOut").innerHTML = fmtKB(img.length) + ` <small>${img._w}×${img._h}</small>`;
   $("#charOut").innerHTML = b64.length.toLocaleString() + " <small>chars</small>";
   $("#msgOut").textContent = lastChunks.length;
