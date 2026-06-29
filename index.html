@@ -440,6 +440,7 @@ async function refresh(){
 }
 function renderChunks(){
   const box = $("#chunks"); box.innerHTML = "";
+  box.setAttribute("aria-label", `${lastChunks.length} message chunk${lastChunks.length !== 1 ? "s" : ""}`);
   lastChunks.forEach((c,i)=>{
     const el = document.createElement("div");
     el.className = "chunk";
