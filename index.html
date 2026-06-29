@@ -322,7 +322,7 @@ async function unpack(b64, password){
 
 /* ---------- chunking ---------- */
 function chunkify(b64){
-  const sid = Math.random().toString(16).slice(2,6);
+  const sid = Array.from(crypto.getRandomValues(new Uint8Array(2)), b => b.toString(16).padStart(2,'0')).join('');
   const per = MSG_LIMIT - 24;
   const total = Math.max(1, Math.ceil(b64.length / per));
   const out = [];
