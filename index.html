@@ -581,6 +581,7 @@ $("#rpass").addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefau
 document.addEventListener("keydown", e=>{ if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)&&!$("#recv").classList.contains("hidden")){ e.preventDefault(); $("#reveal").click(); } });
 $("#inbox").addEventListener("keydown", e=>{
   if(e.key==="Escape"){
+    if(recovered){ URL.revokeObjectURL(recovered.url); recovered = null; }
     $("#inbox").value=""; updateProgress();
     $("#rpass").value="";
     $("#result").classList.add("hidden");
@@ -598,6 +599,9 @@ document.querySelectorAll(".modes button").forEach(btn=>{
   btn.addEventListener("click", ()=>{
     const m = btn.dataset.m;
     document.querySelectorAll(".modes button").forEach(b=>b.setAttribute("aria-selected", b===btn));
+    if(m === "recv" && thumbUrl){ URL.revokeObjectURL(thumbUrl); thumbUrl = null; }
+    if(m === "send" && recovered){ URL.revokeObjectURL(recovered.url); recovered = null; $("#result").classList.add("hidden"); }
+    if(m === "send" && srcImage) queueRefresh();
     $("#send").classList.toggle("hidden", m!=="send");
     $("#recv").classList.toggle("hidden", m!=="recv");
     if(m === "send") clearDropErr();
