@@ -90,6 +90,7 @@
   .btn.teal{border-color:var(--recv);color:var(--recv)}
   .btn.teal:hover{background:var(--recv-dim)}
   .btn:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+  .btn:disabled{opacity:.45;cursor:not-allowed;pointer-events:none}
   .btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
 
   .meter{margin:16px 0 4px}
@@ -481,6 +482,7 @@ $("#pass").addEventListener("input", queueRefresh);
 $("#autofit").addEventListener("click", async ()=>{
   if(!srcImage) return;
   const btn = $("#autofit");
+  btn.disabled = true;
   btn.textContent = "Fitting…";
   btn.setAttribute("aria-busy","true");
   try{
@@ -489,6 +491,7 @@ $("#autofit").addEventListener("click", async ()=>{
     $("#quality").value = best.q; $("#qval").textContent = best.q + "%";
     await refresh();
   } finally {
+    btn.disabled = false;
     btn.textContent = "⚡ Auto-fit to 1 message";
     btn.removeAttribute("aria-busy");
   }
