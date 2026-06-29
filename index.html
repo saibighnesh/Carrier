@@ -430,9 +430,11 @@ async function refresh(){
     note.className = "note warn";
     note.textContent = `Too big for one message — will send as ${lastChunks.length} parts. Lower the quality or size to fit fewer.`;
   }
+  const outWasHidden = $("#outPanel").classList.contains("hidden");
   renderChunks();
   $("#lockPanel").classList.remove("hidden");
   $("#outPanel").classList.remove("hidden");
+  if(outWasHidden) $("#outPanel").scrollIntoView({behavior:"smooth",block:"nearest"});
 }
 function renderChunks(){
   const box = $("#chunks"); box.innerHTML = "";
