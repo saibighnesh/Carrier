@@ -442,7 +442,7 @@ async function refresh(){
   renderChunks();
   $("#lockPanel").classList.remove("hidden");
   $("#outPanel").classList.remove("hidden");
-  if(outWasHidden) $("#outPanel").scrollIntoView({behavior:"smooth",block:"nearest"});
+  if(outWasHidden){ $("#outPanel").scrollIntoView({behavior:"smooth",block:"nearest"}); $("#outPanel").focus(); }
   } finally {
     refreshing = false;
     if(pendingRefresh){ pendingRefresh = false; queueRefresh(); }
@@ -577,7 +577,8 @@ $("#save").addEventListener("click", ()=>{
   if(!recovered) return;
   const ext = recovered.mime.includes("jpeg") ? "jpg" : recovered.mime.includes("png") ? "png" : "webp";
   const a = document.createElement("a");
-  a.href = recovered.url; a.download = "carrier-image." + ext; a.click();
+  a.href = recovered.url; a.download = "carrier-image." + ext;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
 });
 
 $("#rpass").addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); $("#reveal").click(); } });
