@@ -418,7 +418,6 @@ async function refresh(){
   const b64 = await pack(img, srcMime, pw);
   lastChunks = chunkify(b64);
   // stats
-  $("#origOut").innerHTML = `<small>${srcImage.naturalWidth}×${srcImage.naturalHeight}</small>`;
   $("#sizeOut").innerHTML = fmtKB(img.length) + ` <small>${img._w}×${img._h}</small>`;
   $("#charOut").innerHTML = b64.length.toLocaleString() + " <small>chars</small>";
   $("#msgOut").textContent = lastChunks.length;
@@ -525,6 +524,7 @@ async function handleFile(file){
     drop.querySelector("strong").textContent = file.name;
     drop.querySelector("small").textContent = `${fmtKB(file.size)} · ${srcImage.naturalWidth}×${srcImage.naturalHeight}`;
     $("#thumb").alt = `Compressed preview of ${file.name}`;
+    $("#origOut").innerHTML = `<small>${srcImage.naturalWidth}×${srcImage.naturalHeight}</small>`;
     document.title = `${file.name} — Carrier`;
     await refresh();
     $("#tunePanel").scrollIntoView({behavior:"smooth",block:"nearest"});
