@@ -427,6 +427,7 @@ async function refresh(){
   const pct = (ratio*100).toFixed(0);
   fill.style.width = pct + "%";
   $("#meterTrack").setAttribute("aria-valuenow", pct);
+  $("#meterTrack").setAttribute("aria-valuetext", `${pct}% of single-message limit`);
   meter.classList.toggle("over", lastChunks.length > 1);
   const note = $("#fitNote");
   if(lastChunks.length === 1){
