@@ -488,6 +488,8 @@ $("#autofit").addEventListener("click", async ()=>{
   btn.setAttribute("aria-busy","true");
   try{
     const best = await autoFit();
+    clearTimeout(debounce);
+    while(refreshing) await new Promise(r=>requestAnimationFrame(r));
     $("#maxdim").value = String(best.d);
     $("#quality").value = best.q; $("#qval").textContent = best.q + "%";
     await refresh();
