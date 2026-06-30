@@ -335,7 +335,8 @@ function reassemble(text){
   const re = /PXT\/([0-9a-f]{4})\/(\d+)\/(\d+)\/([A-Za-z0-9+/=]+)/g;
   const parts = [...text.matchAll(re)];
   if(!parts.length) return null;
-  const sid = parts[0][1];
+  const sessions = [...new Set(parts.map(p => p[1]))];
+  const sid = sessions[0];
   const group = parts.filter(p => p[1] === sid);
   const total = parseInt(group[0][3],10);
   const map = new Map();
@@ -343,7 +344,7 @@ function reassemble(text){
   const missing = [];
   let s = "";
   for(let i=1;i<=total;i++){ if(map.has(i)) s += map.get(i); else missing.push(i); }
-  return { s, total, have: map.size, missing };
+  return { s, total, have: map.size, missing, multiSession: sessions.length > 1 ? sessions.length : 0 };
 }
 
 /* ---------- compression ---------- */
@@ -538,10 +539,11 @@ function updateProgress(){
   const r = reassemble($("#inbox").value);
   const p = $("#prog");
   if(!r){ p.innerHTML = ""; return; }
+  const warn = r.multiSession ? ` <span style="color:var(--danger)">(${r.multiSession} different images detected — only the first will be used)</span>` : "";
   if(r.missing.length===0)
-    p.innerHTML = `Got all <b>${r.total}</b> part${r.total>1?"s":""}. Ready to reveal.`;
+    p.innerHTML = `Got all <b>${r.total}</b> part${r.total>1?"s":""}. Ready to reveal.` + warn;
   else
-    p.innerHTML = `Got <b>${r.have}</b> of <b>${r.total}</b> — still need part ${r.missing.join(", ")}.`;
+    p.innerHTML = `Got <b>${r.have}</b> of <b>${r.total}</b> — still need part ${r.missing.join(", ")}.` + warn;
 }
 let progDebounce;
 $("#inbox").addEventListener("input", ()=>{ clearTimeout(progDebounce); progDebounce=setTimeout(updateProgress,80); });
