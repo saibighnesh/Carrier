@@ -445,6 +445,9 @@ async function refresh(){
   $("#lockPanel").classList.remove("hidden");
   $("#outPanel").classList.remove("hidden");
   if(outWasHidden){ $("#outPanel").scrollIntoView({behavior:"smooth",block:"nearest"}); $("#outPanel").focus(); }
+  const fname = srcImage._name || "";
+  const msgLabel = lastChunks.length === 1 ? "1 msg" : `${lastChunks.length} msgs`;
+  if(fname) document.title = `${fname} · ${msgLabel} — Carrier`;
   } finally {
     refreshing = false;
     if(pendingRefresh){ pendingRefresh = false; queueRefresh(); }
@@ -533,6 +536,7 @@ async function handleFile(file){
   fileInput.value = "";
   try{
     srcImage = await loadImage(file);
+    srcImage._name = file.name;
     $("#tunePanel").classList.remove("hidden");
     drop.querySelector("strong").textContent = file.name;
     drop.querySelector("small").textContent = `${fmtKB(file.size)} · ${srcImage.naturalWidth}×${srcImage.naturalHeight}`;
