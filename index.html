@@ -485,8 +485,9 @@ function queueRefresh(){ clearTimeout(debounce); debounce = setTimeout(refresh, 
 (()=>{
   const q = localStorage.getItem("carrier_quality");
   const d = localStorage.getItem("carrier_maxdim");
-  if(q){ $("#quality").value = q; $("#qval").textContent = q + "%"; }
-  if(d) $("#maxdim").value = d;
+  if(q){ $("#quality").value = q; $("#qval").textContent = $("#quality").value + "%"; }
+  if(d && [...$("#maxdim").options].some(o => o.value === d)) $("#maxdim").value = d;
+  else if(d) localStorage.removeItem("carrier_maxdim");
 })();
 
 $("#quality").addEventListener("input", e=>{ $("#qval").textContent = e.target.value + "%"; localStorage.setItem("carrier_quality", e.target.value); queueRefresh(); });
@@ -502,8 +503,11 @@ $("#autofit").addEventListener("click", async ()=>{
     const best = await autoFit();
     clearTimeout(debounce);
     while(refreshing) await new Promise(r=>requestAnimationFrame(r));
+    clearTimeout(debounce);
     $("#maxdim").value = String(best.d);
     $("#quality").value = best.q; $("#qval").textContent = best.q + "%";
+    localStorage.setItem("carrier_quality", String(best.q));
+    localStorage.setItem("carrier_maxdim", String(best.d));
     await refresh();
   } finally {
     btn.disabled = false;
