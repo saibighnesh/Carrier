@@ -479,8 +479,15 @@ function renderChunks(){
 let debounce;
 function queueRefresh(){ clearTimeout(debounce); debounce = setTimeout(refresh, 180); }
 
-$("#quality").addEventListener("input", e=>{ $("#qval").textContent = e.target.value + "%"; queueRefresh(); });
-$("#maxdim").addEventListener("change", queueRefresh);
+(()=>{
+  const q = localStorage.getItem("carrier_quality");
+  const d = localStorage.getItem("carrier_maxdim");
+  if(q){ $("#quality").value = q; $("#qval").textContent = q + "%"; }
+  if(d) $("#maxdim").value = d;
+})();
+
+$("#quality").addEventListener("input", e=>{ $("#qval").textContent = e.target.value + "%"; localStorage.setItem("carrier_quality", e.target.value); queueRefresh(); });
+$("#maxdim").addEventListener("change", e=>{ localStorage.setItem("carrier_maxdim", e.target.value); queueRefresh(); });
 $("#pass").addEventListener("input", queueRefresh);
 $("#autofit").addEventListener("click", async ()=>{
   if(!srcImage) return;
