@@ -447,7 +447,8 @@ async function refresh(){
   if(outWasHidden){ $("#outPanel").scrollIntoView({behavior:"smooth",block:"nearest"}); $("#outPanel").focus(); }
   const fname = srcImage._name || "";
   const msgLabel = lastChunks.length === 1 ? "1 msg" : `${lastChunks.length} msgs`;
-  if(fname) document.title = `${fname} · ${msgLabel} — Carrier`;
+  const inSend = !$("#send").classList.contains("hidden");
+  if(fname && inSend) document.title = `${fname} · ${msgLabel} — Carrier`;
   } finally {
     refreshing = false;
     if(pendingRefresh){ pendingRefresh = false; queueRefresh(); }
