@@ -150,12 +150,12 @@
   </header>
 
   <div class="modes" role="tablist" aria-label="Mode">
-    <button type="button" data-m="send" role="tab" aria-selected="true" aria-controls="send" title="Encode and send an image">Send →</button>
-    <button type="button" data-m="recv" role="tab" aria-selected="false" aria-controls="recv" title="Decode a received Carrier message">← Receive</button>
+    <button type="button" id="tab-send" data-m="send" role="tab" aria-selected="true" aria-controls="send" title="Encode and send an image">Send →</button>
+    <button type="button" id="tab-recv" data-m="recv" role="tab" aria-selected="false" aria-controls="recv" title="Decode a received Carrier message">← Receive</button>
   </div>
 
   <!-- ============ SEND ============ -->
-  <section id="send" role="region" aria-label="Send image">
+  <section id="send" role="tabpanel" aria-labelledby="tab-send">
     <div class="panel">
       <span class="lbl">1 · Pick an image</span>
       <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose an image">
@@ -221,7 +221,7 @@
   </section>
 
   <!-- ============ RECEIVE ============ -->
-  <section id="recv" class="recv hidden" role="region" aria-label="Receive image">
+  <section id="recv" class="recv hidden" role="tabpanel" aria-labelledby="tab-recv">
     <div class="panel">
       <span class="lbl">1 · Paste what you received</span>
       <textarea id="inbox" rows="7" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="none" translate="no" dir="ltr" aria-label="Paste received Carrier messages here" placeholder="Paste the Carrier message(s) here — any order is fine. If split across multiple messages, paste them all."></textarea>
