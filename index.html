@@ -229,7 +229,7 @@
     </div>
     <div class="panel">
       <span class="lbl">2 · Password (if it's locked)</span>
-      <input type="password" id="rpass" placeholder="Password" autocomplete="current-password" autocapitalize="none" spellcheck="false" aria-label="Decryption password" enterkeyhint="go" aria-describedby="prog" maxlength="128">
+      <input type="password" id="rpass" placeholder="Password" autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false" aria-label="Decryption password" enterkeyhint="go" aria-describedby="prog" maxlength="128">
       <div class="btnrow" style="margin-top:12px">
         <button type="button" class="btn teal" id="reveal" aria-label="Decrypt and reveal the received image">Reveal image</button>
       </div>
@@ -447,7 +447,8 @@ async function refresh(){
   if(outWasHidden){ $("#outPanel").scrollIntoView({behavior:"smooth",block:"nearest"}); $("#outPanel").focus(); }
   const fname = srcImage._name || "";
   const msgLabel = lastChunks.length === 1 ? "1 msg" : `${lastChunks.length} msgs`;
-  if(fname) document.title = `${fname} · ${msgLabel} — Carrier`;
+  const inSend = !$("#send").classList.contains("hidden");
+  if(fname && inSend) document.title = `${fname} · ${msgLabel} — Carrier`;
   } finally {
     refreshing = false;
     if(pendingRefresh){ pendingRefresh = false; queueRefresh(); }
