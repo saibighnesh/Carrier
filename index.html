@@ -69,7 +69,7 @@
   .preview{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
   .preview img{max-width:160px;max-height:160px;border-radius:8px;border:1px solid var(--line);
     background:#0008;object-fit:contain}
-  .controls{flex:1;min-width:240px}
+  .controls{flex:1;min-width:min(240px,100%);overflow:hidden}
 
   .row{display:flex;align-items:center;gap:12px;margin:14px 0}
   .row label{font-size:13px;color:var(--muted);min-width:74px}
