@@ -403,6 +403,8 @@ async function autoFit(){
 }
 
 /* ---------- SEND ui ---------- */
+const prefersReducedMotion = ()=>window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const scrollBehavior = ()=>prefersReducedMotion() ? "auto" : "smooth";
 let lastChunks = [], thumbUrl = null, refreshing = false, pendingRefresh = false;
 async function refresh(){
   if(!srcImage) return;
@@ -444,7 +446,7 @@ async function refresh(){
   renderChunks();
   $("#lockPanel").classList.remove("hidden");
   $("#outPanel").classList.remove("hidden");
-  if(outWasHidden){ $("#outPanel").scrollIntoView({behavior:"smooth",block:"nearest"}); $("#outPanel").focus(); }
+  if(outWasHidden){ $("#outPanel").scrollIntoView({behavior:scrollBehavior(),block:"nearest"}); $("#outPanel").focus(); }
   const fname = srcImage._name || "";
   const msgLabel = lastChunks.length === 1 ? "1 msg" : `${lastChunks.length} msgs`;
   const inSend = !$("#send").classList.contains("hidden");
@@ -533,7 +535,7 @@ drop.addEventListener("keydown", e=>{ if(e.key==="Enter"||e.key===" "){e.prevent
 ["dragleave","drop","dragend"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("over");}));
 drop.addEventListener("drop", e=>{ const f=e.dataTransfer.files[0]; if(f) handleFile(f); });
 fileInput.addEventListener("change", e=>{ const f=e.target.files[0]; if(f) handleFile(f); else clearDropErr(); });
-function showDropErr(msg){ const e=$("#dropErr"); e.classList.remove("hidden"); e.textContent=msg; e.scrollIntoView({behavior:"smooth",block:"nearest"}); }
+function showDropErr(msg){ const e=$("#dropErr"); e.classList.remove("hidden"); e.textContent=msg; e.scrollIntoView({behavior:scrollBehavior(),block:"nearest"}); }
 function clearDropErr(){ $("#dropErr").classList.add("hidden"); }
 async function handleFile(file){
   clearDropErr();
@@ -549,7 +551,7 @@ async function handleFile(file){
     $("#origOut").innerHTML = `<small>${srcImage.naturalWidth}×${srcImage.naturalHeight}</small>`;
     document.title = `${file.name} — Carrier`;
     await refresh();
-    $("#tunePanel").scrollIntoView({behavior:"smooth",block:"nearest"});
+    $("#tunePanel").scrollIntoView({behavior:scrollBehavior(),block:"nearest"});
   }catch(err){ showDropErr(err.message); }
 }
 
@@ -588,7 +590,7 @@ $("#reveal").addEventListener("click", async ()=>{
     $("#rimg").alt = `Recovered image (${(img.length/1024).toFixed(1)} KB, ${mime || "image/webp"})`;
     recovered = { url, mime: mime || "image/webp" };
     $("#result").classList.remove("hidden");
-    $("#result").scrollIntoView({behavior:"smooth",block:"nearest"});
+    $("#result").scrollIntoView({behavior:scrollBehavior(),block:"nearest"});
     note.className="note ok"; note.textContent="Recovered. ✓";
     setTimeout(()=>$("#save").focus(), 400);
   }catch(err){ note.className="note err"; note.textContent = err.message; $("#result").classList.add("hidden"); }
