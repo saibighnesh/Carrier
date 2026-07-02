@@ -505,6 +505,7 @@ $("#autofit").addEventListener("click", async ()=>{
   btn.setAttribute("aria-busy","true");
   try{
     const best = await autoFit();
+    const hitFallback = best.q === 25 && best.d === 256;
     clearTimeout(debounce);
     while(refreshing) await new Promise(r=>requestAnimationFrame(r));
     clearTimeout(debounce);
@@ -513,6 +514,11 @@ $("#autofit").addEventListener("click", async ()=>{
     localStorage.setItem("carrier_quality", String(best.q));
     localStorage.setItem("carrier_maxdim", String(best.d));
     await refresh();
+    if(hitFallback){
+      const note = $("#fitNote");
+      note.className = "note warn";
+      note.textContent = "Image too large to fit in one message at any quality. Using minimum settings — recipient may see visible compression.";
+    }
   } finally {
     btn.disabled = false;
     btn.textContent = "⚡ Auto-fit to 1 message";
