@@ -510,8 +510,10 @@ $("#autofit").addEventListener("click", async ()=>{
     clearTimeout(debounce);
     $("#maxdim").value = String(best.d);
     $("#quality").value = best.q; $("#qval").textContent = best.q + "%";
-    localStorage.setItem("carrier_quality", String(best.q));
-    localStorage.setItem("carrier_maxdim", String(best.d));
+    if(best.q !== 25 || best.d !== 256){
+      localStorage.setItem("carrier_quality", String(best.q));
+      localStorage.setItem("carrier_maxdim", String(best.d));
+    }
     await refresh();
   } finally {
     btn.disabled = false;
