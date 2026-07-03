@@ -419,7 +419,6 @@ async function refresh(){
   const blob = new Blob([img], {type:srcMime});
   thumbUrl = URL.createObjectURL(blob);
   $("#thumb").src = thumbUrl;
-  $("#thumb").alt = `Compressed preview: ${img._w}×${img._h} at ${q}% quality`;
   // pack with current password to get true size
   const pw = $("#pass").value.trim();
   const b64 = await pack(img, srcMime, pw);
@@ -554,12 +553,12 @@ async function handleFile(file){
   try{
     srcImage = await loadImage(file);
     srcImage._name = file.name;
-    srcImage._size = file.size;
+    const sizeStr = fmtKB(file.size);
     $("#tunePanel").classList.remove("hidden");
     drop.querySelector("strong").textContent = file.name;
-    drop.querySelector("small").textContent = `${fmtKB(file.size)} · ${srcImage.naturalWidth}×${srcImage.naturalHeight}`;
+    drop.querySelector("small").textContent = `${sizeStr} · ${srcImage.naturalWidth}×${srcImage.naturalHeight}`;
     $("#thumb").alt = `Compressed preview of ${file.name}`;
-    $("#origOut").innerHTML = fmtKB(file.size) + ` <small>${srcImage.naturalWidth}×${srcImage.naturalHeight}</small>`;
+    $("#origOut").innerHTML = sizeStr + ` <small>${srcImage.naturalWidth}×${srcImage.naturalHeight}</small>`;
     document.title = `${file.name} — Carrier`;
     await refresh();
     $("#tunePanel").scrollIntoView({behavior:scrollBehavior(),block:"nearest"});
@@ -643,8 +642,8 @@ document.querySelectorAll(".modes button").forEach(btn=>{
     $("#send").classList.toggle("hidden", m!=="send");
     $("#recv").classList.toggle("hidden", m!=="recv");
     if(m === "send") clearDropErr();
-    if(m === "recv") setTimeout(()=>$("#inbox").focus(), 50);
-    document.title = m === "send" ? "Carrier — send images through text-only chats" : "Carrier — receive image";
+    if(m === "recv") setTimeout(()=>{ if(!$("#recv").classList.contains("hidden")) $("#inbox").focus(); }, 50);
+    document.title = m === "send" ? "Carrier — send images through text-only chats" : "Carrier — receive images";
   });
 });
 </script>
