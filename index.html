@@ -419,6 +419,7 @@ async function refresh(){
   const blob = new Blob([img], {type:srcMime});
   thumbUrl = URL.createObjectURL(blob);
   $("#thumb").src = thumbUrl;
+  $("#thumb").alt = `Compressed preview: ${img._w}×${img._h} at ${q}% quality`;
   // pack with current password to get true size
   const pw = $("#pass").value.trim();
   const b64 = await pack(img, srcMime, pw);
