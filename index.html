@@ -643,7 +643,7 @@ document.querySelectorAll(".modes button").forEach(btn=>{
     $("#recv").classList.toggle("hidden", m!=="recv");
     if(m === "send") clearDropErr();
     if(m === "recv") setTimeout(()=>$("#inbox").focus(), 50);
-    document.title = m === "send" ? "Carrier — send images through text-only chats" : "Carrier — Receive image";
+    document.title = m === "send" ? "Carrier — send images through text-only chats" : "Carrier — receive image";
   });
 });
 </script>
