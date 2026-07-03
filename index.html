@@ -553,11 +553,12 @@ async function handleFile(file){
   try{
     srcImage = await loadImage(file);
     srcImage._name = file.name;
+    srcImage._size = file.size;
     $("#tunePanel").classList.remove("hidden");
     drop.querySelector("strong").textContent = file.name;
     drop.querySelector("small").textContent = `${fmtKB(file.size)} · ${srcImage.naturalWidth}×${srcImage.naturalHeight}`;
     $("#thumb").alt = `Compressed preview of ${file.name}`;
-    $("#origOut").innerHTML = `<small>${srcImage.naturalWidth}×${srcImage.naturalHeight}</small>`;
+    $("#origOut").innerHTML = fmtKB(file.size) + ` <small>${srcImage.naturalWidth}×${srcImage.naturalHeight}</small>`;
     document.title = `${file.name} — Carrier`;
     await refresh();
     $("#tunePanel").scrollIntoView({behavior:scrollBehavior(),block:"nearest"});
