@@ -358,7 +358,7 @@ function loadImage(file){
     reader.onload = ()=>{
       const img = new Image();
       img.onload = ()=>res(img);
-      img.onerror = ()=>rej(new Error("Couldn't decode that image — try a JPG or PNG."));
+      img.onerror = ()=>rej(new Error("Couldn't decode that image — try JPG, PNG, WebP, or GIF."));
       img.src = reader.result;
     };
     reader.onerror = ()=>rej(new Error("Couldn't read that file."));
