@@ -67,7 +67,7 @@
   .drop small{display:block;margin-top:6px;color:var(--faint);font-size:12px}
 
   .preview{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;margin-bottom:16px}
-  .preview img{width:160px;height:160px;aspect-ratio:1;border-radius:8px;border:1px solid var(--line);
+  .preview img{width:160px;height:160px;border-radius:8px;border:1px solid var(--line);
     background:#0008;object-fit:scale-down}
   .controls{flex:1;min-width:min(240px,100%)}
 
@@ -99,7 +99,7 @@
   .meter{margin:16px 0 4px}
   .meter .track{height:8px;background:var(--bg);border:1px solid var(--line);
     border-radius:6px;overflow:hidden}
-  .meter .fill{height:100%;background:var(--send);width:0%;transition:width .25s;pointer-events:none}
+  .meter .fill{height:100%;background:var(--send);width:0%;transition:width .25s}
   .meter.over .fill{background:var(--danger)}
   .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-top:14px}
   .stat{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;cursor:default;min-width:0}
@@ -162,7 +162,7 @@
       <span class="lbl">1 · Pick an image</span>
       <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose an image" aria-haspopup="dialog">
         <strong>Drop an image here</strong> or click to choose
-        <small>JPG · PNG · WebP · GIF · AVIF — gets compressed to fit the text pipe</small>
+        <small>JPG · PNG · WebP · GIF · AVIF (modern browsers) — gets compressed to fit the text pipe</small>
       </div>
       <input type="file" id="file" accept="image/*" class="hidden" aria-label="Choose an image file">
       <p class="note err hidden" id="dropErr" role="alert"></p>
@@ -358,7 +358,7 @@ function loadImage(file){
     reader.onload = ()=>{
       const img = new Image();
       img.onload = ()=>res(img);
-      img.onerror = ()=>rej(new Error("Couldn't decode that image — try a JPG or PNG."));
+      img.onerror = ()=>rej(new Error("Couldn't decode that image — try JPG, PNG, WebP, or GIF."));
       img.src = reader.result;
     };
     reader.onerror = ()=>rej(new Error("Couldn't read that file."));
