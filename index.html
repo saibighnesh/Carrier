@@ -105,7 +105,7 @@
   .stat{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;cursor:default;min-width:0}
   .stat .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);user-select:none}
   .stat .v{font-size:18px;font-weight:500;margin-top:3px;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
-  .stat .v small{font-size:12px;color:var(--muted);font-weight:400}
+  .stat .v small{font-size:12px;color:var(--muted);font-weight:400;font-variant-numeric:normal}
 
   .chunks{display:flex;flex-direction:column;gap:10px;margin-top:6px}
   .chunk{background:var(--bg);border:1px solid var(--line);border-radius:8px;overflow:hidden}
@@ -171,7 +171,7 @@
     <div class="panel hidden" id="tunePanel">
       <span class="lbl">2 · Squeeze to fit</span>
       <div class="preview">
-        <img id="thumb" alt="Compressed preview" draggable="false" loading="eager" aria-describedby="sizeOut">
+        <img id="thumb" alt="Compressed preview" draggable="false" loading="eager">
         <div class="controls">
           <div class="row">
             <label for="quality">Quality</label>
@@ -198,7 +198,7 @@
       <div class="meter" id="meter">
         <div class="track" id="meterTrack" role="progressbar" aria-label="Message size" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="fill" id="meterFill"></div></div>
       </div>
-      <div class="stats" role="group" aria-label="Compression statistics">
+      <div class="stats" role="region" aria-label="Compression statistics">
         <div class="stat"><div class="k" title="Original image pixel dimensions">Original</div><div class="v" id="origOut">—</div></div>
         <div class="stat"><div class="k" title="Compressed image size and pixel dimensions">Compressed</div><div class="v" id="sizeOut" aria-live="polite" aria-atomic="true">—</div></div>
         <div class="stat"><div class="k" title="Total Base64 characters to send">As text</div><div class="v" id="charOut">—</div></div>
