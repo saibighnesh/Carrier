@@ -136,8 +136,8 @@
   footer code{font-family:var(--mono);color:var(--muted)}
   a{color:var(--recv);text-underline-offset:3px}
   a:hover{color:var(--ink)}
-  html{scroll-behavior:smooth}
-  @media (prefers-reduced-motion: reduce){*{transition:none!important}html{scroll-behavior:auto}}
+  @media (prefers-reduced-motion: no-preference){html{scroll-behavior:smooth}}
+  @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
