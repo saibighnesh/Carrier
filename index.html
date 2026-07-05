@@ -190,7 +190,7 @@
             </select>
           </div>
           <div class="btnrow">
-            <button type="button" class="btn amber" id="autofit" aria-label="Auto-fit to 1 message">⚡ Auto-fit to 1 message</button>
+            <button type="button" class="btn amber" id="autofit"><span aria-hidden="true">⚡ </span>Auto-fit to 1 message</button>
           </div>
         </div>
       </div>
@@ -524,7 +524,7 @@ $("#autofit").addEventListener("click", async ()=>{
     }
   } finally {
     btn.disabled = false;
-    btn.textContent = "⚡ Auto-fit to 1 message";
+    btn.innerHTML = '<span aria-hidden="true">⚡ </span>Auto-fit to 1 message';
     btn.removeAttribute("aria-busy");
   }
 });
