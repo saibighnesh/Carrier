@@ -32,7 +32,8 @@
   body{
     background:var(--bg); color:var(--ink); font-family:var(--sans);
     line-height:1.55; -webkit-font-smoothing:antialiased;
-    padding:24px 16px 64px; overscroll-behavior:contain;
+    padding:max(24px,env(safe-area-inset-top)) 16px max(64px,env(safe-area-inset-bottom));
+    overscroll-behavior:contain;
   }
   .wrap{max-width:720px;margin:0 auto}
   header{margin-bottom:22px}
