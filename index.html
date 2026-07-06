@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#0d1420">
 <meta name="color-scheme" content="dark">
 <meta name="description" content="Turn any image into plain text and send it through a chat that blocks photos. Optional AES-256-GCM encryption. Runs offline in your browser — no uploads, no servers.">
@@ -32,7 +32,8 @@
   body{
     background:var(--bg); color:var(--ink); font-family:var(--sans);
     line-height:1.55; -webkit-font-smoothing:antialiased;
-    padding:24px 16px 64px; overscroll-behavior:contain;
+    padding:max(24px,env(safe-area-inset-top)) 16px max(64px,env(safe-area-inset-bottom));
+    overscroll-behavior:contain;
   }
   .wrap{max-width:720px;margin:0 auto}
   header{margin-bottom:22px}
