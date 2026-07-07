@@ -99,6 +99,7 @@
   .btn:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
   .btn:disabled{opacity:.45;cursor:not-allowed;pointer-events:none}
   .btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+  .btnrow--below{margin-top:0;margin-bottom:12px}
 
   .meter{margin:16px 0 4px}
   .meter .track{height:8px;background:var(--bg);border:1px solid var(--line);
@@ -220,7 +221,7 @@
 
     <div class="panel hidden" id="outPanel" tabindex="-1" aria-labelledby="outPanelLabel">
       <span class="lbl" id="outPanelLabel">4 · Copy &amp; paste into your chat</span>
-      <div class="btnrow" style="margin-bottom:12px">
+      <div class="btnrow btnrow--below">
         <button type="button" class="btn amber" id="copyAll" title="Copies all chunks separated by a blank line — paste the whole block into your chat">Copy all messages</button>
       </div>
       <div class="chunks" id="chunks" aria-live="off" translate="no"></div>
