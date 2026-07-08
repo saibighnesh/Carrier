@@ -101,6 +101,7 @@
   .btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
   .btnrow--below{margin-bottom:12px}
   .btnrow--spaced{margin-top:12px}
+  .btnrow--centered{justify-content:center}
 
   .meter{margin:16px 0 4px}
   .meter .track{height:8px;background:var(--bg);border:1px solid var(--line);
@@ -245,7 +246,7 @@
       <p class="note" id="rNote" role="status" aria-live="polite" aria-atomic="true"></p>
       <div class="result hidden" id="result">
         <img id="rimg" alt="Recovered image" loading="eager" decoding="async" draggable="false">
-        <div class="btnrow" style="justify-content:center;margin-top:12px">
+        <div class="btnrow btnrow--spaced btnrow--centered">
           <button type="button" class="btn teal" id="save" title="Save recovered image to disk">Download image</button>
         </div>
       </div>
