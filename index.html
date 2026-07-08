@@ -100,6 +100,7 @@
   .btn:disabled{opacity:.45;cursor:not-allowed;pointer-events:none}
   .btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
   .btnrow--below{margin-bottom:12px}
+  .btnrow--spaced{margin-top:12px}
 
   .meter{margin:16px 0 4px}
   .meter .track{height:8px;background:var(--bg);border:1px solid var(--line);
@@ -238,7 +239,7 @@
     <div class="panel">
       <span class="lbl">2 · Password (if it's locked)</span>
       <input type="password" id="rpass" placeholder="Password" autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false" aria-label="Decryption password" enterkeyhint="go" aria-describedby="prog" maxlength="128">
-      <div class="btnrow" style="margin-top:12px">
+      <div class="btnrow btnrow--spaced">
         <button type="button" class="btn teal" id="reveal" aria-label="Decrypt and reveal the received image">Reveal image</button>
       </div>
       <p class="note" id="rNote" role="status" aria-live="polite" aria-atomic="true"></p>
