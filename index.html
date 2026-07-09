@@ -658,7 +658,8 @@ document.querySelectorAll(".modes button").forEach(btn=>{
     $("#recv").classList.toggle("hidden", m!=="recv");
     if(m === "send") clearDropErr();
     if(m === "recv") setTimeout(()=>{ if(!$("#recv").classList.contains("hidden")) $("#inbox").focus(); }, 50);
-    document.title = m === "send" ? "Carrier — send images through text-only chats" : "Carrier — receive images";
+    if(m === "recv") document.title = "Carrier — receive images";
+    else if(!srcImage) document.title = "Carrier — send images through text-only chats";
   });
 });
 </script>
