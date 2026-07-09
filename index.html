@@ -504,7 +504,7 @@ function queueRefresh(){ clearTimeout(debounce); debounce = setTimeout(refresh, 
 (()=>{
   const q = localStorage.getItem("carrier_quality");
   const d = localStorage.getItem("carrier_maxdim");
-  if(q){ $("#quality").value = q; $("#qval").textContent = $("#quality").value + "%"; }
+  if(q){ const qEl = $("#quality"); qEl.value = q; qEl.setAttribute("aria-valuetext", q + "%"); $("#qval").textContent = q + "%"; }
   if(d && [...$("#maxdim").options].some(o => o.value === d)) $("#maxdim").value = d;
   else if(d) localStorage.removeItem("carrier_maxdim");
 })();
