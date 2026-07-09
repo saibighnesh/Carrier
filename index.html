@@ -336,7 +336,7 @@ async function unpack(b64, password){
 
 /* ---------- chunking ---------- */
 function chunkify(b64){
-  const sid = Array.from(crypto.getRandomValues(new Uint8Array(2)), b => b.toString(16).padStart(2,'0')).join('');
+  const sid = Array.from(crypto.getRandomValues(new Uint8Array(3)), b => b.toString(16).padStart(2,'0')).join('');
   const per = MSG_LIMIT - 24;
   const total = Math.max(1, Math.ceil(b64.length / per));
   const out = [];
@@ -345,7 +345,7 @@ function chunkify(b64){
   return out;
 }
 function reassemble(text){
-  const re = /PXT\/([0-9a-f]{4})\/(\d+)\/(\d+)\/([A-Za-z0-9+/=]+)/g;
+  const re = /PXT\/([0-9a-f]+)\/(\d+)\/(\d+)\/([A-Za-z0-9+/=]+)/g;
   const parts = [...text.matchAll(re)];
   if(!parts.length) return null;
   const sessions = [...new Set(parts.map(p => p[1]))];
