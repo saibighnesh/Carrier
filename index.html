@@ -169,9 +169,9 @@
   <section id="send" role="tabpanel" aria-labelledby="tab-send">
     <div class="panel">
       <span class="lbl">1 · Pick an image</span>
-      <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose an image">
+      <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose an image" aria-describedby="dropHint">
         <strong>Drop an image here</strong> or click to choose
-        <small>JPG · PNG · WebP · GIF · AVIF (modern browsers) — gets compressed to fit the text pipe</small>
+        <small id="dropHint">JPG · PNG · WebP · GIF · AVIF (modern browsers) — gets compressed to fit the text pipe</small>
       </div>
       <input type="file" id="file" accept="image/*" class="hidden" aria-label="Choose an image file">
       <p class="note err hidden" id="dropErr" role="alert"></p>
