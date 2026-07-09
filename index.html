@@ -509,7 +509,7 @@ function queueRefresh(){ clearTimeout(debounce); debounce = setTimeout(refresh, 
   else if(d) localStorage.removeItem("carrier_maxdim");
 })();
 
-$("#quality").addEventListener("input", e=>{ $("#qval").textContent = e.target.value + "%"; localStorage.setItem("carrier_quality", e.target.value); queueRefresh(); });
+$("#quality").addEventListener("input", e=>{ const v = e.target.value; $("#qval").textContent = v + "%"; e.target.setAttribute("aria-valuetext", v + "%"); localStorage.setItem("carrier_quality", v); queueRefresh(); });
 $("#maxdim").addEventListener("change", e=>{ localStorage.setItem("carrier_maxdim", e.target.value); queueRefresh(); });
 $("#pass").addEventListener("input", queueRefresh);
 $("#autofit").addEventListener("click", async ()=>{
