@@ -386,10 +386,13 @@ function drawScaled(img, maxDim){
   return cv;
 }
 function encodeCanvas(cv, q){
-  return new Promise(res=>{
+  return new Promise((res,rej)=>{
     cv.toBlob(b=>{
       if(b){ srcMime = "image/webp"; res(b); }
-      else cv.toBlob(b2=>{ srcMime = "image/jpeg"; res(b2); }, "image/jpeg", q);
+      else cv.toBlob(b2=>{
+        if(b2){ srcMime = "image/jpeg"; res(b2); }
+        else rej(new Error("Couldn't encode image — canvas may be tainted or the browser blocked encoding."));
+      }, "image/jpeg", q);
     }, "image/webp", q);
   });
 }
