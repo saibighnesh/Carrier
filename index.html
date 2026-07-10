@@ -589,12 +589,18 @@ async function handleFile(file){
 function updateProgress(){
   const r = reassemble($("#inbox").value);
   const p = $("#prog");
-  if(!r){ p.textContent = ""; return; }
-  const warn = r.multiSession ? ` <span style="color:var(--danger)">(${r.multiSession} different images detected — only the first will be used)</span>` : "";
+  p.textContent = "";
+  if(!r) return;
+  const b = t => Object.assign(document.createElement("b"), {textContent: String(t)});
   if(r.missing.length===0)
-    p.innerHTML = `Got all <b>${r.total}</b> part${r.total>1?"s":""}. Ready to reveal.` + warn;
+    p.append("Got all ", b(r.total), ` part${r.total>1?"s":""}. Ready to reveal.`);
   else
-    p.innerHTML = `Got <b>${r.have}</b> of <b>${r.total}</b> — still need part ${r.missing.join(", ")}.` + warn;
+    p.append("Got ", b(r.have), " of ", b(r.total), ` — still need part ${r.missing.join(", ")}.`);
+  if(r.multiSession){
+    const warn = Object.assign(document.createElement("span"), {textContent: ` (${r.multiSession} different images detected — only the first will be used)`});
+    warn.style.color = "var(--danger)";
+    p.appendChild(warn);
+  }
 }
 let progDebounce;
 $("#inbox").addEventListener("input", ()=>{ clearTimeout(progDebounce); progDebounce=setTimeout(updateProgress,80); });
