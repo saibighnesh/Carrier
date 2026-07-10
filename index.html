@@ -638,7 +638,7 @@ $("#reveal").addEventListener("click", async ()=>{
     $("#result").scrollIntoView({behavior:scrollBehavior(),block:"nearest"});
     note.className="note ok"; note.textContent="Recovered. ✓";
     setTimeout(()=>$("#save").focus(), 400);
-  }catch(err){ note.className="note err"; note.textContent = err.message; $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true"); }
+  }catch(err){ note.className="note err"; note.textContent = err.message; $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true"); $("#rimg").alt = "Recovered image"; }
   finally { revealing = false; revBtn.textContent = "Reveal image"; revBtn.removeAttribute("aria-busy"); }
 });
 $("#save").addEventListener("click", ()=>{
@@ -658,6 +658,7 @@ $("#inbox").addEventListener("keydown", e=>{
     $("#rpass").value="";
     $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true");
     $("#rNote").className="note"; $("#rNote").textContent="";
+    $("#inbox").focus();
   }
 });
 
