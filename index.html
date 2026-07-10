@@ -529,7 +529,7 @@ $("#autofit").addEventListener("click", async ()=>{
     while(refreshing) await new Promise(r=>requestAnimationFrame(r));
     clearTimeout(debounce);
     $("#maxdim").value = String(best.d);
-    $("#quality").value = best.q; $("#qval").textContent = best.q + "%";
+    const qEl = $("#quality"); qEl.value = best.q; qEl.setAttribute("aria-valuetext", best.q + "%"); $("#qval").textContent = best.q + "%";
     if(best.q !== 25 || best.d !== 256){
       localStorage.setItem("carrier_quality", String(best.q));
       localStorage.setItem("carrier_maxdim", String(best.d));
