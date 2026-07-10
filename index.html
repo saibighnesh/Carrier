@@ -544,15 +544,17 @@ $("#autofit").addEventListener("click", async ()=>{
     btn.removeAttribute("aria-busy");
   }
 });
+let copyAllTimer;
 $("#copyAll").addEventListener("click", async ()=>{
   const b = $("#copyAll");
+  clearTimeout(copyAllTimer);
   try{
     await navigator.clipboard.writeText(lastChunks.join("\n\n"));
     b.textContent = "Copied all ✓"; b.setAttribute("aria-label","Copied all messages");
-    setTimeout(()=>{ b.textContent="Copy all messages"; b.removeAttribute("aria-label"); },2000);
+    copyAllTimer = setTimeout(()=>{ b.textContent="Copy all messages"; b.removeAttribute("aria-label"); },2000);
   }catch{
-    b.textContent = "Copy failed — check permissions"; b.setAttribute("aria-label","Copy failed — check browser permissions");
-    setTimeout(()=>{ b.textContent="Copy all messages"; b.removeAttribute("aria-label"); },2500);
+    b.textContent = "Copy failed"; b.setAttribute("aria-label","Copy failed — clipboard access denied");
+    copyAllTimer = setTimeout(()=>{ b.textContent="Copy all messages"; b.removeAttribute("aria-label"); },2500);
   }
 });
 
