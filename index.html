@@ -589,7 +589,7 @@ async function handleFile(file){
 function updateProgress(){
   const r = reassemble($("#inbox").value);
   const p = $("#prog");
-  if(!r){ p.innerHTML = ""; return; }
+  if(!r){ p.textContent = ""; return; }
   const warn = r.multiSession ? ` <span style="color:var(--danger)">(${r.multiSession} different images detected — only the first will be used)</span>` : "";
   if(r.missing.length===0)
     p.innerHTML = `Got all <b>${r.total}</b> part${r.total>1?"s":""}. Ready to reveal.` + warn;
