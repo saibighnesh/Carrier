@@ -538,6 +538,10 @@ $("#autofit").addEventListener("click", async ()=>{
       note.className = "note warn";
       note.textContent = "Image too large to fit in one message at any quality. Using minimum settings — recipient may see visible compression.";
     }
+  } catch(err) {
+    const note = $("#fitNote");
+    note.className = "note err";
+    note.textContent = "Auto-fit failed: " + err.message;
   } finally {
     btn.disabled = false;
     btn.innerHTML = '<span aria-hidden="true">⚡ </span>Auto-fit to 1 message';
