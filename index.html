@@ -246,7 +246,7 @@
         <button type="button" class="btn teal" id="reveal" aria-label="Decrypt and reveal the received image">Reveal image</button>
       </div>
       <p class="note" id="rNote" role="status" aria-live="polite" aria-atomic="true"></p>
-      <div class="result hidden" id="result" role="region" aria-label="Recovered image">
+      <div class="result hidden" id="result" role="region" aria-label="Reveal result" aria-hidden="true">
         <img id="rimg" alt="Recovered image" loading="eager" draggable="false">
         <div class="btnrow btnrow--spaced btnrow--centered">
           <button type="button" class="btn teal" id="save" title="Download image">Download image</button>
@@ -620,10 +620,11 @@ $("#reveal").addEventListener("click", async ()=>{
     $("#rimg").alt = `Recovered image (${(img.length/1024).toFixed(1)} KB, ${mime || "image/webp"})`;
     recovered = { url, mime: mime || "image/webp" };
     $("#result").classList.remove("hidden");
+    $("#result").removeAttribute("aria-hidden");
     $("#result").scrollIntoView({behavior:scrollBehavior(),block:"nearest"});
     note.className="note ok"; note.textContent="Recovered. ✓";
     setTimeout(()=>$("#save").focus(), 400);
-  }catch(err){ note.className="note err"; note.textContent = err.message; $("#result").classList.add("hidden"); }
+  }catch(err){ note.className="note err"; note.textContent = err.message; $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true"); }
   finally { revealing = false; revBtn.textContent = "Reveal image"; revBtn.removeAttribute("aria-busy"); }
 });
 $("#save").addEventListener("click", ()=>{
@@ -641,7 +642,7 @@ $("#inbox").addEventListener("keydown", e=>{
     if(recovered){ URL.revokeObjectURL(recovered.url); recovered = null; }
     $("#inbox").value=""; updateProgress();
     $("#rpass").value="";
-    $("#result").classList.add("hidden");
+    $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true");
     $("#rNote").className="note"; $("#rNote").textContent="";
   }
 });
@@ -657,7 +658,7 @@ document.querySelectorAll(".modes button").forEach(btn=>{
     const m = btn.dataset.m;
     document.querySelectorAll(".modes button").forEach(b=>b.setAttribute("aria-selected", b===btn));
     if(m === "recv" && thumbUrl){ URL.revokeObjectURL(thumbUrl); thumbUrl = null; }
-    if(m === "send" && recovered){ URL.revokeObjectURL(recovered.url); recovered = null; $("#result").classList.add("hidden"); }
+    if(m === "send" && recovered){ URL.revokeObjectURL(recovered.url); recovered = null; $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true"); }
     if(m === "send" && srcImage) queueRefresh();
     $("#send").classList.toggle("hidden", m!=="send");
     $("#recv").classList.toggle("hidden", m!=="recv");
