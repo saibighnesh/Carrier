@@ -290,7 +290,9 @@ function buildPlain(mime, img){
   return out;
 }
 function parsePlain(bytes){
+  if(bytes.length < 2) throw new Error("Payload too short to parse");
   const mlen = bytes[0];
+  if(1 + mlen > bytes.length) throw new Error("Payload truncated: mime length exceeds data");
   const mime = new TextDecoder().decode(bytes.subarray(1,1+mlen));
   return { mime, img: bytes.subarray(1+mlen) };
 }
