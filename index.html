@@ -522,6 +522,7 @@ $("#autofit").addEventListener("click", async ()=>{
   btn.disabled = true;
   btn.textContent = "Fitting…";
   btn.setAttribute("aria-busy","true");
+  const fitNote = $("#fitNote");
   try{
     const best = await autoFit();
     const hitFallback = best.q === 25 && best.d === 256;
@@ -536,14 +537,12 @@ $("#autofit").addEventListener("click", async ()=>{
     }
     await refresh();
     if(hitFallback){
-      const note = $("#fitNote");
-      note.className = "note warn";
-      note.textContent = "Image too large to fit in one message at any quality. Using minimum settings — recipient may see visible compression.";
+      fitNote.className = "note warn";
+      fitNote.textContent = "Image too large to fit in one message at any quality. Using minimum settings — recipient may see visible compression.";
     }
   } catch(err) {
-    const note = $("#fitNote");
-    note.className = "note err";
-    note.textContent = "Auto-fit failed: " + (err instanceof Error ? err.message : String(err));
+    fitNote.className = "note err";
+    fitNote.textContent = "Auto-fit failed: " + (err instanceof Error ? err.message : String(err));
   } finally {
     btn.disabled = false;
     btn.innerHTML = '<span aria-hidden="true">⚡ </span>Auto-fit to 1 message';
