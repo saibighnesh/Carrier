@@ -615,7 +615,7 @@ function updateProgress(){
   }
 }
 let progDebounce;
-$("#inbox").addEventListener("input", ()=>{ clearTimeout(progDebounce); progDebounce=setTimeout(updateProgress,80); });
+$("#inbox").addEventListener("input", ()=>{ clearTimeout(progDebounce); progDebounce=setTimeout(updateProgress,80); const n=$("#rNote"); if(n.classList.contains("ok")){ n.className="note"; n.textContent=""; } });
 $("#inbox").addEventListener("blur", ()=>{ const v=$("#inbox").value; const t=v.trim(); if(t!==v){$("#inbox").value=t; clearTimeout(progDebounce); updateProgress();} });
 
 let recovered = null, revealing = false;
