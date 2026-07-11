@@ -612,7 +612,7 @@ function updateProgress(){
 }
 let progDebounce;
 $("#inbox").addEventListener("input", ()=>{ clearTimeout(progDebounce); progDebounce=setTimeout(updateProgress,80); });
-$("#inbox").addEventListener("blur", ()=>{ const v=$("#inbox").value; const t=v.trim(); if(t!==v){$("#inbox").value=t; clearTimeout(progDebounce); updateProgress();} });
+$("#inbox").addEventListener("blur", ()=>{ clearTimeout(progDebounce); const v=$("#inbox").value; const t=v.trim(); if(t!==v){$("#inbox").value=t; updateProgress();} });
 
 let recovered = null, revealing = false;
 $("#reveal").addEventListener("click", async ()=>{
