@@ -648,7 +648,8 @@ $("#save").addEventListener("click", ()=>{
   if(!recovered) return;
   const ext = recovered.mime.includes("jpeg") ? "jpg" : recovered.mime.includes("png") ? "png" : "webp";
   const a = document.createElement("a");
-  a.href = recovered.url; a.download = "carrier-image." + ext;
+  const ts = new Date().toISOString().replace(/[:.]/g,"-").slice(0,19);
+  a.href = recovered.url; a.download = `carrier-image-${ts}.${ext}`;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
 });
 
