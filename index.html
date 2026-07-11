@@ -138,6 +138,7 @@
 
   .progress{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:10px}
   .progress b{color:var(--recv)}
+  .progress.ok{color:var(--ok)}
   .result{margin-top:16px;text-align:center}
   .result img{max-width:100%;min-height:1px;border-radius:10px;border:1px solid var(--line)}
 
@@ -596,13 +597,16 @@ async function handleFile(file){
 function updateProgress(){
   const r = reassemble($("#inbox").value);
   const p = $("#prog");
-  p.textContent = "";
+  p.textContent = ""; p.className = "progress";
   if(!r) return;
   const b = t => Object.assign(document.createElement("b"), {textContent: String(t)});
-  if(r.missing.length===0)
+  if(r.missing.length===0){
+    p.className = "progress ok";
     p.append("Got all ", b(r.total), ` part${r.total>1?"s":""}. Ready to reveal.`);
-  else
+  } else {
+    p.className = "progress";
     p.append("Got ", b(r.have), " of ", b(r.total), ` — still need part ${r.missing.join(", ")}.`);
+  }
   if(r.multiSession){
     const warn = Object.assign(document.createElement("span"), {textContent: ` (${r.multiSession} different images detected — only the first will be used)`});
     warn.style.color = "var(--danger)";
