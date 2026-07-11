@@ -259,7 +259,7 @@
   <footer>
     Built offline with the browser's <code>Web Crypto</code> (AES-256-GCM + PBKDF2) and <code>canvas</code> compression.<br>
     No servers, no tracking, no uploads. Save this file and it works on a plane. &copy; 2026 Sai Bighnesh &mdash;
-    <a href="https://github.com/saibighnesh/Carrier" rel="noopener noreferrer" aria-label="Carrier source code on GitHub (opens in new tab)">source on GitHub</a>
+    <a href="https://github.com/saibighnesh/Carrier" target="_blank" rel="noopener noreferrer" aria-label="Carrier source code on GitHub (opens in new tab)">source on GitHub</a>
   </footer>
 </div>
 
@@ -604,7 +604,6 @@ function updateProgress(){
     p.className = "progress ok";
     p.append("Got all ", b(r.total), ` part${r.total>1?"s":""}. Ready to reveal.`);
   } else {
-    p.className = "progress";
     p.append("Got ", b(r.have), " of ", b(r.total), ` — still need part ${r.missing.join(", ")}.`);
   }
   if(r.multiSession){
