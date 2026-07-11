@@ -488,16 +488,18 @@ function renderChunks(){
     el.querySelector(".data").textContent = preview;
     box.appendChild(el);
   });
+  const copyoneTimers = new WeakMap();
   box.querySelectorAll(".copyone").forEach(b=>{
     b.onclick = async ()=>{
       const origLabel = b.dataset.origLabel;
+      clearTimeout(copyoneTimers.get(b));
       try{
         await navigator.clipboard.writeText(lastChunks[+b.dataset.i]);
         b.textContent = "Copied"; b.setAttribute("aria-label","Copied");
-        setTimeout(()=>{ b.textContent="Copy"; b.setAttribute("aria-label",origLabel); },1200);
+        copyoneTimers.set(b, setTimeout(()=>{ b.textContent="Copy"; b.setAttribute("aria-label",origLabel); },1200));
       }catch{
         b.textContent = "Failed"; b.setAttribute("aria-label","Copy failed");
-        setTimeout(()=>{ b.textContent="Copy"; b.setAttribute("aria-label",origLabel); },1200);
+        copyoneTimers.set(b, setTimeout(()=>{ b.textContent="Copy"; b.setAttribute("aria-label",origLabel); },1200));
       }
     };
   });
