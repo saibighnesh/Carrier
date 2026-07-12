@@ -659,6 +659,7 @@ document.addEventListener("keydown", e=>{ if(e.key==="Enter"&&(e.ctrlKey||e.meta
 $("#inbox").addEventListener("keydown", e=>{
   if(e.key==="Escape"){
     if(recovered){ URL.revokeObjectURL(recovered.url); recovered = null; }
+    clearTimeout(progDebounce);
     $("#inbox").value=""; updateProgress();
     $("#rpass").value="";
     $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true");
