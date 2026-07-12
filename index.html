@@ -640,7 +640,7 @@ $("#reveal").addEventListener("click", async ()=>{
     $("#result").classList.remove("hidden");
     $("#result").removeAttribute("aria-hidden");
     $("#result").scrollIntoView({behavior:scrollBehavior(),block:"nearest"});
-    note.className="note ok"; note.textContent="Recovered. ✓";
+    note.className="note ok"; note.textContent="Received. ✓";
     setTimeout(()=>$("#save").focus(), 400);
   }catch(err){ note.className="note err"; note.textContent = err instanceof Error ? err.message : String(err); $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true"); $("#rimg").alt = "Received image"; }
   finally { revealing = false; revBtn.textContent = "Reveal image"; revBtn.removeAttribute("aria-busy"); }
