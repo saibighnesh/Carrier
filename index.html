@@ -635,7 +635,7 @@ $("#reveal").addEventListener("click", async ()=>{
     const blob = new Blob([img], {type: mime || "image/webp"});
     const url = URL.createObjectURL(blob);
     $("#rimg").src = url;
-    $("#rimg").alt = `Received image (${(img.length/1024).toFixed(1)} KB, ${mime || "image/webp"})`;
+    $("#rimg").alt = `Received image (${fmtKB(img.length)}, ${mime || "image/webp"})`;
     recovered = { url, mime: mime || "image/webp" };
     $("#result").classList.remove("hidden");
     $("#result").removeAttribute("aria-hidden");
