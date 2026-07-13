@@ -561,7 +561,7 @@ $("#copyAll").addEventListener("click", async ()=>{
     copyAllTimer = setTimeout(()=>{ b.textContent="Copy all messages"; b.removeAttribute("aria-label"); },2000);
   }catch{
     b.textContent = "Copy failed"; b.setAttribute("aria-label","Copy failed — clipboard access denied");
-    copyAllTimer = setTimeout(()=>{ b.textContent="Copy all messages"; b.removeAttribute("aria-label"); },2500);
+    copyAllTimer = setTimeout(()=>{ b.textContent="Copy all messages"; b.removeAttribute("aria-label"); },2000);
   }
 });
 
