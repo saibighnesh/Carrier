@@ -456,7 +456,7 @@ async function refresh(){
     note.textContent = "Fits in a single message. ✓";
   } else {
     note.className = "note warn";
-    note.textContent = `Too big for one message — will send as ${lastChunks.length} parts. Lower the quality or size to fit fewer.`;
+    note.textContent = `Sending as ${lastChunks.length} parts — lower quality or size to fit in one message.`;
   }
   const outWasHidden = $("#outPanel").classList.contains("hidden");
   renderChunks();
