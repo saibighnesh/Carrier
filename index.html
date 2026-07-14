@@ -474,10 +474,12 @@ async function refresh(){
 }
 function renderChunks(){
   const box = $("#chunks"); box.innerHTML = "";
+  box.setAttribute("role","list");
   box.setAttribute("aria-label", `${lastChunks.length} message chunk${lastChunks.length !== 1 ? "s" : ""}`);
   lastChunks.forEach((c,i)=>{
     const el = document.createElement("div");
     el.className = "chunk";
+    el.setAttribute("role","listitem");
     const preview = c.length > 280 ? c.slice(0,280) + " …" : c;
     const pillLabel = lastChunks.length === 1 ? "SINGLE MESSAGE" : `MESSAGE ${i+1} / ${lastChunks.length}`;
     el.innerHTML =
