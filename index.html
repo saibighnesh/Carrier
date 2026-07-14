@@ -576,7 +576,7 @@ drop.addEventListener("keydown", e=>{ if(e.key==="Enter"||e.key===" "){e.prevent
 drop.addEventListener("drop", e=>{ const f=e.dataTransfer.files[0]; if(f) handleFile(f); });
 fileInput.addEventListener("change", e=>{ const f=e.target.files[0]; if(f) handleFile(f); else clearDropErr(); });
 function showDropErr(msg){ const e=$("#dropErr"); e.classList.remove("hidden"); e.textContent=msg; e.scrollIntoView({behavior:scrollBehavior(),block:"nearest"}); }
-function clearDropErr(){ $("#dropErr").classList.add("hidden"); }
+function clearDropErr(){ $("#dropErr").classList.add("hidden"); $("#drop").setAttribute("aria-label","Choose an image"); }
 async function handleFile(file){
   clearDropErr();
   if(!file.type.startsWith("image/")){ showDropErr("Please choose an image file."); return; }
@@ -585,6 +585,7 @@ async function handleFile(file){
     srcImage = await loadImage(file);
     srcImage._name = file.name;
     const sizeStr = fmtKB(file.size);
+    drop.setAttribute("aria-label","Replace image");
     $("#tunePanel").classList.remove("hidden");
     drop.querySelector("strong").textContent = file.name;
     drop.querySelector("small").textContent = `${sizeStr} · ${srcImage.naturalWidth}×${srcImage.naturalHeight}`;
