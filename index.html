@@ -229,7 +229,7 @@
       <div class="btnrow btnrow--below">
         <button type="button" class="btn amber" id="copyAll" title="Copies all chunks separated by a blank line — paste the whole block into your chat">Copy all messages</button>
       </div>
-      <div class="chunks" id="chunks" aria-live="off" aria-label="Message chunks" translate="no"></div>
+      <div class="chunks" id="chunks" role="list" aria-live="off" translate="no"></div>
     </div>
   </section>
 
@@ -474,7 +474,6 @@ async function refresh(){
 }
 function renderChunks(){
   const box = $("#chunks"); box.innerHTML = "";
-  box.setAttribute("role","list");
   box.setAttribute("aria-label", `${lastChunks.length} message chunk${lastChunks.length !== 1 ? "s" : ""}`);
   lastChunks.forEach((c,i)=>{
     const el = document.createElement("div");
