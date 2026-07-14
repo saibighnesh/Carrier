@@ -589,7 +589,6 @@ async function handleFile(file){
     drop.querySelector("strong").textContent = file.name;
     drop.querySelector("small").textContent = `${sizeStr} · ${srcImage.naturalWidth}×${srcImage.naturalHeight}`;
     $("#thumb").alt = `Compressed preview of ${file.name}`;
-    $("#dropHint").textContent = `${file.name} loaded — ${sizeStr}, ${srcImage.naturalWidth}×${srcImage.naturalHeight}`;
     $("#origOut").innerHTML = sizeStr + ` <small>${srcImage.naturalWidth}×${srcImage.naturalHeight}</small>`;
     document.title = `${file.name} — Carrier`;
     await refresh();
