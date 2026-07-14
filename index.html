@@ -634,11 +634,13 @@ $("#reveal").addEventListener("click", async ()=>{
       note.textContent = `Missing part ${r.missing.join(", ")} — paste the remaining message(s) first.`; return; }
     const { mime, img } = await unpack(r.s, $("#rpass").value.trim());
     if(recovered) URL.revokeObjectURL(recovered.url);
-    const blob = new Blob([img], {type: mime || "image/webp"});
+    const resolvedMime = mime || "image/webp";
+    const blob = new Blob([img], {type: resolvedMime});
     const url = URL.createObjectURL(blob);
     $("#rimg").src = url;
-    $("#rimg").alt = `Received image (${fmtKB(img.length)}, ${mime || "image/webp"})`;
-    recovered = { url, mime: mime || "image/webp" };
+    $("#rimg").alt = `Received image (${fmtKB(img.length)}, ${resolvedMime})`;
+    const ext = resolvedMime.includes("jpeg") ? "jpg" : resolvedMime.includes("png") ? "png" : "webp";
+    recovered = { url, mime: resolvedMime, ext };
     $("#result").classList.remove("hidden");
     $("#result").removeAttribute("aria-hidden");
     $("#result").scrollIntoView({behavior:scrollBehavior(),block:"nearest"});
@@ -649,7 +651,7 @@ $("#reveal").addEventListener("click", async ()=>{
 });
 $("#save").addEventListener("click", ()=>{
   if(!recovered) return;
-  const ext = recovered.mime.includes("jpeg") ? "jpg" : recovered.mime.includes("png") ? "png" : "webp";
+  const ext = recovered.ext;
   const a = document.createElement("a");
   const ts = new Date().toISOString().replace(/[:.]/g,"-").slice(0,19);
   a.href = recovered.url; a.download = `carrier-image-${ts}.${ext}`;
