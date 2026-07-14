@@ -594,6 +594,7 @@ async function handleFile(file){
     document.title = `${file.name} — Carrier`;
     await refresh();
     $("#tunePanel").scrollIntoView({behavior:scrollBehavior(),block:"nearest"});
+    $("#tunePanel").focus();
   }catch(err){ showDropErr(err instanceof Error ? err.message : String(err)); }
 }
 
