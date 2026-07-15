@@ -210,7 +210,7 @@
         <div class="track" id="meterTrack" role="progressbar" aria-label="Message size" aria-roledescription="size meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="fill" id="meterFill"></div></div>
       </div>
       <div class="stats" role="region" aria-label="Compression statistics">
-        <div class="stat"><div class="k" title="Original image pixel dimensions">Original</div><div class="v" id="origOut">—</div></div>
+        <div class="stat"><div class="k" title="Original image pixel dimensions">Original</div><div class="v" id="origOut" aria-live="off">—</div></div>
         <div class="stat"><div class="k" title="Compressed image size and pixel dimensions">Compressed</div><div class="v" id="sizeOut" aria-live="polite" aria-atomic="true">—</div></div>
         <div class="stat"><div class="k" title="Total Base64 characters to send">As text</div><div class="v" id="charOut">—</div></div>
         <div class="stat"><div class="k" title="Number of chat messages needed">Messages</div><div class="v" id="msgOut">—</div></div>
@@ -363,7 +363,7 @@ function reassemble(text){
 }
 
 /* ---------- compression ---------- */
-let srcImage = null, srcMime = "image/webp";
+let srcImage = null, srcMime = "image/webp", handling = false;
 function loadImage(file){
   return new Promise((res,rej)=>{
     const reader = new FileReader();
@@ -578,8 +578,10 @@ fileInput.addEventListener("change", e=>{ const f=e.target.files[0]; if(f) handl
 function showDropErr(msg){ const e=$("#dropErr"); e.classList.remove("hidden"); e.textContent=msg; e.scrollIntoView({behavior:scrollBehavior(),block:"nearest"}); }
 function clearDropErr(){ $("#dropErr").classList.add("hidden"); $("#drop").setAttribute("aria-label","Choose an image"); }
 async function handleFile(file){
+  if(handling) return;
+  handling = true;
   clearDropErr();
-  if(!file.type.startsWith("image/")){ showDropErr("Please choose an image file."); return; }
+  if(!file.type.startsWith("image/")){ showDropErr("Please choose an image file."); handling = false; return; }
   fileInput.value = "";
   try{
     srcImage = await loadImage(file);
@@ -596,6 +598,7 @@ async function handleFile(file){
     $("#tunePanel").scrollIntoView({behavior:scrollBehavior(),block:"nearest"});
     $("#tunePanel").focus();
   }catch(err){ showDropErr(err instanceof Error ? err.message : String(err)); }
+  finally{ handling = false; }
 }
 
 /* ---------- RECEIVE ui ---------- */
