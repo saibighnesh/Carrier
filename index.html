@@ -681,8 +681,8 @@ window.addEventListener("pagehide", ()=>{
 
 /* ---------- mode toggle ---------- */
 const modeBtns = [...document.querySelectorAll(".modes button")];
-modeBtns.forEach(b=>b.setAttribute("tabindex", b.getAttribute("aria-selected")==="true" ? "0" : "-1"));
 modeBtns.forEach((btn, idx)=>{
+  btn.setAttribute("tabindex", btn.getAttribute("aria-selected")==="true" ? "0" : "-1");
   btn.addEventListener("click", (e)=>{
     const m = btn.dataset.m;
     modeBtns.forEach(b=>{ b.setAttribute("aria-selected", b===btn); b.setAttribute("tabindex", b===btn ? "0" : "-1"); });
