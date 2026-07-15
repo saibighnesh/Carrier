@@ -235,13 +235,13 @@
 
   <!-- ============ RECEIVE ============ -->
   <section id="recv" class="recv hidden" role="tabpanel" aria-labelledby="tab-recv">
-    <div class="panel">
-      <span class="lbl">1 · Paste what you received</span>
+    <div class="panel" aria-labelledby="recvPanel1Label">
+      <span class="lbl" id="recvPanel1Label">1 · Paste what you received</span>
       <textarea id="inbox" rows="7" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="none" translate="no" dir="ltr" enterkeyhint="enter" aria-label="Paste received Carrier messages here" placeholder="Paste all received Carrier chunks here — order doesn't matter."></textarea>
       <p class="progress" id="prog" role="status" aria-live="polite" aria-atomic="true"></p>
     </div>
-    <div class="panel">
-      <span class="lbl">2 · Password (if it's locked)</span>
+    <div class="panel" aria-labelledby="recvPanel2Label">
+      <span class="lbl" id="recvPanel2Label">2 · Password (if it's locked)</span>
       <input type="password" id="rpass" placeholder="Password (leave blank if message is unlocked)" autocomplete="new-password" autocapitalize="none" autocorrect="off" spellcheck="false" aria-label="Decryption password" enterkeyhint="go" maxlength="128">
       <div class="btnrow btnrow--spaced">
         <button type="button" class="btn teal" id="reveal" aria-label="Decrypt and reveal the received image" aria-describedby="rNote" aria-keyshortcuts="Control+Enter Meta+Enter">Reveal image</button>
