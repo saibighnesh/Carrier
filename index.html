@@ -353,7 +353,7 @@ function reassemble(text){
   const sid = sessions[0];
   const group = parts.filter(p => p[1] === sid);
   const total = parseInt(group[0][3],10);
-  if(!total || total < 1) return null;
+  if(!total) return null;
   const map = new Map();
   for(const p of group) map.set(parseInt(p[2],10), p[4]);
   const missing = [];
