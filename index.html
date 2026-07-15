@@ -683,7 +683,7 @@ window.addEventListener("pagehide", ()=>{
 const modeBtns = [...document.querySelectorAll(".modes button")];
 modeBtns.forEach(b=>b.setAttribute("tabindex", b.getAttribute("aria-selected")==="true" ? "0" : "-1"));
 modeBtns.forEach((btn, idx)=>{
-  btn.addEventListener("click", ()=>{
+  btn.addEventListener("click", (e)=>{
     const m = btn.dataset.m;
     modeBtns.forEach(b=>{ b.setAttribute("aria-selected", b===btn); b.setAttribute("tabindex", b===btn ? "0" : "-1"); });
     if(m === "recv" && thumbUrl){ URL.revokeObjectURL(thumbUrl); thumbUrl = null; }
@@ -692,7 +692,7 @@ modeBtns.forEach((btn, idx)=>{
     $("#send").classList.toggle("hidden", m!=="send");
     $("#recv").classList.toggle("hidden", m!=="recv");
     if(m === "send") clearDropErr();
-    if(m === "recv") setTimeout(()=>{ if(!$("#recv").classList.contains("hidden")) $("#inbox").focus(); }, 50);
+    if(m === "recv") setTimeout(()=>{ if(!$("#recv").classList.contains("hidden") && e.isTrusted) $("#inbox").focus(); }, 50);
     if(m === "recv") document.title = "Carrier — receive images";
     else if(!srcImage) document.title = "Carrier — send images through text-only chats";
   });
