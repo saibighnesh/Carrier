@@ -680,10 +680,12 @@ window.addEventListener("pagehide", ()=>{
 });
 
 /* ---------- mode toggle ---------- */
-document.querySelectorAll(".modes button").forEach(btn=>{
+const modeBtns = [...document.querySelectorAll(".modes button")];
+modeBtns.forEach(b=>b.setAttribute("tabindex", b.getAttribute("aria-selected")==="true" ? "0" : "-1"));
+modeBtns.forEach((btn, idx)=>{
   btn.addEventListener("click", ()=>{
     const m = btn.dataset.m;
-    document.querySelectorAll(".modes button").forEach(b=>b.setAttribute("aria-selected", b===btn));
+    modeBtns.forEach(b=>{ b.setAttribute("aria-selected", b===btn); b.setAttribute("tabindex", b===btn ? "0" : "-1"); });
     if(m === "recv" && thumbUrl){ URL.revokeObjectURL(thumbUrl); thumbUrl = null; }
     if(m === "send" && recovered){ URL.revokeObjectURL(recovered.url); recovered = null; $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true"); }
     if(m === "send" && srcImage) queueRefresh();
