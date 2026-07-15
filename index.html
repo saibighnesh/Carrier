@@ -168,8 +168,8 @@
 
   <!-- ============ SEND ============ -->
   <section id="send" role="tabpanel" aria-labelledby="tab-send">
-    <div class="panel">
-      <span class="lbl">1 · Pick an image</span>
+    <div class="panel" role="group" aria-labelledby="dropPanelLabel">
+      <span class="lbl" id="dropPanelLabel">1 · Pick an image</span>
       <span id="dropHint" style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap">Accepts JPG, PNG, WebP, GIF, and AVIF images.</span>
       <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose an image" aria-describedby="dropHint">
         <strong>Drop an image here</strong> or click to choose
@@ -179,7 +179,7 @@
       <p class="note err hidden" id="dropErr" role="alert"></p>
     </div>
 
-    <div class="panel hidden" id="tunePanel" tabindex="-1" aria-labelledby="tunePanelLabel">
+    <div class="panel hidden" id="tunePanel" role="group" tabindex="-1" aria-labelledby="tunePanelLabel">
       <span class="lbl" id="tunePanelLabel">2 · Squeeze to fit</span>
       <div class="preview">
         <img id="thumb" alt="Compressed preview" draggable="false" loading="eager" width="160" height="160">
@@ -218,13 +218,13 @@
       <p class="note" id="fitNote" role="status" aria-live="polite" aria-atomic="true"></p>
     </div>
 
-    <div class="panel hidden" id="lockPanel" tabindex="-1" aria-labelledby="lockPanelLabel">
+    <div class="panel hidden" id="lockPanel" role="group" tabindex="-1" aria-labelledby="lockPanelLabel">
       <span class="lbl" id="lockPanelLabel">3 · Lock it (optional)</span>
       <input type="password" id="pass" placeholder="Password — leave blank to send unlocked" autocomplete="new-password" autocapitalize="none" autocorrect="off" spellcheck="false" aria-label="Encryption password" enterkeyhint="done" aria-describedby="passHint" maxlength="128">
       <p class="note" id="passHint" translate="no">If set, the receiver needs this exact password. Share it through a different channel than the text itself.</p>
     </div>
 
-    <div class="panel hidden" id="outPanel" tabindex="-1" aria-labelledby="outPanelLabel">
+    <div class="panel hidden" id="outPanel" role="group" tabindex="-1" aria-labelledby="outPanelLabel">
       <span class="lbl" id="outPanelLabel">4 · Copy &amp; paste into your chat</span>
       <div class="btnrow btnrow--below">
         <button type="button" class="btn amber" id="copyAll" title="Copies all chunks separated by a blank line — paste the whole block into your chat">Copy all messages</button>
@@ -235,12 +235,12 @@
 
   <!-- ============ RECEIVE ============ -->
   <section id="recv" class="recv hidden" role="tabpanel" aria-labelledby="tab-recv">
-    <div class="panel" aria-labelledby="recvPanel1Label">
+    <div class="panel" role="group" aria-labelledby="recvPanel1Label">
       <span class="lbl" id="recvPanel1Label">1 · Paste what you received</span>
       <textarea id="inbox" rows="7" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="none" translate="no" dir="ltr" enterkeyhint="enter" aria-label="Paste received Carrier messages here" placeholder="Paste all received Carrier chunks here — order doesn't matter."></textarea>
       <p class="progress" id="prog" role="status" aria-live="polite" aria-atomic="true"></p>
     </div>
-    <div class="panel" aria-labelledby="recvPanel2Label">
+    <div class="panel" role="group" aria-labelledby="recvPanel2Label">
       <span class="lbl" id="recvPanel2Label">2 · Password (if it's locked)</span>
       <input type="password" id="rpass" placeholder="Password (leave blank if message is unlocked)" autocomplete="new-password" autocapitalize="none" autocorrect="off" spellcheck="false" aria-label="Decryption password" enterkeyhint="go" maxlength="128">
       <div class="btnrow btnrow--spaced">
