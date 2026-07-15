@@ -696,6 +696,12 @@ modeBtns.forEach((btn, idx)=>{
     if(m === "recv") document.title = "Carrier — receive images";
     else if(!srcImage) document.title = "Carrier — send images through text-only chats";
   });
+  btn.addEventListener("keydown", e=>{
+    let target = null;
+    if(e.key==="ArrowRight") target = modeBtns[(idx+1)%modeBtns.length];
+    else if(e.key==="ArrowLeft") target = modeBtns[(idx-1+modeBtns.length)%modeBtns.length];
+    if(target){ e.preventDefault(); target.click(); target.focus(); }
+  });
 });
 </script>
 </body>
