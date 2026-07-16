@@ -187,7 +187,7 @@
           <div class="row">
             <label for="quality">Quality</label>
             <input type="range" id="quality" min="20" max="92" value="70" step="1" aria-label="Image quality" autocomplete="off">
-            <output id="qval" for="quality" aria-label="Quality value">70%</output>
+            <output id="qval" for="quality">70%</output>
           </div>
           <div class="row">
             <label for="maxdim">Max size</label>
@@ -486,7 +486,7 @@ function renderChunks(){
       `<div class="head"><span class="pill" title="Part ${i+1} of ${lastChunks.length}">${pillLabel}</span>
        <span style="font-family:var(--mono);font-size:10px;color:var(--faint);margin-right:auto;padding-left:10px">${c.length.toLocaleString()} chars</span>
        <button type="button" class="copyone" data-i="${i}" aria-label="Copy message ${i+1} of ${lastChunks.length}" data-orig-label="Copy message ${i+1} of ${lastChunks.length}">Copy</button></div>
-       <div class="data" tabindex="0" translate="no" aria-label="Message ${i+1} content — select all to copy"></div>`;
+       <div class="data" tabindex="0" translate="no" aria-label="Message ${i+1} of ${lastChunks.length} content — use Copy button to copy"></div>`;
     el.querySelector(".data").textContent = preview;
     box.appendChild(el);
   });
