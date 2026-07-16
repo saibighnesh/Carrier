@@ -577,8 +577,8 @@ drop.addEventListener("keydown", e=>{ if(e.key==="Enter"||e.key===" "){e.prevent
 ["dragleave","drop","dragend"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("over");}));
 drop.addEventListener("drop", e=>{ const f=e.dataTransfer.files[0]; if(f) handleFile(f); });
 fileInput.addEventListener("change", e=>{ const f=e.target.files[0]; if(f) handleFile(f); else clearDropErr(); });
-function showDropErr(msg){ const e=$("#dropErr"); e.classList.remove("hidden"); e.textContent=msg; e.scrollIntoView({behavior:scrollBehavior(),block:"nearest"}); drop.setAttribute("aria-invalid","true"); }
-function clearDropErr(){ $("#dropErr").classList.add("hidden"); $("#drop").setAttribute("aria-label","Choose an image"); drop.removeAttribute("aria-invalid"); }
+function showDropErr(msg){ const e=$("#dropErr"); e.classList.remove("hidden"); e.textContent=msg; e.scrollIntoView({behavior:scrollBehavior(),block:"nearest"}); }
+function clearDropErr(){ $("#dropErr").classList.add("hidden"); if(!srcImage) drop.setAttribute("aria-label","Choose an image"); }
 async function handleFile(file){
   if(handling) return;
   handling = true;
