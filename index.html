@@ -203,7 +203,7 @@
             </select>
           </div>
           <div class="btnrow">
-            <button type="button" class="btn amber" id="autofit" aria-describedby="fitNote" data-orig-html="<span aria-hidden=&quot;true&quot;>⚡ </span>Auto-fit to 1 message"><span aria-hidden="true">⚡ </span>Auto-fit to 1 message</button>
+            <button type="button" class="btn amber" id="autofit" aria-describedby="fitNote"><span aria-hidden="true">⚡ </span>Auto-fit to 1 message</button>
           </div>
         </div>
       </div>
@@ -511,6 +511,8 @@ function renderChunks(){
 let debounce;
 function queueRefresh(){ clearTimeout(debounce); debounce = setTimeout(refresh, 180); }
 
+const autofitOrigHtml = $("#autofit").innerHTML;
+
 (()=>{
   const q = localStorage.getItem("carrier_quality");
   const d = localStorage.getItem("carrier_maxdim");
@@ -551,7 +553,7 @@ $("#autofit").addEventListener("click", async ()=>{
     fitNote.textContent = "Auto-fit failed: " + (err instanceof Error ? err.message : String(err));
   } finally {
     btn.disabled = false;
-    btn.innerHTML = btn.dataset.origHtml;
+    btn.innerHTML = autofitOrigHtml || '<span aria-hidden="true">⚡ </span>Auto-fit to 1 message';
     btn.removeAttribute("aria-busy");
   }
 });
