@@ -202,7 +202,7 @@
             </select>
           </div>
           <div class="btnrow">
-            <button type="button" class="btn amber" id="autofit"><span aria-hidden="true">⚡ </span>Auto-fit to 1 message</button>
+            <button type="button" class="btn amber" id="autofit" data-orig-html="<span aria-hidden=&quot;true&quot;>⚡ </span>Auto-fit to 1 message"><span aria-hidden="true">⚡ </span>Auto-fit to 1 message</button>
           </div>
         </div>
       </div>
@@ -550,7 +550,7 @@ $("#autofit").addEventListener("click", async ()=>{
     fitNote.textContent = "Auto-fit failed: " + (err instanceof Error ? err.message : String(err));
   } finally {
     btn.disabled = false;
-    btn.innerHTML = '<span aria-hidden="true">⚡ </span>Auto-fit to 1 message';
+    btn.innerHTML = btn.dataset.origHtml;
     btn.removeAttribute("aria-busy");
   }
 });
