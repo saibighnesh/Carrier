@@ -214,10 +214,10 @@
       <div class="stats" role="region" aria-label="Compression statistics">
         <div class="stat"><div class="k" title="Original image pixel dimensions">Original</div><div class="v" id="origOut" aria-live="off">—</div></div>
         <div class="stat"><div class="k" title="Compressed image size and pixel dimensions">Compressed</div><div class="v" id="sizeOut" aria-live="polite" aria-atomic="true">—</div></div>
-        <div class="stat"><div class="k" title="Total Base64 characters to send">As text</div><div class="v" id="charOut">—</div></div>
-        <div class="stat"><div class="k" title="Number of chat messages needed">Messages</div><div class="v" id="msgOut">—</div></div>
+        <div class="stat"><div class="k" title="Total Base64 characters to send">As text</div><div class="v" id="charOut" aria-live="polite" aria-atomic="true">—</div></div>
+        <div class="stat"><div class="k" title="Number of chat messages needed">Messages</div><div class="v" id="msgOut" aria-live="polite" aria-atomic="true">—</div></div>
       </div>
-      <p class="note" id="fitNote" role="status" aria-live="polite" aria-atomic="true"></p>
+      <p class="note" id="fitNote" role="status"></p>
     </div>
 
     <div class="panel hidden" id="lockPanel" role="group" tabindex="-1" aria-labelledby="lockPanelLabel">
@@ -240,7 +240,7 @@
     <div class="panel" role="group" aria-labelledby="recvPanel1Label">
       <span class="lbl" id="recvPanel1Label">1 · Paste what you received</span>
       <textarea id="inbox" rows="7" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="none" translate="no" dir="ltr" enterkeyhint="enter" aria-label="Paste received Carrier messages here" aria-keyshortcuts="Escape" placeholder="Paste all received Carrier chunks here — order doesn't matter."></textarea>
-      <p class="progress" id="prog" role="status" aria-live="polite" aria-atomic="true"></p>
+      <p class="progress" id="prog" role="status"></p>
     </div>
     <div class="panel" role="group" aria-labelledby="recvPanel2Label">
       <span class="lbl" id="recvPanel2Label">2 · Password (if it's locked)</span>
@@ -248,7 +248,7 @@
       <div class="btnrow btnrow--spaced">
         <button type="button" class="btn teal" id="reveal" aria-label="Decrypt and reveal the received image" aria-describedby="rNote" aria-keyshortcuts="Control+Enter Meta+Enter">Reveal image</button>
       </div>
-      <p class="note" id="rNote" role="status" aria-live="polite" aria-atomic="true"></p>
+      <p class="note" id="rNote" role="status"></p>
       <div class="result hidden" id="result" role="region" aria-label="Received image" aria-hidden="true">
         <img id="rimg" alt="Received image" loading="eager" draggable="false">
         <div class="btnrow btnrow--spaced btnrow--centered">
