@@ -136,6 +136,7 @@
   .note.err{color:var(--danger)}
   .note.ok{color:var(--ok)}
   .hidden{display:none}
+  .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 
   .progress{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:10px}
   .progress b{color:var(--recv)}
@@ -171,7 +172,7 @@
   <section id="send" role="tabpanel" aria-labelledby="tab-send">
     <div class="panel" role="group" aria-labelledby="dropPanelLabel">
       <span class="lbl" id="dropPanelLabel">1 · Pick an image</span>
-      <span id="dropHint" style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap">Accepts JPG, PNG, WebP, GIF, and AVIF images.</span>
+      <span id="dropHint" class="sr-only">Accepts JPG, PNG, WebP, GIF, and AVIF images.</span>
       <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose an image" aria-describedby="dropHint">
         <strong>Drop an image here</strong> or click to choose
         <small>JPG · PNG · WebP · GIF · AVIF (modern browsers) — gets compressed to fit the text pipe</small>
