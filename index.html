@@ -651,6 +651,16 @@ $("#inbox").addEventListener("input", ()=>{ clearTimeout(progDebounce); progDebo
 $("#inbox").addEventListener("blur", ()=>{ const v=$("#inbox").value; const t=v.trim(); if(t!==v){$("#inbox").value=t; clearTimeout(progDebounce); updateProgress();} });
 
 let recovered = null, revealing = false;
+// full reset of the receive panel: drop any revealed image, empty the inbox + password, hide the result
+function resetReceive(){
+  if(recovered){ URL.revokeObjectURL(recovered.url); recovered = null; }
+  clearTimeout(progDebounce);
+  $("#inbox").value=""; updateProgress();
+  $("#rpass").value="";
+  $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true");
+  $("#rNote").className="note"; $("#rNote").textContent="";
+  $("#inbox").focus();
+}
 let pasteInboxTimer;
 $("#pasteInbox").addEventListener("click", async ()=>{
   const b = $("#pasteInbox");
@@ -670,15 +680,7 @@ $("#pasteInbox").addEventListener("click", async ()=>{
   }
   pasteInboxTimer = setTimeout(()=>{ b.textContent="Paste from clipboard"; b.removeAttribute("aria-label"); },2000);
 });
-$("#clearInbox").addEventListener("click", ()=>{
-  if(recovered){ URL.revokeObjectURL(recovered.url); recovered = null; }
-  clearTimeout(progDebounce);
-  $("#inbox").value=""; updateProgress();
-  $("#rpass").value="";
-  $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true");
-  $("#rNote").className="note"; $("#rNote").textContent="";
-  $("#inbox").focus();
-});
+$("#clearInbox").addEventListener("click", resetReceive);
 
 $("#reveal").addEventListener("click", async ()=>{
   if(revealing) return;
@@ -721,15 +723,7 @@ $("#rpass").addEventListener("input", ()=>{ const n=$("#rNote"); if(n.classList.
 $("#rpass").addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); $("#reveal").click(); } });
 document.addEventListener("keydown", e=>{ if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)&&!$("#recv").classList.contains("hidden")){ e.preventDefault(); $("#reveal").click(); } });
 $("#inbox").addEventListener("keydown", e=>{
-  if(e.key==="Escape"){
-    if(recovered){ URL.revokeObjectURL(recovered.url); recovered = null; }
-    clearTimeout(progDebounce);
-    $("#inbox").value=""; updateProgress();
-    $("#rpass").value="";
-    $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true");
-    $("#rNote").className="note"; $("#rNote").textContent="";
-    $("#inbox").focus();
-  }
+  if(e.key==="Escape"){ resetReceive(); }
 });
 
 window.addEventListener("pagehide", ()=>{
