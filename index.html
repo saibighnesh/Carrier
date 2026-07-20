@@ -592,6 +592,9 @@ fileInput.addEventListener("change", e=>{ const f=e.target.files[0]; if(f) handl
 // paste an image directly (Ctrl/Cmd+V) while in Send mode
 document.addEventListener("paste", e=>{
   if($("#send").classList.contains("hidden")) return;      // only in Send mode
+  // don't hijack paste while the user is typing into a field (e.g. password)
+  const ae = document.activeElement;
+  if(ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA" || ae.isContentEditable)) return;
   const items = e.clipboardData && e.clipboardData.items;
   if(!items) return;
   for(const it of items){
