@@ -241,6 +241,10 @@
     <div class="panel" role="group" aria-labelledby="recvPanel1Label">
       <span class="lbl" id="recvPanel1Label">1 · Paste what you received</span>
       <textarea id="inbox" rows="7" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="none" translate="no" dir="ltr" enterkeyhint="enter" aria-label="Paste received Carrier messages here" aria-keyshortcuts="Escape" placeholder="Paste all received Carrier chunks here — order doesn't matter."></textarea>
+      <div class="btnrow btnrow--spaced">
+        <button type="button" class="btn teal" id="pasteInbox" title="Reads your clipboard and drops the Carrier messages into the box above">Paste from clipboard</button>
+        <button type="button" class="btn" id="clearInbox" title="Empties the box and clears any revealed image">Clear</button>
+      </div>
       <p class="progress" id="prog" role="status"></p>
     </div>
     <div class="panel" role="group" aria-labelledby="recvPanel2Label">
@@ -631,6 +635,35 @@ function updateProgress(){
 let progDebounce;
 $("#inbox").addEventListener("input", ()=>{ clearTimeout(progDebounce); progDebounce=setTimeout(updateProgress,80); const n=$("#rNote"); if(n.classList.contains("ok")){ n.className="note"; n.textContent=""; if(recovered){ URL.revokeObjectURL(recovered.url); recovered=null; } $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true"); } });
 $("#inbox").addEventListener("blur", ()=>{ const v=$("#inbox").value; const t=v.trim(); if(t!==v){$("#inbox").value=t; clearTimeout(progDebounce); updateProgress();} });
+
+let pasteInboxTimer;
+$("#pasteInbox").addEventListener("click", async ()=>{
+  const b = $("#pasteInbox");
+  clearTimeout(pasteInboxTimer);
+  try{
+    const text = await navigator.clipboard.readText();
+    if(!text.trim()){
+      b.textContent = "Clipboard empty"; b.setAttribute("aria-label","Clipboard is empty");
+    } else {
+      $("#inbox").value = text.trim();
+      clearTimeout(progDebounce); updateProgress();
+      const n=$("#rNote"); if(n.classList.contains("ok")){ n.className="note"; n.textContent=""; if(recovered){ URL.revokeObjectURL(recovered.url); recovered=null; } $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true"); }
+      b.textContent = "Pasted ✓"; b.setAttribute("aria-label","Pasted from clipboard");
+    }
+  }catch{
+    b.textContent = "Clipboard blocked"; b.setAttribute("aria-label","Clipboard access denied — paste manually");
+  }
+  pasteInboxTimer = setTimeout(()=>{ b.textContent="Paste from clipboard"; b.removeAttribute("aria-label"); },2000);
+});
+$("#clearInbox").addEventListener("click", ()=>{
+  if(recovered){ URL.revokeObjectURL(recovered.url); recovered = null; }
+  clearTimeout(progDebounce);
+  $("#inbox").value=""; updateProgress();
+  $("#rpass").value="";
+  $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true");
+  $("#rNote").className="note"; $("#rNote").textContent="";
+  $("#inbox").focus();
+});
 
 let recovered = null, revealing = false;
 $("#reveal").addEventListener("click", async ()=>{
