@@ -185,7 +185,7 @@
     <div class="panel hidden" id="tunePanel" role="group" tabindex="-1" aria-labelledby="tunePanelLabel">
       <span class="lbl" id="tunePanelLabel">2 · Squeeze to fit</span>
       <div class="preview">
-        <img id="thumb" alt="Compressed preview" draggable="false" loading="eager" width="160" height="160">
+        <img id="thumb" alt="Compressed preview" draggable="false" loading="eager" decoding="async" width="160" height="160">
         <div class="controls">
           <div class="row">
             <label for="quality">Quality</label>
@@ -251,7 +251,7 @@
       </div>
       <p class="note" id="rNote" role="status"></p>
       <div class="result hidden" id="result" role="region" aria-label="Received image" aria-hidden="true">
-        <img id="rimg" alt="Received image" loading="eager" draggable="false">
+        <img id="rimg" alt="Received image" loading="eager" decoding="async" draggable="false">
         <div class="btnrow btnrow--spaced btnrow--centered">
           <button type="button" class="btn teal" id="save">Download received image</button>
         </div>
