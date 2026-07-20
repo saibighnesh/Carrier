@@ -655,13 +655,16 @@ $("#pasteInbox").addEventListener("click", async ()=>{
   const b = $("#pasteInbox");
   clearTimeout(pasteInboxTimer);
   try{
-    const text = await navigator.clipboard.readText();
-    if(!text.trim()){
+    const text = (await navigator.clipboard.readText()).trim();
+    if(!text){
       b.textContent = "Clipboard empty"; b.setAttribute("aria-label","Clipboard is empty");
     } else {
-      $("#inbox").value = text.trim();
+      $("#inbox").value = text;
       clearTimeout(progDebounce); updateProgress();
-      const n=$("#rNote"); if(n.classList.contains("ok")){ n.className="note"; n.textContent=""; if(recovered){ URL.revokeObjectURL(recovered.url); recovered=null; } $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true"); }
+      // a fresh paste supersedes any prior reveal outcome — clear the note (ok or err) and tear down a stale reveal
+      const n=$("#rNote"); n.className="note"; n.textContent="";
+      if(recovered){ URL.revokeObjectURL(recovered.url); recovered=null; }
+      $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true");
       b.textContent = "Pasted ✓"; b.setAttribute("aria-label","Pasted from clipboard");
     }
   }catch{
