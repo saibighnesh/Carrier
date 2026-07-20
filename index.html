@@ -71,6 +71,8 @@
   .drop:focus-visible{outline:2px solid var(--send);outline-offset:3px}
   .drop strong{color:var(--ink);font-weight:500}
   .drop small{display:block;margin-top:6px;color:var(--faint);font-size:12px}
+  .drop kbd{font-family:var(--mono);font-size:11px;background:var(--panel);border:1px solid var(--line);
+    border-radius:5px;padding:1px 5px;color:var(--muted);white-space:nowrap}
 
   .preview{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;margin-bottom:16px}
   .preview img{width:160px;height:160px;border-radius:8px;border:1px solid var(--line);
@@ -175,7 +177,7 @@
       <span class="lbl" id="dropPanelLabel">1 · Pick an image</span>
       <span id="dropHint" class="sr-only">Accepts JPG, PNG, WebP, GIF, and AVIF images.</span>
       <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose an image" aria-describedby="dropHint">
-        <strong>Drop an image here</strong> or click to choose
+        <strong>Drop an image here</strong>, click to choose, or paste with <kbd>Ctrl/Cmd+V</kbd>
         <small>JPG · PNG · WebP · GIF · AVIF (modern browsers) — gets compressed to fit the text pipe</small>
       </div>
       <input type="file" id="file" accept="image/*" class="hidden" aria-label="Choose an image file">
@@ -587,6 +589,18 @@ drop.addEventListener("keydown", e=>{ if(e.key==="Enter"||e.key===" "){e.prevent
 ["dragleave","drop","dragend"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("over");}));
 drop.addEventListener("drop", e=>{ const f=e.dataTransfer.files[0]; if(f) handleFile(f); });
 fileInput.addEventListener("change", e=>{ const f=e.target.files[0]; if(f) handleFile(f); else clearDropErr(); });
+// paste an image directly (Ctrl/Cmd+V) while in Send mode
+document.addEventListener("paste", e=>{
+  if($("#send").classList.contains("hidden")) return;      // only in Send mode
+  const items = e.clipboardData && e.clipboardData.items;
+  if(!items) return;
+  for(const it of items){
+    if(it.kind === "file" && it.type.startsWith("image/")){
+      const f = it.getAsFile();
+      if(f){ e.preventDefault(); handleFile(f); return; }
+    }
+  }
+});
 function showDropErr(msg){ const e=$("#dropErr"); e.classList.remove("hidden"); e.textContent=msg; e.scrollIntoView({behavior:scrollBehavior(),block:"nearest"}); }
 function clearDropErr(){ $("#dropErr").classList.add("hidden"); if(!srcImage) drop.setAttribute("aria-label","Choose an image"); }
 async function handleFile(file){
