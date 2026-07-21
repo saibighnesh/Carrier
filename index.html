@@ -606,6 +606,7 @@ document.addEventListener("paste", e=>{
   // don't hijack paste while the user is typing into a field (e.g. password)
   const ae = document.activeElement;
   if(ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA" || ae.isContentEditable)) return;
+  if(handling) return;                                     // a load is already in flight — don't cancel the paste or drop it silently
   const items = e.clipboardData && e.clipboardData.items;
   if(!items) return;
   for(const it of items){
