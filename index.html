@@ -157,7 +157,13 @@
   a:hover{color:var(--ink)}
   @media (prefers-reduced-motion: no-preference){html{scroll-behavior:smooth}}
   @media (prefers-reduced-motion: reduce){*{transition:none!important}}
-  @media print{.modes,.btn,.copyone{display:none}.chunk .data{max-height:none;overflow:visible}}
+  @media print{
+    .modes,.btn,.copyone,.drop,#lockPanel,#tunePanel{display:none}
+    .chunk .data{max-height:none;overflow:visible}
+    body{background:#fff;color:#000}
+    .panel,.chunk,.chunk .data,.stat{background:#fff;color:#000;border-color:#999}
+    .lbl,.stat .k,.stat .v,.chunk .pill,.note,.progress,.brand .tag,.lede{color:#000}
+  }
 </style>
 </head>
 <body>
