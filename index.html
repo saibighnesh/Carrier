@@ -698,6 +698,8 @@ $("#pasteInbox").addEventListener("click", async ()=>{
   }
   pasteInboxTimer = setTimeout(()=>{ b.textContent="Paste from clipboard"; b.removeAttribute("aria-label"); },2000);
 });
+// hide the Paste button where the Clipboard read API is unavailable (e.g. file:// in Firefox/Safari) — manual paste into the textarea still works
+if(!(navigator.clipboard && navigator.clipboard.readText)) $("#pasteInbox").classList.add("hidden");
 $("#clearInbox").addEventListener("click", resetReceive);
 
 $("#reveal").addEventListener("click", async ()=>{
