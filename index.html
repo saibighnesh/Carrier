@@ -768,6 +768,7 @@ modeBtns.forEach((btn, idx)=>{
   btn.setAttribute("tabindex", btn.getAttribute("aria-selected")==="true" ? "0" : "-1");
   btn.addEventListener("click", (e)=>{
     const m = btn.dataset.m;
+    try{ localStorage.setItem("carrier_mode", m); }catch{}
     modeBtns.forEach(b=>{ b.setAttribute("aria-selected", b===btn); b.setAttribute("tabindex", b===btn ? "0" : "-1"); });
     if(m === "recv" && thumbUrl){ URL.revokeObjectURL(thumbUrl); thumbUrl = null; }
     if(m === "send" && recovered){ URL.revokeObjectURL(recovered.url); recovered = null; $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true"); }
@@ -786,6 +787,9 @@ modeBtns.forEach((btn, idx)=>{
     if(target){ e.preventDefault(); target.click(); target.focus(); }
   });
 });
+
+/* restore the last-used mode (synthetic click → isTrusted false, so it won't steal focus or scroll) */
+try{ if(localStorage.getItem("carrier_mode") === "recv") $("#tab-recv").click(); }catch{}
 
 /* keep the footer copyright year current (never regress below the 2026 first-published year) */
 $("#year").textContent = Math.max(2026, new Date().getFullYear());
