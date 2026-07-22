@@ -35,12 +35,13 @@
   html,body{margin:0}
   body{
     background:var(--bg); color:var(--ink); font-family:var(--sans);
-    line-height:1.55; -webkit-font-smoothing:antialiased; -webkit-tap-highlight-color:transparent; text-rendering:optimizeLegibility;
+    line-height:1.55; -webkit-font-smoothing:antialiased; -webkit-tap-highlight-color:transparent;
     padding:max(24px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(64px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));
     overscroll-behavior:contain;
   }
   ::selection{background:var(--send);color:var(--bg)}
   .recv ::selection{background:var(--recv);color:var(--bg)}
+  .brand h1,.brand .tag,.lede{text-rendering:optimizeLegibility}
   .wrap{max-width:720px;margin:0 auto}
   header{margin-bottom:22px}
   .brand{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
