@@ -38,6 +38,8 @@
     padding:max(24px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(64px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));
     overscroll-behavior:contain;
   }
+  ::selection{background:var(--send);color:var(--bg)}
+  .recv ::selection{background:var(--recv);color:var(--bg)}
   .wrap{max-width:720px;margin:0 auto}
   header{margin-bottom:22px}
   .brand{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
