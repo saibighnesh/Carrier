@@ -284,7 +284,7 @@
 </main>
 <footer role="contentinfo" class="wrap">
   Built offline with the browser's <code translate="no">Web Crypto</code> (AES-256-GCM + PBKDF2) and <code translate="no">canvas</code> compression.<br>
-  No servers, no tracking, no uploads. Save this file and it works on a plane. &copy; 2026 Sai Bighnesh &mdash;
+  No servers, no tracking, no uploads. Save this file and it works on a plane. &copy; <span id="year">2026</span> Sai Bighnesh &mdash;
   <a href="https://github.com/saibighnesh/Carrier" target="_blank" rel="noopener noreferrer" aria-label="Carrier source code on GitHub (opens in new tab)">source on GitHub</a>
 </footer>
 
@@ -783,6 +783,9 @@ modeBtns.forEach((btn, idx)=>{
     if(target){ e.preventDefault(); target.click(); target.focus(); }
   });
 });
+
+/* keep the footer copyright year current (never regress below the 2026 first-published year) */
+$("#year").textContent = Math.max(2026, new Date().getFullYear());
 </script>
 </body>
 </html>
