@@ -608,14 +608,18 @@ $("#copyAll").addEventListener("click", async ()=>{
     copyAllTimer = setTimeout(restore, 2000);
   }
 });
+// trigger a browser download for an object URL (does not revoke — caller owns the URL lifecycle)
+function downloadURL(url, filename){
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
 $("#saveTxt").addEventListener("click", ()=>{
   if(!lastChunks.length) return;
   const blob = new Blob([lastChunks.join("\n\n")], {type:"text/plain"});
   const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
   const base = (srcImage && srcImage._name ? srcImage._name.replace(/\.[^.]+$/, "") : "carrier").replace(/[^\w.-]+/g, "_").slice(0, 40) || "carrier";
-  a.href = url; a.download = `${base}-carrier.txt`;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  downloadURL(url, `${base}-carrier.txt`);
   setTimeout(()=>URL.revokeObjectURL(url), 10000);
 });
 
@@ -792,11 +796,8 @@ $("#reveal").addEventListener("click", async ()=>{
 });
 $("#save").addEventListener("click", ()=>{
   if(!recovered) return;
-  const ext = recovered.ext;
-  const a = document.createElement("a");
   const ts = new Date().toISOString().replace(/[:.]/g,"-").slice(0,19);
-  a.href = recovered.url; a.download = `carrier-image-${ts}.${ext}`;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  downloadURL(recovered.url, `carrier-image-${ts}.${recovered.ext}`);   // don't revoke — #rimg still uses this URL
 });
 
 $("#rpass").addEventListener("input", ()=>{ const n=$("#rNote"); if(n.classList.contains("err")){ n.className="note"; n.textContent=""; } });
