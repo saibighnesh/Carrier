@@ -732,9 +732,18 @@ $("#clearInbox").addEventListener("click", resetReceive);
 
 // load a saved Carrier .txt file into the inbox (via button or drag-drop onto the textarea)
 const txtFile = $("#txtFile");
+const TXT_MAX = 8 * 1024 * 1024;   // a Carrier payload is a few MB of base64 at most
 function loadTextFile(file){
   if(!file) return;
   const rn = $("#rNote");
+  if(file.type && !file.type.startsWith("text/")){
+    rn.className = "note err"; rn.textContent = "That's not a text file — load the .txt you saved from Carrier.";
+    return;
+  }
+  if(file.size > TXT_MAX){
+    rn.className = "note err"; rn.textContent = "That file is too big to be a Carrier message (over 8 MB).";
+    return;
+  }
   const reader = new FileReader();
   reader.onload = ()=>{
     $("#inbox").value = String(reader.result || "").trim();
