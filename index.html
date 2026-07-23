@@ -618,10 +618,8 @@ $("#saveTxt").addEventListener("click", ()=>{
   if(!lastChunks.length) return;
   const blob = new Blob([lastChunks.join("\n\n")], {type:"text/plain"});
   const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
   const base = (srcImage && srcImage._name ? srcImage._name.replace(/\.[^.]+$/, "") : "carrier").replace(/[^\w.-]+/g, "_").slice(0, 40) || "carrier";
-  a.href = url; a.download = `${base}-carrier.txt`;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  downloadURL(url, `${base}-carrier.txt`);
   setTimeout(()=>URL.revokeObjectURL(url), 10000);
 });
 
