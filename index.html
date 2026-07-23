@@ -255,6 +255,7 @@
       <span class="lbl" id="outPanelLabel">4 · Copy &amp; paste into your chat</span>
       <div class="btnrow btnrow--below">
         <button type="button" class="btn amber" id="copyAll" title="Copies all chunks separated by a blank line — paste the whole block into your chat">Copy all messages</button>
+        <button type="button" class="btn" id="saveTxt" title="Downloads all messages as a .txt file — send it as an attachment or keep it as a backup">Save as .txt</button>
       </div>
       <div class="chunks" id="chunks" role="list" translate="no"></div>
     </div>
@@ -604,6 +605,16 @@ $("#copyAll").addEventListener("click", async ()=>{
     b.textContent = "Copy failed"; b.setAttribute("aria-label","Copy failed — clipboard access denied");
     copyAllTimer = setTimeout(restore, 2000);
   }
+});
+$("#saveTxt").addEventListener("click", ()=>{
+  if(!lastChunks.length) return;
+  const blob = new Blob([lastChunks.join("\n\n")], {type:"text/plain"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const base = (srcImage && srcImage._name ? srcImage._name.replace(/\.[^.]+$/, "") : "carrier").replace(/[^\w.-]+/g, "_").slice(0, 40) || "carrier";
+  a.href = url; a.download = `${base}-carrier.txt`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url), 10000);
 });
 
 /* file input */
