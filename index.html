@@ -145,6 +145,9 @@
   .recv .btn:focus-visible{outline-color:var(--recv)}
 
   .note{font-size:12.5px;color:var(--muted);margin-top:12px;overflow-wrap:break-word}
+  .kbdhint{color:var(--faint);font-size:11.5px;margin-top:8px}
+  .kbdhint kbd{font-family:var(--mono);font-size:10.5px;background:var(--bg);border:1px solid var(--line);
+    border-radius:5px;padding:1px 5px;color:var(--muted)}
   .note.warn{color:var(--send)}
   .note.err{color:var(--danger)}
   .note.ok{color:var(--ok)}
@@ -275,6 +278,7 @@
         <button type="button" class="btn teal" id="reveal" aria-label="Reveal image — decrypt the received image" aria-describedby="rNote" aria-keyshortcuts="Control+Enter Meta+Enter" title="Reassembles the pasted chunks and decrypts them (Ctrl/Cmd+Enter)">Reveal image</button>
       </div>
       <p class="note" id="rNote" role="status"></p>
+      <p class="note kbdhint"><kbd>Ctrl/Cmd</kbd>+<kbd>Enter</kbd> reveals · <kbd>Esc</kbd> clears the box</p>
       <div class="result hidden" id="result" role="region" aria-label="Received image" aria-hidden="true">
         <img id="rimg" alt="Received image" loading="eager" decoding="async" draggable="false">
         <div class="btnrow btnrow--spaced btnrow--centered">
