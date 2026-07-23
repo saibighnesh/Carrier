@@ -268,8 +268,10 @@
       <textarea id="inbox" rows="7" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="none" translate="no" dir="ltr" enterkeyhint="enter" aria-label="Paste received Carrier messages here" aria-keyshortcuts="Escape" placeholder="Paste all received Carrier chunks here — order doesn't matter."></textarea>
       <div class="btnrow btnrow--spaced">
         <button type="button" class="btn teal" id="pasteInbox" title="Reads your clipboard and drops the Carrier messages into the box above">Paste from clipboard</button>
+        <button type="button" class="btn" id="loadTxt" title="Loads a saved Carrier .txt file into the box — or just drag the file onto the box">Load .txt file</button>
         <button type="button" class="btn" id="clearInbox" title="Empties the box and clears any revealed image">Clear</button>
       </div>
+      <input type="file" id="txtFile" accept=".txt,text/plain" class="hidden" aria-label="Load a Carrier .txt file">
       <p class="progress" id="prog" role="status"></p>
     </div>
     <div class="panel" role="group" aria-labelledby="recvPanel2Label">
@@ -727,6 +729,29 @@ $("#pasteInbox").addEventListener("click", async ()=>{
 // hide the Paste button where the Clipboard read API is unavailable (e.g. file:// in Firefox/Safari) — manual paste into the textarea still works
 if(!(navigator.clipboard && navigator.clipboard.readText)) $("#pasteInbox").classList.add("hidden");
 $("#clearInbox").addEventListener("click", resetReceive);
+
+// load a saved Carrier .txt file into the inbox (via button or drag-drop onto the textarea)
+const txtFile = $("#txtFile");
+function loadTextFile(file){
+  if(!file) return;
+  const rn = $("#rNote");
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    $("#inbox").value = String(reader.result || "").trim();
+    clearTimeout(progDebounce); updateProgress();
+    clearReveal();
+    rn.className = "note ok"; rn.textContent = `Loaded ${file.name}.`;
+  };
+  reader.onerror = ()=>{ rn.className = "note err"; rn.textContent = "Couldn't read that file."; };
+  reader.readAsText(file);
+}
+$("#loadTxt").addEventListener("click", ()=>txtFile.click());
+txtFile.addEventListener("change", e=>{ const f = e.target.files[0]; txtFile.value = ""; if(f) loadTextFile(f); });
+["dragover","dragenter"].forEach(ev=>$("#inbox").addEventListener(ev, e=>{ if(e.dataTransfer && [...e.dataTransfer.types].includes("Files")){ e.preventDefault(); } }));
+$("#inbox").addEventListener("drop", e=>{
+  const f = e.dataTransfer && e.dataTransfer.files[0];
+  if(f){ e.preventDefault(); loadTextFile(f); }
+});
 
 $("#reveal").addEventListener("click", async ()=>{
   if(revealing) return;
