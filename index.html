@@ -58,7 +58,7 @@
   .modes button{
     flex:1;background:transparent;border:0;color:var(--muted);
     font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;
-    padding:10px;border-radius:7px;cursor:pointer;transition:.15s;touch-action:manipulation;user-select:none;min-height:44px
+    padding:10px;border-radius:7px;cursor:pointer;transition:.15s;touch-action:manipulation;-webkit-user-select:none;user-select:none;min-height:44px
   }
   .modes button:hover{color:var(--ink)}
   .modes button[aria-selected="true"][data-m="send"]{background:var(--send-dim);color:var(--send)}
@@ -68,7 +68,7 @@
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
     padding:18px;margin-bottom:14px;scroll-margin-top:16px}
   .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
-    color:var(--faint);margin:0 0 9px;display:block;user-select:none}
+    color:var(--faint);margin:0 0 9px;display:block;-webkit-user-select:none;user-select:none}
 
   .drop{
     border:1.5px dashed var(--line);border-radius:var(--r);padding:26px 18px;text-align:center;
@@ -123,7 +123,7 @@
   .meter.over .fill{background:var(--danger)}
   .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-top:14px}
   .stat{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;cursor:default;min-width:0}
-  .stat .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);user-select:none}
+  .stat .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);-webkit-user-select:none;user-select:none}
   .stat .v{font-size:18px;font-weight:500;margin-top:3px;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
   .stat .v small{font-size:12px;color:var(--muted);font-weight:400;font-variant-numeric:normal}
   #qval{font-family:var(--mono);font-size:12px;min-width:36px;text-align:right;font-variant-numeric:tabular-nums}
