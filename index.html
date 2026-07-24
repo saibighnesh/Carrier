@@ -515,6 +515,7 @@ async function refresh(){
 function renderChunks(){
   const box = $("#chunks"); box.innerHTML = "";
   if(!copyAllBusy) $("#copyAll").textContent = copyAllLabel();   // don't clobber active copy feedback
+  cancelFlash($("#saveTxt"));   // these chunks are freshly (re)built — a prior "Saved ✓" no longer applies
   box.setAttribute("aria-label", `${lastChunks.length} message chunk${lastChunks.length !== 1 ? "s" : ""}`);
   lastChunks.forEach((c,i)=>{
     const el = document.createElement("div");
@@ -630,6 +631,15 @@ function flashButton(btn, msg, ariaMsg, ms=2000){
     if(st.aria == null) btn.removeAttribute("aria-label"); else btn.setAttribute("aria-label", st.aria);
     flashState.delete(btn);
   }, ms);
+}
+// immediately end a flash (if any) and restore the resting label — used when a button's context changes under it
+function cancelFlash(btn){
+  const st = flashState.get(btn);
+  if(!st) return;
+  clearTimeout(st.timer);
+  btn.textContent = st.text;
+  if(st.aria == null) btn.removeAttribute("aria-label"); else btn.setAttribute("aria-label", st.aria);
+  flashState.delete(btn);
 }
 $("#saveTxt").addEventListener("click", ()=>{
   if(!lastChunks.length) return;
