@@ -258,7 +258,7 @@
       <span class="lbl" id="outPanelLabel">4 · Copy &amp; paste into your chat</span>
       <div class="btnrow btnrow--below">
         <button type="button" class="btn amber" id="copyAll" title="Copies all chunks separated by a blank line — paste the whole block into your chat">Copy all messages</button>
-        <button type="button" class="btn" id="saveTxt" title="Downloads all messages as a .txt file — send it as an attachment or keep it as a backup">Save as .txt</button>
+        <button type="button" class="btn" id="saveTxt" aria-label="Save all messages as a text file" title="Downloads all messages as a .txt file — send it as an attachment or keep it as a backup">Save as .txt</button>
       </div>
       <div class="chunks" id="chunks" role="list" translate="no"></div>
     </div>
@@ -284,7 +284,7 @@
         <button type="button" class="btn teal" id="reveal" aria-label="Reveal image — decrypt the received image" aria-describedby="rNote" aria-keyshortcuts="Control+Enter Meta+Enter" title="Reassembles the pasted chunks and decrypts them (Ctrl/Cmd+Enter)">Reveal image</button>
       </div>
       <p class="note" id="rNote" role="status"></p>
-      <p class="note kbdhint"><kbd>Ctrl/Cmd</kbd>+<kbd>Enter</kbd> reveals · <kbd>Esc</kbd> clears the box</p>
+      <p class="note kbdhint" aria-hidden="true"><kbd>Ctrl/Cmd</kbd>+<kbd>Enter</kbd> reveals · <kbd>Esc</kbd> clears the box</p>
       <div class="result hidden" id="result" role="region" aria-label="Received image" aria-hidden="true">
         <img id="rimg" alt="Received image" loading="eager" decoding="async" draggable="false">
         <div class="btnrow btnrow--spaced btnrow--centered">
@@ -628,7 +628,7 @@ $("#saveTxt").addEventListener("click", ()=>{
   downloadURL(url, `${base}-carrier-${lastChunks.length}msg.txt`);
   setTimeout(()=>URL.revokeObjectURL(url), 10000);
   b.textContent = "Saved ✓"; b.setAttribute("aria-label","Saved as text file");
-  saveTxtTimer = setTimeout(()=>{ b.textContent = "Save as .txt"; b.removeAttribute("aria-label"); }, 2000);
+  saveTxtTimer = setTimeout(()=>{ b.textContent = "Save as .txt"; b.setAttribute("aria-label","Save all messages as a text file"); }, 2000);
 });
 
 /* file input */
