@@ -617,18 +617,28 @@ function downloadURL(url, filename){
   a.href = url; a.download = filename;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
-let saveTxtTimer;
+// briefly show a status message on a button, then restore its resting label + aria-label
+const flashState = new WeakMap();
+function flashButton(btn, msg, ariaMsg, ms=2000){
+  let st = flashState.get(btn);
+  if(st) clearTimeout(st.timer);                       // mid-flash: keep the captured resting label, just reschedule
+  else { st = { text: btn.textContent, aria: btn.getAttribute("aria-label") }; flashState.set(btn, st); }
+  btn.textContent = msg;
+  if(ariaMsg != null) btn.setAttribute("aria-label", ariaMsg);
+  st.timer = setTimeout(()=>{
+    btn.textContent = st.text;
+    if(st.aria == null) btn.removeAttribute("aria-label"); else btn.setAttribute("aria-label", st.aria);
+    flashState.delete(btn);
+  }, ms);
+}
 $("#saveTxt").addEventListener("click", ()=>{
   if(!lastChunks.length) return;
-  const b = $("#saveTxt");
-  clearTimeout(saveTxtTimer);
   const blob = new Blob([lastChunks.join("\n\n")], {type:"text/plain"});
   const url = URL.createObjectURL(blob);
   const base = (srcImage && srcImage._name ? srcImage._name.replace(/\.[^.]+$/, "") : "carrier").replace(/[^\w.-]+/g, "_").slice(0, 40) || "carrier";
   downloadURL(url, `${base}-carrier-${lastChunks.length}msg.txt`);
   setTimeout(()=>URL.revokeObjectURL(url), 10000);
-  b.textContent = "Saved ✓"; b.setAttribute("aria-label","Saved as text file");
-  saveTxtTimer = setTimeout(()=>{ b.textContent = "Save as .txt"; b.setAttribute("aria-label","Save all messages as a text file"); }, 2000);
+  flashButton($("#saveTxt"), "Saved ✓", "Saved as text file");
 });
 
 /* file input */
@@ -719,24 +729,20 @@ function resetReceive(){
   $("#rpass").value="";
   $("#inbox").focus();
 }
-let pasteInboxTimer;
 $("#pasteInbox").addEventListener("click", async ()=>{
-  const b = $("#pasteInbox");
-  clearTimeout(pasteInboxTimer);
   try{
     const text = (await navigator.clipboard.readText()).trim();
     if(!text){
-      b.textContent = "Clipboard empty"; b.setAttribute("aria-label","Clipboard is empty");
+      flashButton($("#pasteInbox"), "Clipboard empty", "Clipboard is empty");
     } else {
       $("#inbox").value = text;
       clearTimeout(progDebounce); updateProgress();
       clearReveal();   // a fresh paste supersedes any prior reveal outcome (ok or err)
-      b.textContent = "Pasted ✓"; b.setAttribute("aria-label","Pasted from clipboard");
+      flashButton($("#pasteInbox"), "Pasted ✓", "Pasted from clipboard");
     }
   }catch{
-    b.textContent = "Clipboard blocked"; b.setAttribute("aria-label","Clipboard access denied — paste manually");
+    flashButton($("#pasteInbox"), "Clipboard blocked", "Clipboard access denied — paste manually");
   }
-  pasteInboxTimer = setTimeout(()=>{ b.textContent="Paste from clipboard"; b.removeAttribute("aria-label"); },2000);
 });
 // hide the Paste button where the Clipboard read API is unavailable (e.g. file:// in Firefox/Safari) — manual paste into the textarea still works
 if(!(navigator.clipboard && navigator.clipboard.readText)) $("#pasteInbox").classList.add("hidden");
