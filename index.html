@@ -613,13 +613,18 @@ function downloadURL(url, filename){
   a.href = url; a.download = filename;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
+let saveTxtTimer;
 $("#saveTxt").addEventListener("click", ()=>{
   if(!lastChunks.length) return;
+  const b = $("#saveTxt");
+  clearTimeout(saveTxtTimer);
   const blob = new Blob([lastChunks.join("\n\n")], {type:"text/plain"});
   const url = URL.createObjectURL(blob);
   const base = (srcImage && srcImage._name ? srcImage._name.replace(/\.[^.]+$/, "") : "carrier").replace(/[^\w.-]+/g, "_").slice(0, 40) || "carrier";
   downloadURL(url, `${base}-carrier.txt`);
   setTimeout(()=>URL.revokeObjectURL(url), 10000);
+  b.textContent = "Saved ✓"; b.setAttribute("aria-label","Saved as text file");
+  saveTxtTimer = setTimeout(()=>{ b.textContent = "Save as .txt"; b.removeAttribute("aria-label"); }, 2000);
 });
 
 /* file input */
