@@ -678,6 +678,9 @@ $("#saveTxt").addEventListener("click", ()=>{
 
 /* file input */
 const drop = $("#drop"), fileInput = $("#file");
+// capture the drop zone's default copy from the rendered HTML so Start over restores it without a second hardcoded source
+const DROP_STRONG_DEFAULT = drop.querySelector("strong").textContent;
+const DROP_SMALL_DEFAULT = drop.querySelector("small").textContent;
 drop.addEventListener("click", ()=>fileInput.click());
 drop.addEventListener("keydown", e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();fileInput.click();} });
 ["dragover","dragenter"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("over");}));
@@ -740,8 +743,8 @@ function resetSend(){
   $("#fitNote").className = "note"; $("#fitNote").textContent = "";
   $("#thumb").removeAttribute("src"); $("#thumb").alt = "Compressed preview";
   drop.setAttribute("aria-label","Choose an image");
-  drop.querySelector("strong").textContent = "Drop an image here";
-  drop.querySelector("small").textContent = "JPG · PNG · WebP · GIF · AVIF (modern browsers) — gets compressed to fit the text pipe";
+  drop.querySelector("strong").textContent = DROP_STRONG_DEFAULT;
+  drop.querySelector("small").textContent = DROP_SMALL_DEFAULT;
   clearDropErr();
   document.title = "Carrier — send images through text-only chats";
   drop.scrollIntoView({behavior:scrollBehavior(),block:"nearest"});
