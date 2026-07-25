@@ -237,6 +237,7 @@
           </div>
           <div class="btnrow">
             <button type="button" class="btn amber" id="autofit" title="Searches quality and size settings to make the image fit in a single message"><span aria-hidden="true">⚡ </span>Auto-fit to 1 message</button>
+            <button type="button" class="btn" id="startOver" title="Clears the current image and returns to step 1">Start over</button>
           </div>
         </div>
       </div>
@@ -717,6 +718,29 @@ async function handleFile(file){
   }catch(err){ showDropErr(err instanceof Error ? err.message : String(err)); }
   finally{ handling = false; }
 }
+// clear the loaded image and return Send to step 1
+function resetSend(){
+  clearTimeout(debounce);
+  if(thumbUrl){ URL.revokeObjectURL(thumbUrl); thumbUrl = null; }
+  srcImage = null; lastChunks = [];
+  $("#chunks").innerHTML = "";
+  ["tunePanel","lockPanel","outPanel"].forEach(id => $("#"+id).classList.add("hidden"));
+  $("#pass").value = "";
+  ["origOut","sizeOut","charOut","msgOut"].forEach(id => $("#"+id).textContent = "—");
+  $("#meterFill").style.width = "0%";
+  $("#meterTrack").setAttribute("aria-valuenow","0"); $("#meterTrack").removeAttribute("aria-valuetext");
+  $("#meter").classList.remove("over");
+  $("#fitNote").className = "note"; $("#fitNote").textContent = "";
+  $("#thumb").removeAttribute("src"); $("#thumb").alt = "Compressed preview";
+  drop.setAttribute("aria-label","Choose an image");
+  drop.querySelector("strong").textContent = "Drop an image here";
+  drop.querySelector("small").textContent = "JPG · PNG · WebP · GIF · AVIF (modern browsers) — gets compressed to fit the text pipe";
+  clearDropErr();
+  document.title = "Carrier — send images through text-only chats";
+  drop.scrollIntoView({behavior:scrollBehavior(),block:"nearest"});
+  drop.focus();
+}
+$("#startOver").addEventListener("click", resetSend);
 
 /* ---------- RECEIVE ui ---------- */
 function updateProgress(){
