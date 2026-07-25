@@ -475,6 +475,7 @@ async function refresh(){
   try {
   const q = +$("#quality").value, d = +$("#maxdim").value;
   const img = await compressOnce(d, q);
+  if(!srcImage) return;   // Start over ran during compression — abandon this stale pass
   // preview
   if(thumbUrl) URL.revokeObjectURL(thumbUrl);
   const blob = new Blob([img], {type:srcMime});
@@ -483,6 +484,7 @@ async function refresh(){
   // pack with current password to get true size
   const pw = $("#pass").value.trim();
   const b64 = await pack(img, srcMime, pw);
+  if(!srcImage) return;   // Start over ran during packing — don't repopulate the cleared UI
   lastChunks = chunkify(b64);
   // stats
   $("#sizeOut").innerHTML = fmtKB(img.length) + ` <small>${img._w}×${img._h}</small>`;
