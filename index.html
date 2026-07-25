@@ -579,8 +579,7 @@ $("#maxdim").addEventListener("change", e=>{ localStorage.setItem("carrier_maxdi
 $("#pass").addEventListener("input", queueRefresh);
 // one-tap quality presets: set quality + max size together, persist, and recompress
 function applyPreset(q, d){
-  const qEl = $("#quality");
-  qEl.value = q; qEl.setAttribute("aria-valuetext", q + "%"); $("#qval").textContent = q + "%";
+  setQuality(q);
   if([...$("#maxdim").options].some(o => o.value === String(d))) $("#maxdim").value = String(d);
   localStorage.setItem("carrier_quality", String(q));
   localStorage.setItem("carrier_maxdim", String(d));
