@@ -230,6 +230,11 @@
               <option value="256">256 px</option>
             </select>
           </div>
+          <div class="btnrow" role="group" aria-label="Quality presets">
+            <button type="button" class="btn preset" data-q="45" data-d="512" title="Small file — lower quality, fewest messages">Small</button>
+            <button type="button" class="btn preset" data-q="70" data-d="768" title="Balanced quality and size">Balanced</button>
+            <button type="button" class="btn preset" data-q="88" data-d="1024" title="Sharp — highest quality, more messages">Sharp</button>
+          </div>
           <div class="btnrow">
             <button type="button" class="btn amber" id="autofit" title="Searches quality and size settings to make the image fit in a single message"><span aria-hidden="true">⚡ </span>Auto-fit to 1 message</button>
           </div>
@@ -563,6 +568,18 @@ const autofitOrigHtml = $("#autofit").innerHTML;
 $("#quality").addEventListener("input", e=>{ const v = e.target.value; $("#qval").textContent = v + "%"; e.target.setAttribute("aria-valuetext", v + "%"); localStorage.setItem("carrier_quality", v); queueRefresh(); });
 $("#maxdim").addEventListener("change", e=>{ localStorage.setItem("carrier_maxdim", e.target.value); queueRefresh(); });
 $("#pass").addEventListener("input", queueRefresh);
+// one-tap quality presets: set quality + max size together, persist, and recompress
+function applyPreset(q, d){
+  const qEl = $("#quality");
+  qEl.value = q; qEl.setAttribute("aria-valuetext", q + "%"); $("#qval").textContent = q + "%";
+  if([...$("#maxdim").options].some(o => o.value === String(d))) $("#maxdim").value = String(d);
+  localStorage.setItem("carrier_quality", String(q));
+  localStorage.setItem("carrier_maxdim", String(d));
+  queueRefresh();
+}
+document.querySelectorAll(".preset").forEach(b=>{
+  b.addEventListener("click", ()=>{ if(srcImage) applyPreset(+b.dataset.q, +b.dataset.d); });
+});
 $("#autofit").addEventListener("click", async ()=>{
   if(!srcImage) return;
   const btn = $("#autofit");
