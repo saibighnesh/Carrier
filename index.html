@@ -575,7 +575,7 @@ function setQuality(q){
   else if(d) localStorage.removeItem("carrier_maxdim");
 })();
 
-$("#quality").addEventListener("input", e=>{ const v = e.target.value; $("#qval").textContent = v + "%"; e.target.setAttribute("aria-valuetext", v + "%"); localStorage.setItem("carrier_quality", v); queueRefresh(); });
+$("#quality").addEventListener("input", e=>{ const v = e.target.value; setQuality(v); localStorage.setItem("carrier_quality", v); queueRefresh(); });
 $("#maxdim").addEventListener("change", e=>{ localStorage.setItem("carrier_maxdim", e.target.value); queueRefresh(); });
 $("#pass").addEventListener("input", queueRefresh);
 // one-tap quality presets: set quality + max size together, persist, and recompress
