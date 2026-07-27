@@ -483,8 +483,9 @@ async function refresh(){
   const blob = new Blob([img], {type:srcMime});
   thumbUrl = URL.createObjectURL(blob);
   $("#thumb").src = thumbUrl;
-  // pack with current password to get true size
-  const pw = $("#pass").value.trim();
+  // pack with current password to get true size — use the raw value (no trim): a password is an
+  // exact secret, and trimming let an all-whitespace entry collapse to "" and ship UNENCRYPTED
+  const pw = $("#pass").value;
   const b64 = await pack(img, srcMime, pw);
   if(!srcImage) return;   // Start over ran during packing — don't repopulate the cleared UI
   lastChunks = chunkify(b64);
@@ -870,7 +871,7 @@ $("#reveal").addEventListener("click", async ()=>{
     if(!r){ note.className="note err"; note.textContent="No Carrier message found in the box above."; return; }
     if(r.missing.length){ note.className="note err";
       note.textContent = `Missing part ${r.missing.join(", ")} — paste the remaining message(s) first.`; return; }
-    const { mime, img } = await unpack(r.s, $("#rpass").value.trim());
+    const { mime, img } = await unpack(r.s, $("#rpass").value);   // raw value — must match the sender's exactly, whitespace included
     if(recovered) URL.revokeObjectURL(recovered.url);
     const resolvedMime = mime || "image/webp";
     const blob = new Blob([img], {type: resolvedMime});
