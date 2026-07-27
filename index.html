@@ -570,7 +570,7 @@ function setQuality(q){
 (()=>{
   const q = localStorage.getItem("carrier_quality");
   const d = localStorage.getItem("carrier_maxdim");
-  if(q){ setQuality(q); }
+  setQuality(q || $("#quality").value);   // sync aria-valuetext + %readout on load, even at the default (no stored value)
   if(d && [...$("#maxdim").options].some(o => o.value === d)) $("#maxdim").value = d;
   else if(d) localStorage.removeItem("carrier_maxdim");
 })();
