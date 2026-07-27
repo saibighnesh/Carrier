@@ -112,6 +112,7 @@
   .btn:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
   .btn:disabled{opacity:.45;cursor:not-allowed;pointer-events:none}
   .btn.preset{flex:1;min-width:0;padding-left:6px;padding-right:6px;white-space:nowrap;letter-spacing:.04em}
+  .btn.preset[aria-pressed="true"]{border-color:var(--send);color:var(--send);background:var(--send-dim)}
   .btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
   .btnrow.btnrow--below{margin-bottom:12px}
   .btnrow.btnrow--spaced{margin-top:12px}
@@ -232,9 +233,9 @@
             </select>
           </div>
           <div class="btnrow" role="group" aria-label="Quality presets">
-            <button type="button" class="btn preset" data-q="45" data-d="512" title="Small file — lower quality, fewest messages">Small</button>
-            <button type="button" class="btn preset" data-q="70" data-d="768" title="Balanced quality and size">Balanced</button>
-            <button type="button" class="btn preset" data-q="88" data-d="1024" title="Sharp — highest quality, more messages">Sharp</button>
+            <button type="button" class="btn preset" data-q="45" data-d="512" aria-pressed="false" title="Small file — lower quality, fewest messages">Small</button>
+            <button type="button" class="btn preset" data-q="70" data-d="768" aria-pressed="false" title="Balanced quality and size">Balanced</button>
+            <button type="button" class="btn preset" data-q="88" data-d="1024" aria-pressed="false" title="Sharp — highest quality, more messages">Sharp</button>
           </div>
           <div class="btnrow">
             <button type="button" class="btn amber" id="autofit" title="Searches quality and size settings to make the image fit in a single message"><span aria-hidden="true">⚡ </span>Auto-fit to 1 message</button>
@@ -561,10 +562,18 @@ function queueRefresh(){ clearTimeout(debounce); debounce = setTimeout(refresh, 
 
 const autofitOrigHtml = $("#autofit").innerHTML;
 
+// light the preset whose quality + size both match the current settings (none, if the user is off-grid)
+function syncPresets(){
+  const q = +$("#quality").value, d = +$("#maxdim").value;
+  document.querySelectorAll(".preset").forEach(b=>{
+    b.setAttribute("aria-pressed", (+b.dataset.q === q && +b.dataset.d === d) ? "true" : "false");
+  });
+}
 // set the quality slider value, its ARIA value text, and the visible % readout together
 function setQuality(q){
   const qEl = $("#quality");
   qEl.value = q; qEl.setAttribute("aria-valuetext", q + "%"); $("#qval").textContent = q + "%";
+  syncPresets();
 }
 
 (()=>{
@@ -573,10 +582,11 @@ function setQuality(q){
   setQuality(q || $("#quality").value);   // sync aria-valuetext + %readout on load, even at the default (no stored value)
   if(d && [...$("#maxdim").options].some(o => o.value === d)) $("#maxdim").value = d;
   else if(d) localStorage.removeItem("carrier_maxdim");
+  syncPresets();   // restored quality + maxdim are both set now — light the matching preset, if any
 })();
 
 $("#quality").addEventListener("input", e=>{ const v = e.target.value; setQuality(v); localStorage.setItem("carrier_quality", v); queueRefresh(); });
-$("#maxdim").addEventListener("change", e=>{ localStorage.setItem("carrier_maxdim", e.target.value); queueRefresh(); });
+$("#maxdim").addEventListener("change", e=>{ localStorage.setItem("carrier_maxdim", e.target.value); syncPresets(); queueRefresh(); });
 $("#pass").addEventListener("input", queueRefresh);
 // one-tap quality presets: set quality + max size together, persist, and recompress
 function applyPreset(q, d){
@@ -584,6 +594,7 @@ function applyPreset(q, d){
   if([...$("#maxdim").options].some(o => o.value === String(d))) $("#maxdim").value = String(d);
   localStorage.setItem("carrier_quality", String(q));
   localStorage.setItem("carrier_maxdim", String(d));
+  syncPresets();   // re-run now that maxdim is set too, so setQuality's earlier pass (old dim) is corrected
   queueRefresh();
 }
 document.querySelectorAll(".preset").forEach(b=>{
