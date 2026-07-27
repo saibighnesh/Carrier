@@ -578,9 +578,18 @@ function setQuality(q){
 }
 
 (()=>{
-  const q = localStorage.getItem("carrier_quality");
+  const qEl = $("#quality");
+  let q = localStorage.getItem("carrier_quality");
   const d = localStorage.getItem("carrier_maxdim");
-  setQuality(q || $("#quality").value);   // sync aria-valuetext + %readout on load, even at the default (no stored value)
+  // validate the stored quality the same way maxdim is validated below: an out-of-range or
+  // non-numeric value (corrupt/tampered/cross-version) would otherwise show in the %readout and
+  // aria-valuetext while the range input silently clamps to a different number — a desync.
+  if(q !== null){
+    const n = parseInt(q, 10);
+    if(Number.isInteger(n) && n >= +qEl.min && n <= +qEl.max) q = String(n);
+    else { localStorage.removeItem("carrier_quality"); q = null; }
+  }
+  setQuality(q || qEl.value);   // sync aria-valuetext + %readout on load, even at the default (no stored value)
   if(d && [...$("#maxdim").options].some(o => o.value === d)) $("#maxdim").value = d;
   else if(d) localStorage.removeItem("carrier_maxdim");
   syncPresets();   // restored quality + maxdim are both set now — light the matching preset, if any
