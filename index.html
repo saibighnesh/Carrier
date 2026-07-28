@@ -394,7 +394,9 @@ function chunkify(b64){
   return out;
 }
 function reassemble(text){
-  const re = /PXT\/([0-9a-f]+)\/(\d+)\/(\d+)\/([A-Za-z0-9+/=]+)/g;
+  // the data group stops (negative lookahead) before the next "PXT/<sid>/<n>/<total>/" prefix, so a
+  // greedy match can't swallow the following chunk when a transport strips the separators between them
+  const re = /PXT\/([0-9a-f]+)\/(\d+)\/(\d+)\/((?:(?!PXT\/[0-9a-f]+\/\d+\/\d+\/)[A-Za-z0-9+/=])+)/g;
   const parts = [...text.matchAll(re)];
   if(!parts.length) return null;
   const sessions = [...new Set(parts.map(p => p[1]))];
@@ -403,7 +405,9 @@ function reassemble(text){
   const total = parseInt(group[0][3],10);
   if(!total) return null;
   const map = new Map();
-  for(const p of group) map.set(parseInt(p[2],10), p[4]);
+  // only keep chunks whose index is within [1,total] — a stray 0 or beyond-total index must not
+  // inflate the "have" count or produce a "Got N of N, still need part N" contradiction
+  for(const p of group){ const i = parseInt(p[2],10); if(i >= 1 && i <= total) map.set(i, p[4]); }
   const missing = [];
   let s = "";
   for(let i=1;i<=total;i++){ if(map.has(i)) s += map.get(i); else missing.push(i); }
@@ -791,7 +795,7 @@ function updateProgress(){
     p.className = "progress ok";
     p.append("Got all ", b(r.total), ` part${r.total>1?"s":""}. Ready to reveal.`);
   } else {
-    p.append("Got ", b(r.have), " of ", b(r.total), ` — still need part ${r.missing.join(", ")}.`);
+    p.append("Got ", b(r.have), " of ", b(r.total), ` — still need part${r.missing.length>1?"s":""} ${r.missing.join(", ")}.`);
   }
   if(r.multiSession){
     const warn = Object.assign(document.createElement("span"), {textContent: ` (${r.multiSession} different images detected — only the first will be used)`});
@@ -886,7 +890,7 @@ $("#reveal").addEventListener("click", async ()=>{
     const r = reassemble($("#inbox").value);
     if(!r){ note.className="note err"; note.textContent="No Carrier message found in the box above."; return; }
     if(r.missing.length){ note.className="note err";
-      note.textContent = `Missing part ${r.missing.join(", ")} — paste the remaining message(s) first.`; return; }
+      note.textContent = `Missing part${r.missing.length>1?"s":""} ${r.missing.join(", ")} — paste the remaining message(s) first.`; return; }
     const { mime, img } = await unpack(r.s, $("#rpass").value);   // raw value — must match the sender's exactly, whitespace included
     if(recovered) URL.revokeObjectURL(recovered.url);
     const resolvedMime = mime || "image/webp";
