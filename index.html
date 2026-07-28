@@ -318,6 +318,13 @@ const TARGET_1MSG = 44000;        // target compressed bytes to land in one mess
 const MAGIC = [0x50,0x58,0x54,0x31]; // "PXT1"
 
 const $ = s => document.querySelector(s);
+// safe localStorage: merely *accessing* localStorage throws SecurityError when storage is disabled,
+// cookies are blocked, or the page is opened from file:// on some browsers — and setItem throws on
+// quota-0 (Safari Private Browsing). Unwrapped, that killed the rest of this <script> at load. These
+// wrappers degrade to in-memory defaults instead of taking the whole app down.
+const lsGet = k => { try { return localStorage.getItem(k); } catch { return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
+const lsRemove = k => { try { localStorage.removeItem(k); } catch {} };
 const fmtKB = b => b < 1024 ? b + " B" : b < 1048576 ? (b/1024).toFixed(b < 100*1024 ? 1 : 0) + " KB" : (b/1048576).toFixed(1) + " MB";
 
 /* ---------- byte <-> base64 ---------- */
@@ -596,31 +603,31 @@ function setQuality(q){
 
 (()=>{
   const qEl = $("#quality");
-  let q = localStorage.getItem("carrier_quality");
-  const d = localStorage.getItem("carrier_maxdim");
+  let q = lsGet("carrier_quality");
+  const d = lsGet("carrier_maxdim");
   // validate the stored quality the same way maxdim is validated below: an out-of-range or
   // non-numeric value (corrupt/tampered/cross-version) would otherwise show in the %readout and
   // aria-valuetext while the range input silently clamps to a different number — a desync.
   if(q !== null){
     const n = parseInt(q, 10);
     if(Number.isInteger(n) && n >= +qEl.min && n <= +qEl.max) q = String(n);
-    else { localStorage.removeItem("carrier_quality"); q = null; }
+    else { lsRemove("carrier_quality"); q = null; }
   }
   setQuality(q || qEl.value);   // sync aria-valuetext + %readout on load, even at the default (no stored value)
   if(d && [...$("#maxdim").options].some(o => o.value === d)) $("#maxdim").value = d;
-  else if(d) localStorage.removeItem("carrier_maxdim");
+  else if(d) lsRemove("carrier_maxdim");
   syncPresets();   // restored quality + maxdim are both set now — light the matching preset, if any
 })();
 
-$("#quality").addEventListener("input", e=>{ const v = e.target.value; setQuality(v); localStorage.setItem("carrier_quality", v); queueRefresh(); });
-$("#maxdim").addEventListener("change", e=>{ localStorage.setItem("carrier_maxdim", e.target.value); syncPresets(); queueRefresh(); });
+$("#quality").addEventListener("input", e=>{ const v = e.target.value; setQuality(v); lsSet("carrier_quality", v); queueRefresh(); });
+$("#maxdim").addEventListener("change", e=>{ lsSet("carrier_maxdim", e.target.value); syncPresets(); queueRefresh(); });
 $("#pass").addEventListener("input", queueRefresh);
 // one-tap quality presets: set quality + max size together, persist, and recompress
 function applyPreset(q, d){
   setQuality(q);
   if([...$("#maxdim").options].some(o => o.value === String(d))) $("#maxdim").value = String(d);
-  localStorage.setItem("carrier_quality", String(q));
-  localStorage.setItem("carrier_maxdim", String(d));
+  lsSet("carrier_quality", String(q));
+  lsSet("carrier_maxdim", String(d));
   syncPresets();   // re-run now that maxdim is set too, so setQuality's earlier pass (old dim) is corrected
   queueRefresh();
 }
@@ -643,8 +650,8 @@ $("#autofit").addEventListener("click", async ()=>{
     $("#maxdim").value = String(best.d);
     setQuality(best.q);
     if(best.q !== 25 || best.d !== 256){
-      localStorage.setItem("carrier_quality", String(best.q));
-      localStorage.setItem("carrier_maxdim", String(best.d));
+      lsSet("carrier_quality", String(best.q));
+      lsSet("carrier_maxdim", String(best.d));
     }
     await refresh();
     if(hitFallback){
@@ -967,7 +974,7 @@ modeBtns.forEach((btn, idx)=>{
   btn.setAttribute("tabindex", btn.getAttribute("aria-selected")==="true" ? "0" : "-1");
   btn.addEventListener("click", (e)=>{
     const m = btn.dataset.m;
-    try{ localStorage.setItem("carrier_mode", m); }catch{}
+    lsSet("carrier_mode", m);
     modeBtns.forEach(b=>{ b.setAttribute("aria-selected", b===btn); b.setAttribute("tabindex", b===btn ? "0" : "-1"); });
     if(m === "recv" && thumbUrl){ URL.revokeObjectURL(thumbUrl); thumbUrl = null; }
     if(m === "send" && recovered){ URL.revokeObjectURL(recovered.url); recovered = null; $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true"); }
@@ -988,7 +995,7 @@ modeBtns.forEach((btn, idx)=>{
 });
 
 /* restore the last-used mode (synthetic click → isTrusted false, so it won't steal focus or scroll) */
-try{ if(localStorage.getItem("carrier_mode") === "recv") $("#tab-recv").click(); }catch{}
+if(lsGet("carrier_mode") === "recv") $("#tab-recv").click();
 
 /* keep the footer copyright year current (never regress below the 2026 first-published year) */
 $("#year").textContent = Math.max(2026, new Date().getFullYear());
