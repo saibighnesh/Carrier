@@ -407,7 +407,18 @@ function reassemble(text){
   const parts = [...text.matchAll(re)];
   if(!parts.length) return null;
   const sessions = [...new Set(parts.map(p => p[1]))];
-  const sid = sessions[0];
+  // prefer the session that is actually complete (or, failing that, has the most parts present) over
+  // whichever id merely appears first — a stray leftover chunk from an earlier image must not block a
+  // freshly pasted complete one. Ties keep first-seen order (strict >), matching the old behavior.
+  let sid = sessions[0], bestScore = -1;
+  for(const s of sessions){
+    const g = parts.filter(p => p[1] === s);
+    const t = parseInt(g[0][3], 10);
+    if(!t) continue;
+    const present = new Set(g.map(p => parseInt(p[2], 10)).filter(i => i >= 1 && i <= t)).size;
+    const score = (present >= t ? 1e9 : 0) + present;   // a complete session outranks any incomplete one
+    if(score > bestScore){ bestScore = score; sid = s; }
+  }
   const group = parts.filter(p => p[1] === sid);
   const total = parseInt(group[0][3],10);
   if(!total) return null;
@@ -813,7 +824,7 @@ function updateProgress(){
     p.append("Got ", b(r.have), " of ", b(r.total), ` — still need part${r.missing.length>1?"s":""} ${r.missing.join(", ")}.`);
   }
   if(r.multiSession){
-    const warn = Object.assign(document.createElement("span"), {textContent: ` (${r.multiSession} different images detected — only the first will be used)`});
+    const warn = Object.assign(document.createElement("span"), {textContent: ` (${r.multiSession} different images detected — using the most complete one)`});
     warn.style.color = "var(--danger)";
     p.appendChild(warn);
   }
