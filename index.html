@@ -527,6 +527,14 @@ async function refresh(){
   const msgLabel = lastChunks.length === 1 ? "1 msg" : `${lastChunks.length} msgs`;
   const inSend = !$("#send").classList.contains("hidden");
   if(fname && inSend) document.title = `${fname} · ${msgLabel} — Carrier`;
+  } catch(err) {
+    // debounced callers (queueRefresh → setTimeout) don't await refresh(), so without this catch a
+    // compress/encode/pack rejection became a silent unhandled rejection — the stats just froze.
+    if(srcImage){   // still ignore failures from a pass abandoned by Start over
+      const note = $("#fitNote");
+      note.className = "note err";
+      note.textContent = "Couldn't compress that image: " + (err instanceof Error ? err.message : String(err));
+    }
   } finally {
     refreshing = false;
     if(pendingRefresh){ pendingRefresh = false; queueRefresh(); }
@@ -938,6 +946,19 @@ $("#inbox").addEventListener("keydown", e=>{
 window.addEventListener("pagehide", ()=>{
   if(thumbUrl) URL.revokeObjectURL(thumbUrl);
   if(recovered) URL.revokeObjectURL(recovered.url);
+});
+// bfcache restore: scripts don't re-run but pagehide already revoked the blob URLs above, so #thumb
+// and #rimg point at freed objects and render broken. Rebuild the send preview and drop the stale
+// received image so the user gets a working page instead of broken-image icons.
+window.addEventListener("pageshow", e=>{
+  if(!e.persisted) return;   // a normal (non-bfcache) load already built everything fresh
+  thumbUrl = null;
+  if(srcImage) queueRefresh();   // recompress → sets a new #thumb src
+  if(recovered){
+    recovered = null;
+    $("#rimg").removeAttribute("src"); $("#rimg").alt = "Received image";
+    $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true");
+  }
 });
 
 /* ---------- mode toggle ---------- */
