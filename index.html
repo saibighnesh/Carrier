@@ -429,7 +429,9 @@ function drawScaled(img, maxDim){
   w = Math.max(1,Math.round(w*s)); h = Math.max(1,Math.round(h*s));
   const cv = document.createElement("canvas");
   cv.width = w; cv.height = h;
-  cv.getContext("2d").drawImage(img,0,0,w,h);
+  const ctx = cv.getContext("2d");
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";   // better downscale — fewer aliasing artifacts at low max-size
+  ctx.drawImage(img,0,0,w,h);
   cv._w = w; cv._h = h;
   return cv;
 }
