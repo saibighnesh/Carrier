@@ -648,6 +648,7 @@ $("#autofit").addEventListener("click", async ()=>{
 });
 let copyAllTimer;
 $("#copyAll").addEventListener("click", async ()=>{
+  if(!lastChunks.length) return;   // nothing packed yet — same guard saveTxt uses
   const b = $("#copyAll");
   clearTimeout(copyAllTimer);
   copyAllBusy = true;   // suppress renderChunks() label overwrite during the feedback window
