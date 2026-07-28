@@ -258,7 +258,7 @@
 
     <div class="panel hidden" id="lockPanel" role="group" tabindex="-1" aria-labelledby="lockPanelLabel">
       <span class="lbl" id="lockPanelLabel">3 · Lock it (optional)</span>
-      <input type="password" id="pass" placeholder="Password — leave blank to send unlocked" autocomplete="new-password" autocapitalize="none" autocorrect="off" spellcheck="false" aria-label="Encryption password" enterkeyhint="done" aria-describedby="passHint" maxlength="128">
+      <input type="password" id="pass" placeholder="Password — leave blank to send unlocked" autocomplete="new-password" autocapitalize="none" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore data-form-type="other" aria-label="Encryption password" enterkeyhint="done" aria-describedby="passHint" maxlength="128">
       <p class="note" id="passHint" translate="no">If set, the receiver needs this exact password. Share it through a different channel than the text itself.</p>
     </div>
 
@@ -287,7 +287,7 @@
     </div>
     <div class="panel" role="group" aria-labelledby="recvPanel2Label">
       <span class="lbl" id="recvPanel2Label">2 · Password (if it's locked)</span>
-      <input type="password" id="rpass" placeholder="Password (leave blank if message is unlocked)" autocomplete="new-password" autocapitalize="none" autocorrect="off" spellcheck="false" aria-label="Decryption password" enterkeyhint="go" maxlength="128">
+      <input type="password" id="rpass" placeholder="Password (leave blank if message is unlocked)" autocomplete="new-password" autocapitalize="none" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore data-form-type="other" aria-label="Decryption password" enterkeyhint="go" maxlength="128">
       <div class="btnrow btnrow--spaced">
         <button type="button" class="btn teal" id="reveal" aria-label="Reveal image — decrypt the received image" aria-describedby="rNote" aria-keyshortcuts="Control+Enter Meta+Enter" title="Reassembles the pasted chunks and decrypts them (Ctrl/Cmd+Enter)">Reveal image</button>
       </div>
