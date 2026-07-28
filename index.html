@@ -896,8 +896,21 @@ $("#reveal").addEventListener("click", async ()=>{
     const resolvedMime = mime || "image/webp";
     const blob = new Blob([img], {type: resolvedMime});
     const url = URL.createObjectURL(blob);
-    $("#rimg").src = url;
-    $("#rimg").alt = `Received image (${fmtKB(img.length)}, ${resolvedMime})`;
+    const rimg = $("#rimg");
+    // unencrypted payloads have no GCM integrity tag: corrupt bytes can still decode from Base64 and
+    // keep the MAGIC header, so parsePlain "succeeds" but the image won't render. Catch that decode
+    // failure and report it instead of leaving a broken-image icon under a green "Received. ✓".
+    rimg.onerror = ()=>{
+      if(!recovered || recovered.url !== url) return;   // a newer reveal already replaced this image — ignore the stale error
+      URL.revokeObjectURL(recovered.url); recovered = null;
+      rimg.removeAttribute("src"); rimg.alt = "Received image";
+      $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true");
+      note.className = "note err";
+      note.textContent = "The data decoded, but it isn't a valid image — the message is likely corrupted or was altered in transit.";
+      document.title = "Carrier — receive images";
+    };
+    rimg.src = url;
+    rimg.alt = `Received image (${fmtKB(img.length)}, ${resolvedMime})`;
     const ext = resolvedMime.includes("jpeg") ? "jpg" : resolvedMime.includes("png") ? "png" : "webp";
     recovered = { url, mime: resolvedMime, ext };
     $("#result").classList.remove("hidden");
