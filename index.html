@@ -243,6 +243,16 @@
               <option value="256">256 px</option>
             </select>
           </div>
+          <div class="row">
+            <label for="chatLimit">Chat app</label>
+            <select id="chatLimit" aria-label="Target chat app message limit" autocomplete="off" title="Sets the per-message character limit for your chat app — smaller limits split into more parts">
+              <option value="60000">WhatsApp (60k)</option>
+              <option value="4096">Telegram (4k)</option>
+              <option value="4000">Slack (4k)</option>
+              <option value="2000">Discord (2k)</option>
+              <option value="160">SMS (160)</option>
+            </select>
+          </div>
           <div class="btnrow" role="group" aria-label="Quality presets">
             <button type="button" class="btn preset" data-q="45" data-d="512" aria-pressed="false" title="Small file — lower quality, fewest messages">Small</button>
             <button type="button" class="btn preset" data-q="70" data-d="768" aria-pressed="false" title="Balanced quality and size">Balanced</button>
@@ -328,8 +338,11 @@
 
 <script>
 "use strict";
-const MSG_LIMIT = 60000;          // safe chars per message
-const TARGET_1MSG = 44000;        // target compressed bytes to land in one message
+let msgLimit = 60000;             // chars per message for the chosen chat app (user-selectable)
+const MSG_LIMITS = { 60000:"WhatsApp", 4096:"Telegram", 4000:"Slack", 2000:"Discord", 160:"SMS" };
+// bytes of compressed image that Base64-encode to fit one message: N bytes → ceil(N/3)*4 chars, so
+// N ≈ (limit − prefix) · 3/4; the 0.72 factor keeps a small safety margin under the raw ceiling
+const targetBytes = () => Math.floor((msgLimit - 24) * 0.72);
 const MAGIC = [0x50,0x58,0x54,0x31]; // "PXT1"
 
 const $ = s => document.querySelector(s);
@@ -408,7 +421,7 @@ async function unpack(b64, password){
 /* ---------- chunking ---------- */
 function chunkify(b64){
   const sid = Array.from(crypto.getRandomValues(new Uint8Array(3)), b => b.toString(16).padStart(2,'0')).join('');
-  const per = MSG_LIMIT - 24;
+  const per = msgLimit - 24;
   const total = Math.max(1, Math.ceil(b64.length / per));
   const out = [];
   for(let i=0;i<total;i++)
@@ -499,7 +512,7 @@ async function autoFit(){
     for(let i=0;i<7;i++){
       const q = (lo+hi)/2;
       const blob = await encodeCanvas(cv, q);
-      if(blob.size <= TARGET_1MSG){ pick = {q:Math.round(q*100), d}; lo = q; }
+      if(blob.size <= targetBytes()){ pick = {q:Math.round(q*100), d}; lo = q; }
       else hi = q;
     }
     if(pick) return pick;
@@ -536,7 +549,7 @@ async function refresh(){
   $("#charOut").innerHTML = b64.length.toLocaleString() + " <small>chars</small>";
   $("#msgOut").textContent = lastChunks.length;
   // meter (fill of one message)
-  const ratio = Math.min(1, b64.length / MSG_LIMIT);
+  const ratio = Math.min(1, b64.length / msgLimit);
   const meter = $("#meter"), fill = $("#meterFill");
   const pct = (ratio*100).toFixed(0);
   fill.style.width = pct + "%";
@@ -652,10 +665,16 @@ function setQuality(q){
   if(d && [...$("#maxdim").options].some(o => o.value === d)) $("#maxdim").value = d;
   else if(d) lsRemove("carrier_maxdim");
   syncPresets();   // restored quality + maxdim are both set now — light the matching preset, if any
+  // restore the chosen chat app; only accept a value that maps to a known limit
+  const ml = lsGet("carrier_msglimit");
+  if(ml && MSG_LIMITS[ml]){ msgLimit = +ml; $("#chatLimit").value = ml; }
+  else if(ml) lsRemove("carrier_msglimit");
 })();
 
 $("#quality").addEventListener("input", e=>{ const v = e.target.value; setQuality(v); lsSet("carrier_quality", v); queueRefresh(); });
 $("#maxdim").addEventListener("change", e=>{ lsSet("carrier_maxdim", e.target.value); syncPresets(); queueRefresh(); });
+// switching chat app changes the per-message char budget → re-chunk and redraw the meter/stats
+$("#chatLimit").addEventListener("change", e=>{ msgLimit = +e.target.value; lsSet("carrier_msglimit", e.target.value); queueRefresh(); });
 $("#pass").addEventListener("input", queueRefresh);
 // one-tap quality presets: set quality + max size together, persist, and recompress
 function applyPreset(q, d){
