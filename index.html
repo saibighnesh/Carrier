@@ -526,7 +526,10 @@ async function refresh(){
   const pct = (ratio*100).toFixed(0);
   fill.style.width = pct + "%";
   $("#meterTrack").setAttribute("aria-valuenow", pct);
-  $("#meterTrack").setAttribute("aria-valuetext", `${pct}% of single-message limit`);
+  // when the payload spills past one message the fill pins at 100%, which alone tells a screen-reader
+  // user nothing about how far over — append the actual part count so the announcement is meaningful
+  $("#meterTrack").setAttribute("aria-valuetext",
+    lastChunks.length > 1 ? `Over the single-message limit — ${lastChunks.length} parts` : `${pct}% of single-message limit`);
   meter.classList.toggle("over", lastChunks.length > 1);
   const note = $("#fitNote");
   if(lastChunks.length === 1){
