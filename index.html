@@ -549,8 +549,9 @@ async function refresh(){
   $("#sizeOut").innerHTML = fmtKB(img.length) + ` <small>${img._w}×${img._h}</small>`;
   $("#charOut").innerHTML = b64.length.toLocaleString() + " <small>chars</small>";
   $("#msgOut").textContent = lastChunks.length;
-  // meter (fill of one message)
-  const ratio = Math.min(1, b64.length / msgLimit);
+  // meter (fill of one message) — divide by the real data capacity (limit minus the chunk prefix),
+  // not the raw limit, so at small app limits the % doesn't read "under" while already spilling to 2 parts
+  const ratio = Math.min(1, b64.length / (msgLimit - 24));
   const meter = $("#meter"), fill = $("#meterFill");
   const pct = (ratio*100).toFixed(0);
   fill.style.width = pct + "%";
@@ -566,7 +567,13 @@ async function refresh(){
     note.textContent = "Fits in a single message. ✓";
   } else {
     note.className = "note warn";
-    note.textContent = `Sending as ${lastChunks.length} parts — lower quality or size to fit in one message.`;
+    // don't tell the user to "lower quality to fit in one message" when the chosen app's per-message
+    // budget is too small to ever hold an image — that advice is impossible to satisfy (e.g. SMS)
+    const appName = MSG_LIMITS[String(msgLimit)] || "this app";
+    const canFitOne = targetBytes() >= 1200;   // ~ smallest a real WebP thumbnail encodes to
+    note.textContent = canFitOne
+      ? `Sending as ${lastChunks.length} parts — lower quality or size to fit in one message.`
+      : `Sending as ${lastChunks.length} parts — ${appName}'s per-message limit is too small to fit an image in one message.`;
   }
   const outWasHidden = $("#outPanel").classList.contains("hidden");
   renderChunks();
