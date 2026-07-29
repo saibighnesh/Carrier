@@ -96,6 +96,15 @@
     border-radius:8px;padding:9px 11px;font-family:var(--sans);font-size:14px;width:100%;max-width:100%
   }
   .recv input,.recv textarea{caret-color:var(--recv)}
+  .pwwrap{position:relative}
+  .pwwrap input{padding-right:66px}
+  .pwtoggle{position:absolute;top:6px;right:6px;height:calc(100% - 12px);
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;
+    background:transparent;border:1px solid var(--line);color:var(--muted);
+    padding:0 10px;border-radius:6px;cursor:pointer;touch-action:manipulation}
+  .pwtoggle:hover{color:var(--ink);border-color:var(--ink)}
+  .pwtoggle:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+  .recv .pwtoggle:focus-visible{outline-color:var(--recv)}
   textarea{font-family:var(--mono);font-size:12px;line-height:1.5;resize:vertical;min-height:120px}
   select:focus,input:focus,textarea:focus{outline:none;border-color:var(--send)}
   .recv select:focus,.recv input:focus,.recv textarea:focus{border-color:var(--recv)}
@@ -260,7 +269,10 @@
 
     <div class="panel hidden" id="lockPanel" role="group" tabindex="-1" aria-labelledby="lockPanelLabel">
       <span class="lbl" id="lockPanelLabel">3 · Lock it (optional)</span>
-      <input type="password" id="pass" placeholder="Password — leave blank to send unlocked" autocomplete="new-password" autocapitalize="none" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore data-form-type="other" aria-label="Encryption password" enterkeyhint="done" aria-describedby="passHint" maxlength="128">
+      <div class="pwwrap">
+        <input type="password" id="pass" placeholder="Password — leave blank to send unlocked" autocomplete="new-password" autocapitalize="none" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore data-form-type="other" aria-label="Encryption password" enterkeyhint="done" aria-describedby="passHint" maxlength="128">
+        <button type="button" class="pwtoggle" data-target="pass" aria-pressed="false" aria-label="Show password" title="Show or hide the password">Show</button>
+      </div>
       <p class="note" id="passHint" translate="no">If set, the receiver needs this exact password. Share it through a different channel than the text itself.</p>
     </div>
 
@@ -289,7 +301,10 @@
     </div>
     <div class="panel" role="group" aria-labelledby="recvPanel2Label">
       <span class="lbl" id="recvPanel2Label">2 · Password (if it's locked)</span>
-      <input type="password" id="rpass" placeholder="Password (leave blank if message is unlocked)" autocomplete="new-password" autocapitalize="none" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore data-form-type="other" aria-label="Decryption password" enterkeyhint="go" maxlength="128">
+      <div class="pwwrap">
+        <input type="password" id="rpass" placeholder="Password (leave blank if message is unlocked)" autocomplete="new-password" autocapitalize="none" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore data-form-type="other" aria-label="Decryption password" enterkeyhint="go" maxlength="128">
+        <button type="button" class="pwtoggle" data-target="rpass" aria-pressed="false" aria-label="Show password" title="Show or hide the password">Show</button>
+      </div>
       <div class="btnrow btnrow--spaced">
         <button type="button" class="btn teal" id="reveal" aria-label="Reveal image — decrypt the received image" aria-describedby="rNote" aria-keyshortcuts="Control+Enter Meta+Enter" title="Reassembles the pasted chunks and decrypts them (Ctrl/Cmd+Enter)">Reveal image</button>
       </div>
@@ -802,7 +817,7 @@ function resetSend(){
   srcImage = null; lastChunks = [];
   $("#chunks").innerHTML = "";
   ["tunePanel","lockPanel","outPanel"].forEach(id => $("#"+id).classList.add("hidden"));
-  $("#pass").value = "";
+  $("#pass").value = ""; maskPassword("pass");
   ["origOut","sizeOut","charOut","msgOut"].forEach(id => $("#"+id).textContent = "—");
   $("#meterFill").style.width = "0%";
   $("#meterTrack").setAttribute("aria-valuenow","0"); $("#meterTrack").removeAttribute("aria-valuetext");
@@ -855,7 +870,7 @@ function resetReceive(){
   clearReveal();
   clearTimeout(progDebounce);
   $("#inbox").value=""; updateProgress();
-  $("#rpass").value="";
+  $("#rpass").value=""; maskPassword("rpass");
   $("#inbox").focus();
 }
 $("#pasteInbox").addEventListener("click", async ()=>{
@@ -970,6 +985,25 @@ document.addEventListener("keydown", e=>{ if(e.key==="Enter"&&(e.ctrlKey||e.meta
 $("#inbox").addEventListener("keydown", e=>{
   if(e.key==="Escape"){ resetReceive(); }
 });
+
+/* show/hide password toggles — reveal the passphrase to check for typos before sending/revealing */
+document.querySelectorAll(".pwtoggle").forEach(btn=>{
+  const inp = $("#"+btn.dataset.target);
+  btn.addEventListener("click", ()=>{
+    const show = inp.type === "password";
+    inp.type = show ? "text" : "password";
+    btn.textContent = show ? "Hide" : "Show";
+    btn.setAttribute("aria-pressed", String(show));
+    btn.setAttribute("aria-label", show ? "Hide password" : "Show password");
+    inp.focus();
+  });
+});
+// re-mask a revealed field when its panel is reset, so a cleared field never sits in plaintext state
+function maskPassword(id){
+  const inp = $("#"+id), btn = document.querySelector(`.pwtoggle[data-target="${id}"]`);
+  inp.type = "password";
+  if(btn){ btn.textContent = "Show"; btn.setAttribute("aria-pressed","false"); btn.setAttribute("aria-label","Show password"); }
+}
 
 window.addEventListener("pagehide", ()=>{
   if(thumbUrl) URL.revokeObjectURL(thumbUrl);
