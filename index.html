@@ -343,6 +343,7 @@ const MSG_LIMITS = { 60000:"WhatsApp", 4096:"Telegram", 4000:"Slack", 2000:"Disc
 // bytes of compressed image that Base64-encode to fit one message: N bytes → ceil(N/3)*4 chars, so
 // N ≈ (limit − prefix) · 3/4; the 0.72 factor keeps a small safety margin under the raw ceiling
 const targetBytes = () => Math.floor((msgLimit - 24) * 0.72);
+const CHUNK_RENDER_CAP = 200;     // cap DOM cards — tiny per-app limits (SMS) can produce thousands of chunks
 const MAGIC = [0x50,0x58,0x54,0x31]; // "PXT1"
 
 const $ = s => document.querySelector(s);
@@ -615,7 +616,18 @@ function renderChunks(){
   }
   cancelFlash($("#saveTxt"));   // these chunks are freshly (re)built — a prior "Saved ✓" no longer applies
   box.setAttribute("aria-label", `${lastChunks.length} message chunk${lastChunks.length !== 1 ? "s" : ""}`);
-  lastChunks.forEach((c,i)=>{ box.appendChild(makeChunkCard(c,i)); });
+  // render at most CHUNK_RENDER_CAP cards: a small chat-app limit (e.g. SMS) can split a photo into
+  // thousands of parts, and rebuilding every card on each debounced refresh would freeze the page.
+  // The full set is still in lastChunks, so Copy-all and Save-as-.txt always emit every part.
+  const shown = Math.min(lastChunks.length, CHUNK_RENDER_CAP);
+  for(let i=0;i<shown;i++) box.appendChild(makeChunkCard(lastChunks[i], i));
+  if(lastChunks.length > CHUNK_RENDER_CAP){
+    const more = document.createElement("p");
+    more.className = "note warn"; more.setAttribute("role","note"); more.style.margin = "4px 2px 0";
+    const rest = lastChunks.length - CHUNK_RENDER_CAP;
+    more.textContent = `+${rest.toLocaleString()} more message${rest!==1?"s":""} not shown — use “Copy all messages” or “Save as .txt” to get every part.`;
+    box.appendChild(more);
+  }
   const copyoneTimers = new WeakMap();
   box.querySelectorAll(".copyone").forEach(b=>{
     b.onclick = async ()=>{
