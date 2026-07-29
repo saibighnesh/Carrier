@@ -952,6 +952,7 @@ $("#save").addEventListener("click", ()=>{
   if(!recovered) return;
   const ts = new Date().toISOString().replace(/[:.]/g,"-").slice(0,19);
   downloadURL(recovered.url, `carrier-image-${ts}.${recovered.ext}`);   // don't revoke — #rimg still uses this URL
+  flashButton($("#save"), "Saved ✓", "Image saved to your device");
 });
 
 $("#rpass").addEventListener("input", ()=>{ const n=$("#rNote"); if(n.classList.contains("err")){ n.className="note"; n.textContent=""; } });
