@@ -563,7 +563,13 @@ async function refresh(){
 }
 function renderChunks(){
   const box = $("#chunks"); box.innerHTML = "";
-  if(!copyAllBusy) $("#copyAll").textContent = copyAllLabel();   // don't clobber active copy feedback
+  if(!copyAllBusy){
+    $("#copyAll").textContent = copyAllLabel();   // don't clobber active copy feedback
+    // keep the tooltip honest: a single-message payload isn't "all chunks separated by a blank line"
+    $("#copyAll").title = lastChunks.length === 1
+      ? "Copies the message — paste it into your chat"
+      : `Copies all ${lastChunks.length} messages separated by a blank line — paste the whole block into your chat`;
+  }
   cancelFlash($("#saveTxt"));   // these chunks are freshly (re)built — a prior "Saved ✓" no longer applies
   box.setAttribute("aria-label", `${lastChunks.length} message chunk${lastChunks.length !== 1 ? "s" : ""}`);
   lastChunks.forEach((c,i)=>{
