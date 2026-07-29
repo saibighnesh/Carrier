@@ -1063,6 +1063,9 @@ modeBtns.forEach((btn, idx)=>{
   btn.addEventListener("click", (e)=>{
     const m = btn.dataset.m;
     lsSet("carrier_mode", m);
+    // re-mask any revealed password when leaving a mode — a plaintext secret must not persist on
+    // screen across a Send↔Receive switch (the reveal is scoped to the field you're actively using)
+    maskPassword("pass"); maskPassword("rpass");
     modeBtns.forEach(b=>{ b.setAttribute("aria-selected", b===btn); b.setAttribute("tabindex", b===btn ? "0" : "-1"); });
     if(m === "recv" && thumbUrl){ URL.revokeObjectURL(thumbUrl); thumbUrl = null; }
     if(m === "send" && recovered){ URL.revokeObjectURL(recovered.url); recovered = null; $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true"); }
