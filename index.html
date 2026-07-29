@@ -589,6 +589,21 @@ async function refresh(){
     if(pendingRefresh){ pendingRefresh = false; queueRefresh(); }
   }
 }
+// build one chunk card element for message i (data lazily set as textContent, not innerHTML)
+function makeChunkCard(c, i){
+  const el = document.createElement("div");
+  el.className = "chunk";
+  el.setAttribute("role","listitem");
+  const preview = c.length > 280 ? c.slice(0,280) + " …" : c;
+  const pillLabel = lastChunks.length === 1 ? "SINGLE MESSAGE" : `MESSAGE ${i+1} / ${lastChunks.length}`;
+  el.innerHTML =
+    `<div class="head"><span class="pill" title="Part ${i+1} of ${lastChunks.length}">${pillLabel}</span>
+     <span style="font-family:var(--mono);font-size:10px;color:var(--faint);margin-right:auto;padding-left:10px">${c.length.toLocaleString()} chars</span>
+     <button type="button" class="copyone" data-i="${i}" aria-label="Copy message ${i+1} of ${lastChunks.length}" data-orig-label="Copy message ${i+1} of ${lastChunks.length}">Copy</button></div>
+     <div class="data" tabindex="0" translate="no" aria-label="Message ${i+1} of ${lastChunks.length} content — use Copy button to copy"></div>`;
+  el.querySelector(".data").textContent = preview;
+  return el;
+}
 function renderChunks(){
   const box = $("#chunks"); box.innerHTML = "";
   if(!copyAllBusy){
@@ -600,20 +615,7 @@ function renderChunks(){
   }
   cancelFlash($("#saveTxt"));   // these chunks are freshly (re)built — a prior "Saved ✓" no longer applies
   box.setAttribute("aria-label", `${lastChunks.length} message chunk${lastChunks.length !== 1 ? "s" : ""}`);
-  lastChunks.forEach((c,i)=>{
-    const el = document.createElement("div");
-    el.className = "chunk";
-    el.setAttribute("role","listitem");
-    const preview = c.length > 280 ? c.slice(0,280) + " …" : c;
-    const pillLabel = lastChunks.length === 1 ? "SINGLE MESSAGE" : `MESSAGE ${i+1} / ${lastChunks.length}`;
-    el.innerHTML =
-      `<div class="head"><span class="pill" title="Part ${i+1} of ${lastChunks.length}">${pillLabel}</span>
-       <span style="font-family:var(--mono);font-size:10px;color:var(--faint);margin-right:auto;padding-left:10px">${c.length.toLocaleString()} chars</span>
-       <button type="button" class="copyone" data-i="${i}" aria-label="Copy message ${i+1} of ${lastChunks.length}" data-orig-label="Copy message ${i+1} of ${lastChunks.length}">Copy</button></div>
-       <div class="data" tabindex="0" translate="no" aria-label="Message ${i+1} of ${lastChunks.length} content — use Copy button to copy"></div>`;
-    el.querySelector(".data").textContent = preview;
-    box.appendChild(el);
-  });
+  lastChunks.forEach((c,i)=>{ box.appendChild(makeChunkCard(c,i)); });
   const copyoneTimers = new WeakMap();
   box.querySelectorAll(".copyone").forEach(b=>{
     b.onclick = async ()=>{
