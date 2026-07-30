@@ -947,7 +947,7 @@ function maybeAutoReveal(){
   if(!r || r.missing.length) return;
   const flags = headerFlags(r.s);
   if(flags === null || (flags & 1)) return;
-  $("#reveal").click();
+  doReveal();
 }
 let progDebounce;
 $("#inbox").addEventListener("input", ()=>{ clearTimeout(progDebounce); progDebounce=setTimeout(updateProgress,80); if($("#rNote").classList.contains("ok")) clearReveal(); });
@@ -1030,7 +1030,7 @@ $("#inbox").addEventListener("drop", e=>{
   if(f){ e.preventDefault(); loadTextFile(f); }
 });
 
-$("#reveal").addEventListener("click", async ()=>{
+async function doReveal(){
   if(revealing) return;
   revealing = true;
   const revBtn = $("#reveal");
@@ -1071,7 +1071,8 @@ $("#reveal").addEventListener("click", async ()=>{
     setTimeout(()=>{ if(!$("#recv").classList.contains("hidden")) $("#save").focus(); }, 400);
   }catch(err){ note.className="note err"; note.textContent = err instanceof Error ? err.message : String(err); $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true"); $("#rimg").alt = "Received image"; }
   finally { revealing = false; revBtn.textContent = "Reveal image"; revBtn.removeAttribute("aria-busy"); }
-});
+}
+$("#reveal").addEventListener("click", doReveal);
 $("#save").addEventListener("click", ()=>{
   if(!recovered) return;
   const ts = new Date().toISOString().replace(/[:.]/g,"-").slice(0,19);
@@ -1080,8 +1081,10 @@ $("#save").addEventListener("click", ()=>{
 });
 
 $("#rpass").addEventListener("input", ()=>{ const n=$("#rNote"); if(n.classList.contains("err")){ n.className="note"; n.textContent=""; } });
-$("#rpass").addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); $("#reveal").click(); } });
-document.addEventListener("keydown", e=>{ if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)&&!$("#recv").classList.contains("hidden")){ e.preventDefault(); $("#reveal").click(); } });
+// call doReveal() directly (not #reveal.click()) so the shortcut still surfaces "Missing part N" /
+// "No Carrier message found" in #rNote even while the Reveal button is disabled for an incomplete box
+$("#rpass").addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); doReveal(); } });
+document.addEventListener("keydown", e=>{ if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)&&!$("#recv").classList.contains("hidden")){ e.preventDefault(); doReveal(); } });
 $("#inbox").addEventListener("keydown", e=>{
   if(e.key==="Escape"){ resetReceive(); }
 });
