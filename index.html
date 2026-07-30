@@ -547,7 +547,9 @@ async function refresh(){
   if(!srcImage) return;   // Start over ran during packing — don't repopulate the cleared UI
   lastChunks = chunkify(b64);
   // stats
-  $("#sizeOut").innerHTML = fmtKB(img.length) + ` <small>${img._w}×${img._h}</small>`;
+  const origBytes = srcImage._bytes || 0;
+  const pctOrig = origBytes ? ` · ${Math.round(img.length / origBytes * 100)}% of original` : "";
+  $("#sizeOut").innerHTML = fmtKB(img.length) + ` <small>${img._w}×${img._h}${pctOrig}</small>`;
   $("#charOut").innerHTML = b64.length.toLocaleString() + " <small>chars</small>";
   $("#msgOut").textContent = lastChunks.length;
   // meter (fill of one message) — divide by the real data capacity (limit minus the chunk prefix),
@@ -838,6 +840,7 @@ async function handleFile(file){
   try{
     srcImage = await loadImage(file);
     srcImage._name = file.name;
+    srcImage._bytes = file.size;   // remember the original size to show the compression ratio in stats
     const sizeStr = fmtKB(file.size);
     drop.setAttribute("aria-label","Replace image");
     $("#tunePanel").classList.remove("hidden");
