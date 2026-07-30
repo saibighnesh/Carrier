@@ -105,6 +105,13 @@
   .pwtoggle:hover{color:var(--ink);border-color:var(--ink)}
   .pwtoggle:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
   .recv .pwtoggle:focus-visible{outline-color:var(--recv)}
+  .pwmeter{display:flex;gap:4px;margin-top:9px}
+  .pwmeter span{flex:1;height:4px;border-radius:2px;background:var(--line);transition:background .2s}
+  .pwmeter.s1 span:nth-child(-n+1){background:var(--danger)}
+  .pwmeter.s2 span:nth-child(-n+2){background:var(--send)}
+  .pwmeter.s3 span:nth-child(-n+3){background:var(--send)}
+  .pwmeter.s4 span:nth-child(-n+4){background:var(--ok)}
+  .pwstrength{margin-top:6px;font-family:var(--mono);font-size:11px;letter-spacing:.04em}
   textarea{font-family:var(--mono);font-size:12px;line-height:1.5;resize:vertical;min-height:120px}
   select:focus,input:focus,textarea:focus{outline:none;border-color:var(--send)}
   .recv select:focus,.recv input:focus,.recv textarea:focus{border-color:var(--recv)}
@@ -284,6 +291,8 @@
         <input type="password" id="pass" placeholder="Password — leave blank to send unlocked" autocomplete="new-password" autocapitalize="none" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore data-form-type="other" aria-label="Encryption password" enterkeyhint="done" aria-describedby="passHint" maxlength="128">
         <button type="button" class="pwtoggle" data-target="pass" aria-pressed="false" aria-label="Show password" title="Show or hide the password">Show</button>
       </div>
+      <div class="pwmeter hidden" id="pwMeter" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+      <p class="note pwstrength hidden" id="pwStrength" role="status" aria-live="polite"></p>
       <p class="note" id="passHint" translate="no">If set, the receiver needs this exact password. Share it through a different channel than the text itself.</p>
     </div>
 
@@ -701,6 +710,29 @@ $("#maxdim").addEventListener("change", e=>{ lsSet("carrier_maxdim", e.target.va
 // switching chat app changes the per-message char budget → re-chunk and redraw the meter/stats
 $("#chatLimit").addEventListener("change", e=>{ msgLimit = +e.target.value; lsSet("carrier_msglimit", e.target.value); queueRefresh(); });
 $("#pass").addEventListener("input", queueRefresh);
+// advisory passphrase-strength meter: scores length + character variety, purely a nudge (never blocks)
+const PW_LABELS = ["", "Weak", "Fair", "Good", "Strong"];
+function pwScore(v){
+  if(!v) return 0;
+  let len = 0;
+  if(v.length >= 8) len++;
+  if(v.length >= 12) len++;
+  if(v.length >= 16) len++;
+  const variety = (/[a-z]/.test(v)?1:0) + (/[A-Z]/.test(v)?1:0) + (/\d/.test(v)?1:0) + (/[^A-Za-z0-9]/.test(v)?1:0);
+  const s = len + (variety >= 3 ? 1 : 0);      // 0–4
+  return Math.max(1, Math.min(4, s));          // any non-empty password is at least Weak
+}
+function updatePwStrength(){
+  const v = $("#pass").value;
+  const meter = $("#pwMeter"), label = $("#pwStrength");
+  if(!v){ meter.classList.add("hidden"); label.classList.add("hidden"); meter.className = "pwmeter hidden"; return; }
+  const s = pwScore(v);
+  meter.className = `pwmeter s${s}`;
+  label.classList.remove("hidden");
+  label.textContent = `Passphrase strength: ${PW_LABELS[s]}`;
+  label.style.color = s <= 1 ? "var(--danger)" : s >= 4 ? "var(--ok)" : "var(--send)";
+}
+$("#pass").addEventListener("input", updatePwStrength);
 // one-tap quality presets: set quality + max size together, persist, and recompress
 function applyPreset(q, d){
   setQuality(q);
@@ -862,7 +894,7 @@ function resetSend(){
   srcImage = null; lastChunks = [];
   $("#chunks").innerHTML = "";
   ["tunePanel","lockPanel","outPanel"].forEach(id => $("#"+id).classList.add("hidden"));
-  $("#pass").value = ""; maskPassword("pass");
+  $("#pass").value = ""; maskPassword("pass"); updatePwStrength();
   ["origOut","sizeOut","charOut","msgOut"].forEach(id => $("#"+id).textContent = "—");
   $("#meterFill").style.width = "0%";
   $("#meterTrack").setAttribute("aria-valuenow","0"); $("#meterTrack").removeAttribute("aria-valuetext");
