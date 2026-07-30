@@ -132,7 +132,8 @@
   .meter{margin:16px 0 4px}
   .meter .track{height:8px;background:var(--bg);border:1px solid var(--line);
     border-radius:6px;overflow:hidden}
-  .meter .fill{height:100%;background:var(--send);width:0%;transition:width .25s}
+  .meter .fill{height:100%;background:var(--ok);width:0%;transition:width .25s,background .25s}
+  .meter.near .fill{background:var(--send)}
   .meter.over .fill{background:var(--danger)}
   .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-top:14px}
   .stat{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;cursor:default;min-width:0}
@@ -561,6 +562,7 @@ async function refresh(){
   $("#meterTrack").setAttribute("aria-valuetext",
     lastChunks.length > 1 ? `Over the single-message limit — ${lastChunks.length} parts` : `${pct}% of single-message limit`);
   meter.classList.toggle("over", lastChunks.length > 1);
+  meter.classList.toggle("near", lastChunks.length === 1 && ratio > 0.9);   // amber warning as a single message fills up, before it splits
   const note = $("#fitNote");
   if(lastChunks.length === 1){
     note.className = "note ok";
