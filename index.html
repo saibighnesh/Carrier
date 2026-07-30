@@ -557,7 +557,13 @@ async function refresh(){
   lastChunks = chunkify(b64);
   // stats
   const origBytes = srcImage._bytes || 0;
-  const pctOrig = origBytes ? ` · ${Math.round(img.length / origBytes * 100)}% of original` : "";
+  // re-encoding an already-optimized small source to WebP can end up larger — don't print a
+  // ">100% of original" under a stat labelled "Compressed"; say so honestly instead
+  let pctOrig = "";
+  if(origBytes){
+    const pct = Math.round(img.length / origBytes * 100);
+    pctOrig = pct < 100 ? ` · ${pct}% of original` : " · no smaller than original";
+  }
   $("#sizeOut").innerHTML = fmtKB(img.length) + ` <small>${img._w}×${img._h}${pctOrig}</small>`;
   $("#charOut").innerHTML = b64.length.toLocaleString() + " <small>chars</small>";
   $("#msgOut").textContent = lastChunks.length;
@@ -901,7 +907,7 @@ function resetSend(){
   ["origOut","sizeOut","charOut","msgOut"].forEach(id => $("#"+id).textContent = "—");
   $("#meterFill").style.width = "0%";
   $("#meterTrack").setAttribute("aria-valuenow","0"); $("#meterTrack").removeAttribute("aria-valuetext");
-  $("#meter").classList.remove("over");
+  $("#meter").classList.remove("over","near");
   $("#fitNote").className = "note"; $("#fitNote").textContent = "";
   $("#thumb").removeAttribute("src"); $("#thumb").alt = "Compressed preview";
   drop.setAttribute("aria-label","Choose an image");
