@@ -317,7 +317,7 @@
         <button type="button" class="pwtoggle" data-target="rpass" aria-pressed="false" aria-label="Show password" title="Show or hide the password">Show</button>
       </div>
       <div class="btnrow btnrow--spaced">
-        <button type="button" class="btn teal" id="reveal" aria-label="Reveal image — decrypt the received image" aria-describedby="rNote" aria-keyshortcuts="Control+Enter Meta+Enter" title="Reassembles the pasted chunks and decrypts them (Ctrl/Cmd+Enter)">Reveal image</button>
+        <button type="button" class="btn teal" id="reveal" disabled aria-label="Reveal image — decrypt the received image" aria-describedby="rNote" aria-keyshortcuts="Control+Enter Meta+Enter" title="Reassembles the pasted chunks and decrypts them (Ctrl/Cmd+Enter)">Reveal image</button>
       </div>
       <p class="note" id="rNote" role="status"></p>
       <p class="note kbdhint" aria-hidden="true"><kbd>Ctrl/Cmd</kbd>+<kbd>Enter</kbd> reveals · <kbd>Esc</kbd> clears the box</p>
@@ -881,6 +881,7 @@ function updateProgress(){
   const r = reassemble($("#inbox").value);
   const p = $("#prog");
   p.textContent = ""; p.className = "progress";
+  $("#reveal").disabled = !(r && r.missing.length === 0);   // enable Reveal only once a complete message is present
   if(!r) return;
   const b = t => Object.assign(document.createElement("b"), {textContent: String(t)});
   if(r.missing.length===0){
