@@ -722,12 +722,15 @@ function pwScore(v){
   const s = len + (variety >= 3 ? 1 : 0);      // 0–4
   return Math.max(1, Math.min(4, s));          // any non-empty password is at least Weak
 }
+let lastPwScore = -1;
 function updatePwStrength(){
   const v = $("#pass").value;
   const meter = $("#pwMeter"), label = $("#pwStrength");
-  if(!v){ meter.classList.add("hidden"); label.classList.add("hidden"); meter.className = "pwmeter hidden"; return; }
+  if(!v){ meter.className = "pwmeter hidden"; label.classList.add("hidden"); lastPwScore = 0; return; }
   const s = pwScore(v);
-  meter.className = `pwmeter s${s}`;
+  meter.className = `pwmeter s${s}`;   // #pwMeter is aria-hidden — cheap to restyle every keystroke
+  if(s === lastPwScore) return;        // band unchanged: don't touch the aria-live label, or every
+  lastPwScore = s;                     // keystroke at the same level re-announces "Passphrase strength: …"
   label.classList.remove("hidden");
   label.textContent = `Passphrase strength: ${PW_LABELS[s]}`;
   label.style.color = s <= 1 ? "var(--danger)" : s >= 4 ? "var(--ok)" : "var(--send)";
