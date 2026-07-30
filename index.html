@@ -1030,7 +1030,7 @@ $("#inbox").addEventListener("drop", e=>{
   if(f){ e.preventDefault(); loadTextFile(f); }
 });
 
-$("#reveal").addEventListener("click", async ()=>{
+async function doReveal(){
   if(revealing) return;
   revealing = true;
   const revBtn = $("#reveal");
@@ -1071,7 +1071,8 @@ $("#reveal").addEventListener("click", async ()=>{
     setTimeout(()=>{ if(!$("#recv").classList.contains("hidden")) $("#save").focus(); }, 400);
   }catch(err){ note.className="note err"; note.textContent = err instanceof Error ? err.message : String(err); $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true"); $("#rimg").alt = "Received image"; }
   finally { revealing = false; revBtn.textContent = "Reveal image"; revBtn.removeAttribute("aria-busy"); }
-});
+}
+$("#reveal").addEventListener("click", doReveal);
 $("#save").addEventListener("click", ()=>{
   if(!recovered) return;
   const ts = new Date().toISOString().replace(/[:.]/g,"-").slice(0,19);
