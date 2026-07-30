@@ -899,9 +899,29 @@ function updateProgress(){
     p.appendChild(warn);
   }
 }
+// peek the header flags byte without decrypting: null = not a valid Carrier header, else the flags byte
+function headerFlags(s){
+  try{
+    const h = b64ToBytes(s.slice(0,8));   // first 8 base64 chars → 6 bytes, enough for MAGIC(4)+flags(1)
+    if(h.length < 5 || !MAGIC.every((m,i)=>h[i]===m)) return null;
+    return h[4];
+  }catch{ return null; }
+}
+// after a bulk insert (paste/load/drop), reveal automatically when the message is complete AND unlocked;
+// a locked message (flags bit 0 set) still needs its password and an explicit Reveal
+function maybeAutoReveal(){
+  if(revealing) return;
+  const r = reassemble($("#inbox").value);
+  if(!r || r.missing.length) return;
+  const flags = headerFlags(r.s);
+  if(flags === null || (flags & 1)) return;
+  $("#reveal").click();
+}
 let progDebounce;
 $("#inbox").addEventListener("input", ()=>{ clearTimeout(progDebounce); progDebounce=setTimeout(updateProgress,80); if($("#rNote").classList.contains("ok")) clearReveal(); });
 $("#inbox").addEventListener("blur", ()=>{ const v=$("#inbox").value; const t=v.trim(); if(t!==v){$("#inbox").value=t; clearTimeout(progDebounce); updateProgress();} });
+// manual Ctrl/Cmd+V into the box: after the paste settles, refresh progress and auto-reveal if complete+unlocked
+$("#inbox").addEventListener("paste", ()=>{ setTimeout(()=>{ clearTimeout(progDebounce); updateProgress(); maybeAutoReveal(); }, 0); });
 
 let recovered = null, revealing = false;
 // tear down any revealed image and clear the reveal note (does NOT touch the inbox/password)
@@ -929,6 +949,7 @@ $("#pasteInbox").addEventListener("click", async ()=>{
       clearTimeout(progDebounce); updateProgress();
       clearReveal();   // a fresh paste supersedes any prior reveal outcome (ok or err)
       flashButton($("#pasteInbox"), "Pasted ✓", "Pasted from clipboard");
+      maybeAutoReveal();   // complete + unlocked → show it without a second click
     }
   }catch{
     flashButton($("#pasteInbox"), "Clipboard blocked", "Clipboard access denied — paste manually");
@@ -960,6 +981,7 @@ function loadTextFile(file){
     clearTimeout(progDebounce); updateProgress();
     clearReveal();
     rn.className = "note ok"; rn.textContent = `Loaded ${file.name}.`;
+    maybeAutoReveal();   // complete + unlocked → reveal straight from the loaded file
   };
   reader.onerror = ()=>{ rn.className = "note err"; rn.textContent = "Couldn't read that file."; };
   reader.readAsText(file);
