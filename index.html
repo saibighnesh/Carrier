@@ -581,18 +581,18 @@ async function refresh(){
   meter.classList.toggle("over", lastChunks.length > 1);
   meter.classList.toggle("near", lastChunks.length === 1 && ratio > 0.9);   // amber warning as a single message fills up, before it splits
   const note = $("#fitNote");
+  const app = MSG_LIMITS[String(msgLimit)] || "this app";
   if(lastChunks.length === 1){
     note.className = "note ok";
-    note.textContent = "Fits in a single message. ✓";
+    note.textContent = `Fits in a single ${app} message. ✓`;
   } else {
     note.className = "note warn";
     // don't tell the user to "lower quality to fit in one message" when the chosen app's per-message
     // budget is too small to ever hold an image — that advice is impossible to satisfy (e.g. SMS)
-    const appName = MSG_LIMITS[String(msgLimit)] || "this app";
     const canFitOne = targetBytes() >= 1200;   // ~ smallest a real WebP thumbnail encodes to
     note.textContent = canFitOne
       ? `Sending as ${lastChunks.length} parts — lower quality or size to fit in one message.`
-      : `Sending as ${lastChunks.length} parts — ${appName}'s per-message limit is too small to fit an image in one message.`;
+      : `Sending as ${lastChunks.length} parts — ${app}'s per-message limit is too small to fit an image in one message.`;
   }
   const outWasHidden = $("#outPanel").classList.contains("hidden");
   renderChunks();
