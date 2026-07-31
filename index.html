@@ -128,7 +128,8 @@
   .btn.teal{border-color:var(--recv);color:var(--recv)}
   .btn.teal:hover{background:var(--recv-dim)}
   .btn:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
-  .btn:disabled{opacity:.45;cursor:not-allowed;pointer-events:none}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .btn:disabled:hover{border-color:var(--line);background:transparent}   /* keep hover inert but still allow the title tooltip + not-allowed cursor to show */
   .btn.preset{flex:1;min-width:0;padding-left:6px;padding-right:6px;white-space:nowrap;letter-spacing:.04em}
   .btn.preset[aria-pressed="true"]{border-color:var(--send);color:var(--send);background:var(--send-dim)}
   .btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
@@ -1070,7 +1071,7 @@ async function doReveal(){
     rimg.onerror = ()=>{
       if(!recovered || recovered.url !== url) return;   // a newer reveal already replaced this image — ignore the stale error
       URL.revokeObjectURL(recovered.url); recovered = null;
-      rimg.removeAttribute("src"); rimg.alt = "Received image";
+      rimg.removeAttribute("src"); rimg.alt = "Received image"; $("#rCaption").textContent = "";
       $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true");
       note.className = "note err";
       note.textContent = "The data decoded, but it isn't a valid image — the message is likely corrupted or was altered in transit.";
@@ -1139,7 +1140,7 @@ window.addEventListener("pageshow", e=>{
   if(srcImage) queueRefresh();   // recompress → sets a new #thumb src
   if(recovered){
     recovered = null;
-    $("#rimg").removeAttribute("src"); $("#rimg").alt = "Received image";
+    $("#rimg").removeAttribute("src"); $("#rimg").alt = "Received image"; $("#rCaption").textContent = "";
     $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true");
   }
 });
@@ -1156,7 +1157,9 @@ modeBtns.forEach((btn, idx)=>{
     maskPassword("pass"); maskPassword("rpass");
     modeBtns.forEach(b=>{ b.setAttribute("aria-selected", b===btn); b.setAttribute("tabindex", b===btn ? "0" : "-1"); });
     if(m === "recv" && thumbUrl){ URL.revokeObjectURL(thumbUrl); thumbUrl = null; }
-    if(m === "send" && recovered){ URL.revokeObjectURL(recovered.url); recovered = null; $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true"); }
+    // leaving Receive: tear the revealed image down fully via clearReveal so the result, its caption,
+    // AND the "Received ✓" note all go — the note lives outside #result and otherwise stayed visible
+    if(m === "send") clearReveal();
     if(m === "send" && srcImage) queueRefresh();
     $("#send").classList.toggle("hidden", m!=="send");
     $("#recv").classList.toggle("hidden", m!=="recv");
