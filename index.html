@@ -925,7 +925,12 @@ function updateProgress(){
   const r = reassemble($("#inbox").value);
   const p = $("#prog");
   p.textContent = ""; p.className = "progress";
-  $("#reveal").disabled = !(r && r.missing.length === 0);   // enable Reveal only once a complete message is present
+  const ready = !!(r && r.missing.length === 0);
+  $("#reveal").disabled = !ready;   // enable Reveal only once a complete message is present
+  // explain the disabled state on hover instead of a dead greyed-out button with a stale tooltip
+  $("#reveal").title = ready
+    ? "Reassembles the pasted chunks and decrypts them (Ctrl/Cmd+Enter)"
+    : "Paste a complete Carrier message first";
   if(!r) return;
   const b = t => Object.assign(document.createElement("b"), {textContent: String(t)});
   if(r.missing.length===0){
