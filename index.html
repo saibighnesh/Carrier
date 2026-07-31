@@ -878,6 +878,7 @@ async function handleFile(file){
   clearDropErr();
   if(!file.type.startsWith("image/")){ showDropErr("Please choose an image file."); handling = false; return; }
   fileInput.value = "";
+  drop.querySelector("strong").textContent = "Reading…";   // decoding a big photo isn't instant — show progress
   try{
     srcImage = await loadImage(file);
     srcImage._name = file.name;
@@ -893,7 +894,7 @@ async function handleFile(file){
     await refresh();
     $("#tunePanel").scrollIntoView({behavior:scrollBehavior(),block:"nearest"});
     $("#tunePanel").focus();
-  }catch(err){ showDropErr(err instanceof Error ? err.message : String(err)); }
+  }catch(err){ drop.querySelector("strong").textContent = DROP_STRONG_DEFAULT; showDropErr(err instanceof Error ? err.message : String(err)); }
   finally{ handling = false; }
 }
 // clear the loaded image and return Send to step 1
