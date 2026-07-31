@@ -474,7 +474,7 @@ function reassemble(text){
 }
 
 /* ---------- compression ---------- */
-let srcImage = null, srcMime = "image/webp", handling = false;
+let srcImage = null, srcMime = "image/webp", handling = false, loadToken = 0;
 function loadImage(file){
   return new Promise((res,rej)=>{
     const reader = new FileReader();
@@ -881,8 +881,11 @@ async function handleFile(file){
   if(!file.type.startsWith("image/")){ showDropErr("Please choose an image file."); handling = false; return; }
   fileInput.value = "";
   drop.querySelector("strong").textContent = "Reading…";   // decoding a big photo isn't instant — show progress
+  const myToken = ++loadToken;   // bumped by resetSend too, so a Start-over mid-decode abandons this load
   try{
-    srcImage = await loadImage(file);
+    const img = await loadImage(file);
+    if(myToken !== loadToken) return;   // Start over (or a newer load) ran during decode — don't resurrect this image
+    srcImage = img;
     srcImage._name = file.name;
     srcImage._bytes = file.size;   // remember the original size to show the compression ratio in stats
     const sizeStr = fmtKB(file.size);
@@ -896,12 +899,16 @@ async function handleFile(file){
     await refresh();
     $("#tunePanel").scrollIntoView({behavior:scrollBehavior(),block:"nearest"});
     $("#tunePanel").focus();
-  }catch(err){ drop.querySelector("strong").textContent = DROP_STRONG_DEFAULT; showDropErr(err instanceof Error ? err.message : String(err)); }
+  }catch(err){
+    if(myToken !== loadToken) return;   // abandoned during decode — don't surface an error for a file the user dropped
+    drop.querySelector("strong").textContent = DROP_STRONG_DEFAULT; showDropErr(err instanceof Error ? err.message : String(err));
+  }
   finally{ handling = false; }
 }
 // clear the loaded image and return Send to step 1
 function resetSend(){
   clearTimeout(debounce);
+  loadToken++;   // invalidate any in-flight handleFile decode so it can't repopulate the panels after this reset
   if(thumbUrl){ URL.revokeObjectURL(thumbUrl); thumbUrl = null; }
   srcImage = null; lastChunks = [];
   $("#chunks").innerHTML = "";
