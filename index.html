@@ -332,6 +332,7 @@
       <p class="note kbdhint" aria-hidden="true"><kbd>Ctrl/Cmd</kbd>+<kbd>Enter</kbd> reveals · <kbd>Esc</kbd> clears the box</p>
       <div class="result hidden" id="result" role="region" aria-label="Received image" aria-hidden="true">
         <img id="rimg" alt="Received image" loading="eager" decoding="async" draggable="false">
+        <p class="note" id="rCaption" translate="no" style="text-align:center"></p>
         <div class="btnrow btnrow--spaced btnrow--centered">
           <button type="button" class="btn teal" id="save" title="Saves the recovered image to your device as a timestamped file">Download received image</button>
         </div>
@@ -976,6 +977,7 @@ function clearReveal(){
   $("#rNote").className="note"; $("#rNote").textContent="";
   if(recovered){ URL.revokeObjectURL(recovered.url); recovered = null; }
   $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true");
+  $("#rCaption").textContent = "";
   if(!$("#recv").classList.contains("hidden")) document.title = "Carrier — receive images";   // drop the "✓ received" title once the image is torn down
 }
 // full reset of the receive panel: drop any revealed image, empty the inbox + password, hide the result
@@ -1076,6 +1078,7 @@ async function doReveal(){
     };
     rimg.src = url;
     rimg.alt = `Received image (${fmtKB(img.length)}, ${resolvedMime})`;
+    $("#rCaption").textContent = `${fmtKB(img.length)} · ${resolvedMime}`;   // visible size/type under the image
     const ext = resolvedMime.includes("jpeg") ? "jpg" : resolvedMime.includes("png") ? "png" : "webp";
     recovered = { url, mime: resolvedMime, ext };
     $("#result").classList.remove("hidden");
