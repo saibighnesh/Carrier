@@ -584,6 +584,7 @@ async function refresh(){
   meter.classList.toggle("near", lastChunks.length === 1 && ratio > 0.9);   // amber warning as a single message fills up, before it splits
   const note = $("#fitNote");
   const app = MSG_LIMITS[String(msgLimit)] || "this app";
+  $("#meterTrack").title = `How full one ${app} message is — over 100% splits into multiple parts`;   // name the app the limit is for
   if(lastChunks.length === 1){
     note.className = "note ok";
     note.textContent = `Fits in a single ${app} message. ✓`;
