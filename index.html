@@ -356,6 +356,8 @@ const MSG_LIMITS = { 60000:"WhatsApp", 4096:"Telegram", 4000:"Slack", 2000:"Disc
 // N ≈ (limit − prefix) · 3/4; the 0.72 factor keeps a small safety margin under the raw ceiling
 const targetBytes = () => Math.floor((msgLimit - 24) * 0.72);
 const CHUNK_RENDER_CAP = 200;     // cap DOM cards — tiny per-app limits (SMS) can produce thousands of chunks
+// only these raster image types may be turned into a blob and opened — never text/html or svg (XSS)
+const ALLOWED_IMG = new Set(["image/webp","image/jpeg","image/png","image/gif","image/avif"]);
 const MAGIC = [0x50,0x58,0x54,0x31]; // "PXT1"
 
 const $ = s => document.querySelector(s);
@@ -1076,7 +1078,12 @@ async function doReveal(){
       note.textContent = `Missing part${r.missing.length>1?"s":""} ${r.missing.join(", ")} — paste the remaining message(s) first.`; return; }
     const { mime, img } = await unpack(r.s, $("#rpass").value);   // raw value — must match the sender's exactly, whitespace included
     if(recovered) URL.revokeObjectURL(recovered.url);
-    const resolvedMime = mime || "image/webp";
+    const claimed = mime || "image/webp";
+    // the mime is attacker-controlled (it comes straight from the decoded payload). Never build a blob
+    // the browser would render as a document — text/html or image/svg+xml opened in a new tab (the
+    // click-to-zoom) or embedded would execute script in this page's origin. Allowlist raster images.
+    if(!ALLOWED_IMG.has(claimed)) throw new Error("Unsupported image type in the message — it may be corrupted or not a Carrier image.");
+    const resolvedMime = claimed;
     const blob = new Blob([img], {type: resolvedMime});
     const url = URL.createObjectURL(blob);
     const rimg = $("#rimg");
