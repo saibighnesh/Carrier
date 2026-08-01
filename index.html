@@ -930,6 +930,13 @@ function resetSend(){
   drop.focus();
 }
 $("#startOver").addEventListener("click", resetSend);
+// Esc in Send starts over (parity with Esc-clears in Receive) — but never while typing in a field
+document.addEventListener("keydown", e=>{
+  if(e.key !== "Escape" || $("#send").classList.contains("hidden") || !srcImage) return;
+  const ae = document.activeElement;
+  if(ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA")) return;
+  resetSend();
+});
 
 /* ---------- RECEIVE ui ---------- */
 function updateProgress(){
