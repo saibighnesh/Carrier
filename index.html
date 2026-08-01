@@ -1093,7 +1093,6 @@ async function doReveal(){
     if(r.missing.length){ note.className="note err";
       note.textContent = `Missing part${r.missing.length>1?"s":""} ${r.missing.join(", ")} — paste the remaining message(s) first.`; return; }
     const { mime, img } = await unpack(r.s, $("#rpass").value);   // raw value — must match the sender's exactly, whitespace included
-    if(recovered) URL.revokeObjectURL(recovered.url);
     const claimed = mime || "image/webp";
     // the mime is attacker-controlled (it comes straight from the decoded payload). Never build a blob
     // the browser would render as a document — text/html or image/svg+xml opened in a new tab (the
@@ -1102,6 +1101,7 @@ async function doReveal(){
     const resolvedMime = claimed;
     const blob = new Blob([img], {type: resolvedMime});
     const url = URL.createObjectURL(blob);
+    if(recovered) URL.revokeObjectURL(recovered.url);   // only now the new blob is validated + built — a rejected reveal above must not have revoked the still-displayed old image
     const rimg = $("#rimg");
     // unencrypted payloads have no GCM integrity tag: corrupt bytes can still decode from Base64 and
     // keep the MAGIC header, so parsePlain "succeeds" but the image won't render. Catch that decode
@@ -1118,7 +1118,7 @@ async function doReveal(){
     rimg.src = url;
     rimg.alt = `Received image (${fmtKB(img.length)}, ${resolvedMime})`;
     $("#rCaption").textContent = `${fmtKB(img.length)} · ${resolvedMime}`;   // visible size/type under the image
-    const ext = resolvedMime.includes("jpeg") ? "jpg" : resolvedMime.includes("png") ? "png" : "webp";
+    const ext = { "image/jpeg":"jpg", "image/png":"png", "image/gif":"gif", "image/avif":"avif", "image/webp":"webp" }[resolvedMime] || "webp";
     recovered = { url, mime: resolvedMime, ext };
     $("#result").classList.remove("hidden");
     $("#result").removeAttribute("aria-hidden");
@@ -1126,7 +1126,7 @@ async function doReveal(){
     note.className="note ok"; note.textContent="Received. ✓";
     document.title = "✓ Image received — Carrier";
     setTimeout(()=>{ if(!$("#recv").classList.contains("hidden")) $("#save").focus(); }, 400);
-  }catch(err){ note.className="note err"; note.textContent = err instanceof Error ? err.message : String(err); $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true"); $("#rimg").alt = "Received image"; }
+  }catch(err){ clearReveal(); note.className="note err"; note.textContent = err instanceof Error ? err.message : String(err); $("#rimg").alt = "Received image"; }   // clearReveal revokes+nulls recovered so a failed reveal never leaves it dangling at a dead URL
   finally { revealing = false; revBtn.textContent = "Reveal image"; revBtn.removeAttribute("aria-busy"); }
 }
 $("#reveal").addEventListener("click", doReveal);
