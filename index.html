@@ -505,10 +505,14 @@ function drawScaled(img, maxDim){
 }
 function encodeCanvas(cv, q){
   return new Promise((res,rej)=>{
+    // a UA that can't ENCODE webp doesn't return null — per spec it substitutes image/png and returns
+    // a non-null blob. Keying the fallback on null therefore mislabelled that PNG as webp and, since PNG
+    // is lossless, made the quality slider and autoFit search no-ops. Accept the webp branch only when
+    // the blob is actually webp; otherwise fall back to JPEG and trust the blob's real type.
     cv.toBlob(b=>{
-      if(b){ srcMime = "image/webp"; res(b); }
+      if(b && b.type === "image/webp"){ srcMime = "image/webp"; res(b); }
       else cv.toBlob(b2=>{
-        if(b2){ srcMime = "image/jpeg"; res(b2); }
+        if(b2){ srcMime = b2.type || "image/jpeg"; res(b2); }
         else rej(new Error("Couldn't encode image — canvas may be tainted or the browser blocked encoding."));
       }, "image/jpeg", q);
     }, "image/webp", q);
