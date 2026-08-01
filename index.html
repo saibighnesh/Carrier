@@ -632,7 +632,7 @@ function makeChunkCard(c, i){
     `<div class="head"><span class="pill" title="Part ${i+1} of ${lastChunks.length}">${pillLabel}</span>
      <span style="font-family:var(--mono);font-size:10px;color:var(--faint);margin-right:auto;padding-left:10px">${c.length.toLocaleString()} chars</span>
      <button type="button" class="copyone" data-i="${i}" aria-label="Copy message ${i+1} of ${lastChunks.length}" data-orig-label="Copy message ${i+1} of ${lastChunks.length}">Copy</button></div>
-     <div class="data" tabindex="0" translate="no" aria-label="Message ${i+1} of ${lastChunks.length} content — use Copy button to copy"></div>`;
+     <div class="data" data-i="${i}" tabindex="0" translate="no" aria-label="Message ${i+1} of ${lastChunks.length} content — use Copy button to copy"></div>`;
   el.querySelector(".data").textContent = preview;
   return el;
 }
@@ -674,6 +674,19 @@ function renderChunks(){
     };
   });
 }
+
+// the .data box only shows a truncated preview (…) for performance, but it's user-select:all/cursor:copy,
+// which invites a manual Ctrl-C. Intercept that copy and substitute the FULL chunk so a hand-copied card
+// is never the unusable 280-char fragment the receiver can't decode.
+$("#chunks").addEventListener("copy", e=>{
+  const d = e.target.closest && e.target.closest(".data");
+  if(!d) return;
+  const i = +d.dataset.i;
+  if(Number.isInteger(i) && lastChunks[i] != null && e.clipboardData){
+    e.clipboardData.setData("text/plain", lastChunks[i]);
+    e.preventDefault();
+  }
+});
 
 let debounce;
 function queueRefresh(){ clearTimeout(debounce); debounce = setTimeout(refresh, 180); }
@@ -937,7 +950,9 @@ $("#startOver").addEventListener("click", resetSend);
 document.addEventListener("keydown", e=>{
   if(e.key !== "Escape" || $("#send").classList.contains("hidden") || !srcImage) return;
   const ae = document.activeElement;
-  if(ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA")) return;
+  // never hijack Esc from a control that has its own Escape meaning — a SELECT (close the dropdown) or
+  // a BUTTON, as well as text fields; otherwise the dropdown-dismiss reflex would wipe the whole session
+  if(ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA" || ae.tagName === "SELECT" || ae.tagName === "BUTTON" || ae.isContentEditable)) return;
   resetSend();
 });
 
