@@ -543,6 +543,7 @@ async function autoFit(){
 const prefersReducedMotion = ()=>window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const scrollBehavior = ()=>prefersReducedMotion() ? "auto" : "smooth";
 let lastChunks = [], thumbUrl = null, refreshing = false, pendingRefresh = false, copyAllBusy = false;
+let lastPreviewBytes = null, lastPreviewMime = "image/webp";   // latest compressed bytes, for the full-size zoom tab
 const copyAllLabel = () => lastChunks.length === 1 ? "Copy message" : "Copy all messages";
 async function refresh(){
   if(!srcImage) return;
@@ -556,6 +557,7 @@ async function refresh(){
   if(thumbUrl) URL.revokeObjectURL(thumbUrl);
   const blob = new Blob([img], {type:srcMime});
   thumbUrl = URL.createObjectURL(blob);
+  lastPreviewBytes = img; lastPreviewMime = srcMime;   // keep the bytes so a zoom can mint its own URL
   $("#thumb").src = thumbUrl;
   // pack with current password to get true size — use the raw value (no trim): a password is an
   // exact secret, and trimming let an all-whitespace entry collapse to "" and ship UNENCRYPTED
@@ -933,6 +935,7 @@ function resetSend(){
   clearTimeout(debounce);
   loadToken++;   // invalidate any in-flight handleFile decode so it can't repopulate the panels after this reset
   if(thumbUrl){ URL.revokeObjectURL(thumbUrl); thumbUrl = null; }
+  lastPreviewBytes = null;
   srcImage = null; lastChunks = [];
   $("#chunks").innerHTML = "";
   ["tunePanel","lockPanel","outPanel"].forEach(id => $("#"+id).classList.add("hidden"));
@@ -1147,7 +1150,14 @@ function bindZoom(imgId, getUrl){
 }
 bindZoom("rimg", ()=>recovered && recovered.url);
 // click the compressed preview to inspect it full size — the thumbnail is only 160px
-bindZoom("thumb", ()=>thumbUrl);
+// the thumbnail's own blob URL (#thumb.src) is revoked on the next refresh, which would blank a tab
+// opened from it — so mint a fresh, independently-owned URL for the zoom and reclaim it after a minute
+bindZoom("thumb", ()=>{
+  if(!lastPreviewBytes) return null;
+  const u = URL.createObjectURL(new Blob([lastPreviewBytes], {type:lastPreviewMime}));
+  setTimeout(()=>URL.revokeObjectURL(u), 60000);
+  return u;
+});
 $("#save").addEventListener("click", ()=>{
   if(!recovered) return;
   const ts = new Date().toISOString().replace(/[:.]/g,"-").slice(0,19);
