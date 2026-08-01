@@ -234,7 +234,7 @@
     <div class="panel hidden" id="tunePanel" role="group" tabindex="-1" aria-labelledby="tunePanelLabel">
       <span class="lbl" id="tunePanelLabel">2 · Squeeze to fit</span>
       <div class="preview">
-        <img id="thumb" alt="Compressed preview" title="Live preview at the current quality and size — click to open full size in a new tab" draggable="false" loading="eager" decoding="async" width="160" height="160">
+        <img id="thumb" alt="Compressed preview" title="Live preview at the current quality and size — click to open full size in a new tab" draggable="false" loading="eager" decoding="async" width="160" height="160" tabindex="0" role="button" aria-label="Open the compressed preview full size in a new tab">
         <div class="controls">
           <div class="row">
             <label for="quality">Quality</label>
@@ -332,7 +332,7 @@
       <p class="note" id="rNote" role="status"></p>
       <p class="note kbdhint" aria-hidden="true"><kbd>Ctrl/Cmd</kbd>+<kbd>Enter</kbd> reveals · <kbd>Esc</kbd> clears the box</p>
       <div class="result hidden" id="result" role="region" aria-label="Received image" aria-hidden="true">
-        <img id="rimg" alt="Received image" loading="eager" decoding="async" draggable="false" title="Open full size in a new tab">
+        <img id="rimg" alt="Received image" loading="eager" decoding="async" draggable="false" title="Open full size in a new tab" tabindex="0" role="button" aria-label="Open the received image full size in a new tab">
         <p class="note" id="rCaption" translate="no" style="text-align:center"></p>
         <div class="btnrow btnrow--spaced btnrow--centered">
           <button type="button" class="btn teal" id="save" title="Saves the recovered image to your device as a timestamped file">Download received image</button>
@@ -1131,9 +1131,17 @@ async function doReveal(){
 }
 $("#reveal").addEventListener("click", doReveal);
 // click the revealed image to open it full size in a new tab (the on-page view is capped at 80vh)
-$("#rimg").addEventListener("click", ()=>{ if(recovered) window.open(recovered.url, "_blank", "noopener"); });
+// open a zoomable image in a new tab, reachable by both mouse and keyboard (Enter/Space) since these
+// are role=button; a plain <img> click handler alone is unreachable for keyboard/AT users (WCAG 2.1.1)
+function bindZoom(imgId, getUrl){
+  const el = $("#"+imgId);
+  const open = ()=>{ const u = getUrl(); if(u) window.open(u, "_blank", "noopener"); };
+  el.addEventListener("click", open);
+  el.addEventListener("keydown", e=>{ if(e.key === "Enter" || e.key === " "){ e.preventDefault(); open(); } });
+}
+bindZoom("rimg", ()=>recovered && recovered.url);
 // click the compressed preview to inspect it full size — the thumbnail is only 160px
-$("#thumb").addEventListener("click", ()=>{ if(thumbUrl) window.open(thumbUrl, "_blank", "noopener"); });
+bindZoom("thumb", ()=>thumbUrl);
 $("#save").addEventListener("click", ()=>{
   if(!recovered) return;
   const ts = new Date().toISOString().replace(/[:.]/g,"-").slice(0,19);
