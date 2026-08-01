@@ -279,8 +279,8 @@
       </div>
       <div class="stats" role="region" aria-label="Compression statistics">
         <div class="stat"><div class="k" title="Original image pixel dimensions">Original</div><div class="v" id="origOut" translate="no">—</div></div>
-        <div class="stat"><div class="k" title="Compressed image size and pixel dimensions">Compressed</div><div class="v" id="sizeOut" translate="no" aria-live="polite" aria-atomic="true">—</div></div>
-        <div class="stat"><div class="k" title="Total Base64 characters to send">As text</div><div class="v" id="charOut" translate="no" aria-live="polite" aria-atomic="true">—</div></div>
+        <div class="stat"><div class="k" title="Compressed image size and pixel dimensions">Compressed</div><div class="v" id="sizeOut" aria-live="polite" aria-atomic="true">—</div></div>
+        <div class="stat"><div class="k" title="Total Base64 characters to send">As text</div><div class="v" id="charOut" aria-live="polite" aria-atomic="true">—</div></div>
         <div class="stat"><div class="k" title="Number of chat messages needed">Messages</div><div class="v" id="msgOut" translate="no" aria-live="polite" aria-atomic="true">—</div></div>
       </div>
       <p class="note" id="fitNote" role="status"></p>
@@ -568,8 +568,10 @@ async function refresh(){
     const pct = Math.round(img.length / origBytes * 100);
     pctOrig = pct < 100 ? ` · ${pct}% of original` : " · no smaller than original";
   }
-  $("#sizeOut").innerHTML = fmtKB(img.length) + ` <small>${img._w}×${img._h}${pctOrig}</small>`;
-  $("#charOut").innerHTML = b64.length.toLocaleString() + " <small>chars</small>";
+  // scope translate=no to the numbers/units only, so page-translation can still render the prose
+  // ("% of original", "chars") while never rewriting the digits, KB/MB, or the × separator
+  $("#sizeOut").innerHTML = `<span translate="no">${fmtKB(img.length)}</span> <small><span translate="no">${img._w}×${img._h}</span>${pctOrig}</small>`;
+  $("#charOut").innerHTML = `<span translate="no">${b64.length.toLocaleString()}</span> <small>chars</small>`;
   $("#msgOut").textContent = lastChunks.length;
   // meter (fill of one message) — divide by the real data capacity (limit minus the chunk prefix),
   // not the raw limit, so at small app limits the % doesn't read "under" while already spilling to 2 parts
