@@ -1112,7 +1112,8 @@ $("#rimg").addEventListener("click", ()=>{ if(recovered) window.open(recovered.u
 $("#save").addEventListener("click", ()=>{
   if(!recovered) return;
   const ts = new Date().toISOString().replace(/[:.]/g,"-").slice(0,19);
-  downloadURL(recovered.url, `carrier-image-${ts}.${recovered.ext}`);   // don't revoke — #rimg still uses this URL
+  const rand = Math.random().toString(16).slice(2,6);   // avoid overwriting a prior save made within the same second
+  downloadURL(recovered.url, `carrier-image-${ts}-${rand}.${recovered.ext}`);   // don't revoke — #rimg still uses this URL
   flashButton($("#save"), "Saved ✓", "Image saved to your device");
 });
 
