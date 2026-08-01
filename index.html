@@ -1004,6 +1004,9 @@ function maybeAutoReveal(){
   if(revealing) return;
   const r = reassemble($("#inbox").value);
   if(!r || r.missing.length) return;
+  // never auto-reveal when the box holds more than one session: "most complete" could silently pick a
+  // stray leftover chunk over a freshly-pasted (momentarily incomplete) image. Ambiguity → user decides.
+  if(r.multiSession) return;
   const flags = headerFlags(r.s);
   if(flags === null || (flags & 1)) return;
   doReveal();
