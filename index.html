@@ -85,7 +85,7 @@
 
   .preview{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;margin-bottom:16px}
   .preview img{width:160px;height:160px;border-radius:8px;border:1px solid var(--line);
-    background:#0008;object-fit:scale-down}
+    background:#0008;object-fit:scale-down;cursor:zoom-in}
   .controls{flex:1;min-width:min(240px,100%)}
 
   .row{display:flex;align-items:center;gap:12px;margin:14px 0}
@@ -234,7 +234,7 @@
     <div class="panel hidden" id="tunePanel" role="group" tabindex="-1" aria-labelledby="tunePanelLabel">
       <span class="lbl" id="tunePanelLabel">2 · Squeeze to fit</span>
       <div class="preview">
-        <img id="thumb" alt="Compressed preview" title="Live preview of how the image looks at the current quality and size" draggable="false" loading="eager" decoding="async" width="160" height="160">
+        <img id="thumb" alt="Compressed preview" title="Live preview at the current quality and size — click to open full size in a new tab" draggable="false" loading="eager" decoding="async" width="160" height="160">
         <div class="controls">
           <div class="row">
             <label for="quality">Quality</label>
@@ -1109,6 +1109,8 @@ async function doReveal(){
 $("#reveal").addEventListener("click", doReveal);
 // click the revealed image to open it full size in a new tab (the on-page view is capped at 80vh)
 $("#rimg").addEventListener("click", ()=>{ if(recovered) window.open(recovered.url, "_blank", "noopener"); });
+// click the compressed preview to inspect it full size — the thumbnail is only 160px
+$("#thumb").addEventListener("click", ()=>{ if(thumbUrl) window.open(thumbUrl, "_blank", "noopener"); });
 $("#save").addEventListener("click", ()=>{
   if(!recovered) return;
   const ts = new Date().toISOString().replace(/[:.]/g,"-").slice(0,19);
