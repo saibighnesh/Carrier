@@ -1127,6 +1127,15 @@ async function doReveal(){
       note.textContent = "The data decoded, but it isn't a valid image — the message is likely corrupted or was altered in transit.";
       document.title = "Carrier — receive images";
     };
+    // once the blob decodes, fold in the pixel dimensions so the receive caption matches the
+    // send-side "Compressed W×H" stat — the size/type is shown immediately, dimensions land on load
+    rimg.onload = ()=>{
+      if(!recovered || recovered.url !== url) return;   // a newer reveal already replaced this image
+      if(!rimg.naturalWidth || !rimg.naturalHeight) return;
+      const dims = `${rimg.naturalWidth}×${rimg.naturalHeight}`;
+      rimg.alt = `Received image (${fmtKB(img.length)}, ${resolvedMime}, ${dims})`;
+      $("#rCaption").textContent = `${fmtKB(img.length)} · ${resolvedMime} · ${dims}`;
+    };
     rimg.src = url;
     rimg.alt = `Received image (${fmtKB(img.length)}, ${resolvedMime})`;
     $("#rCaption").textContent = `${fmtKB(img.length)} · ${resolvedMime}`;   // visible size/type under the image
