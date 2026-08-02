@@ -928,7 +928,11 @@ async function handleFile(file){
     $("#tunePanel").focus();
   }catch(err){
     if(myToken !== loadToken) return;   // abandoned during decode — don't surface an error for a file the user dropped
-    drop.querySelector("strong").textContent = DROP_STRONG_DEFAULT; showDropErr(err instanceof Error ? err.message : String(err));
+    // a FAILED replace must not blank only the bold prompt while #small, the tooltip, aria-label, and the
+    // still-open panels all keep showing the previous (still-loaded) image — restore the bold to that image's
+    // name so the drop zone stays self-consistent; fall back to the empty-state prompt only if nothing is loaded
+    drop.querySelector("strong").textContent = (srcImage && srcImage._name) ? srcImage._name : DROP_STRONG_DEFAULT;
+    showDropErr(err instanceof Error ? err.message : String(err));
   }
   finally{ handling = false; }
 }
