@@ -874,6 +874,7 @@ const drop = $("#drop"), fileInput = $("#file");
 // capture the drop zone's default copy from the rendered HTML so Start over restores it without a second hardcoded source
 const DROP_STRONG_DEFAULT = drop.querySelector("strong").textContent;
 const DROP_SMALL_DEFAULT = drop.querySelector("small").textContent;
+const DROP_TITLE_DEFAULT = drop.title;   // restored on Start over; swapped to "replace" wording once an image is loaded
 drop.addEventListener("click", ()=>fileInput.click());
 drop.addEventListener("keydown", e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();fileInput.click();} });
 ["dragover","dragenter"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("over");}));
@@ -915,6 +916,7 @@ async function handleFile(file){
     srcImage._bytes = file.size;   // remember the original size to show the compression ratio in stats
     const sizeStr = fmtKB(file.size);
     drop.setAttribute("aria-label","Replace image");
+    drop.title = "Drop or click to choose a different image, or paste with Ctrl/Cmd+V";   // match the "Replace image" state
     $("#tunePanel").classList.remove("hidden");
     drop.querySelector("strong").textContent = file.name;
     drop.querySelector("small").textContent = `${sizeStr} · ${srcImage.naturalWidth}×${srcImage.naturalHeight}`;
@@ -947,6 +949,7 @@ function resetSend(){
   $("#fitNote").className = "note"; $("#fitNote").textContent = "";
   $("#thumb").removeAttribute("src"); $("#thumb").alt = "Compressed preview";
   drop.setAttribute("aria-label","Choose an image");
+  drop.title = DROP_TITLE_DEFAULT;
   drop.querySelector("strong").textContent = DROP_STRONG_DEFAULT;
   drop.querySelector("small").textContent = DROP_SMALL_DEFAULT;
   clearDropErr();
