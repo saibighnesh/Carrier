@@ -1145,7 +1145,7 @@ async function doReveal(){
     rimg.alt = `Received image (${fmtKB(img.length)}, ${resolvedMime})`;
     $("#rCaption").textContent = `${fmtKB(img.length)} · ${resolvedMime}`;   // visible size/type under the image
     const ext = { "image/jpeg":"jpg", "image/png":"png", "image/gif":"gif", "image/avif":"avif", "image/webp":"webp" }[resolvedMime] || "webp";
-    recovered = { url, mime: resolvedMime, ext };
+    recovered = { url, mime: resolvedMime, ext, bytes: img };   // keep bytes so the zoom can mint its own URL
     $("#save").title = `Save this ${fmtKB(img.length)} ${resolvedMime} image to your device`;
     $("#result").classList.remove("hidden");
     $("#result").removeAttribute("aria-hidden");
@@ -1166,7 +1166,16 @@ function bindZoom(imgId, getUrl){
   el.addEventListener("click", open);
   el.addEventListener("keydown", e=>{ if(e.key === "Enter" || e.key === " "){ e.preventDefault(); open(); } });
 }
-bindZoom("rimg", ()=>recovered && recovered.url);
+// the received image's #rimg.src (== recovered.url) is revoked on every teardown — a fresh paste, a
+// keystroke that clears an "ok" reveal, mode switch, or a later reveal — which would blank a tab opened
+// from it. Mint a fresh, independently-owned URL for the zoom (same treatment #thumb got) so the open
+// tab survives; reclaim it after a minute.
+bindZoom("rimg", ()=>{
+  if(!recovered) return null;
+  const u = URL.createObjectURL(new Blob([recovered.bytes], {type:recovered.mime}));
+  setTimeout(()=>URL.revokeObjectURL(u), 60000);
+  return u;
+});
 // click the compressed preview to inspect it full size — the thumbnail is only 160px
 // the thumbnail's own blob URL (#thumb.src) is revoked on the next refresh, which would blank a tab
 // opened from it — so mint a fresh, independently-owned URL for the zoom and reclaim it after a minute
