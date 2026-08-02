@@ -1021,9 +1021,11 @@ $("#inbox").addEventListener("blur", ()=>{ const v=$("#inbox").value; const t=v.
 $("#inbox").addEventListener("paste", ()=>{ setTimeout(()=>{ clearTimeout(progDebounce); updateProgress(); maybeAutoReveal(); }, 0); });
 
 let recovered = null, revealing = false;
+const SAVE_TITLE_DEFAULT = $("#save").title;   // restored on clear; made specific (size · type) once an image is revealed
 // tear down any revealed image and clear the reveal note (does NOT touch the inbox/password)
 function clearReveal(){
   $("#rNote").className="note"; $("#rNote").textContent="";
+  $("#save").title = SAVE_TITLE_DEFAULT;
   if(recovered){ URL.revokeObjectURL(recovered.url); recovered = null; }
   $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true");
   $("#rCaption").textContent = "";
@@ -1144,6 +1146,7 @@ async function doReveal(){
     $("#rCaption").textContent = `${fmtKB(img.length)} · ${resolvedMime}`;   // visible size/type under the image
     const ext = { "image/jpeg":"jpg", "image/png":"png", "image/gif":"gif", "image/avif":"avif", "image/webp":"webp" }[resolvedMime] || "webp";
     recovered = { url, mime: resolvedMime, ext };
+    $("#save").title = `Save this ${fmtKB(img.length)} ${resolvedMime} image to your device`;
     $("#result").classList.remove("hidden");
     $("#result").removeAttribute("aria-hidden");
     $("#result").scrollIntoView({behavior:scrollBehavior(),block:"nearest"});
