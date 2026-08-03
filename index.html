@@ -1158,23 +1158,24 @@ async function doReveal(){
       note.textContent = "The data decoded, but it isn't a valid image — the message is likely corrupted or was altered in transit.";
       document.title = "Carrier — receive images";
     };
+    const parts = `${r.total} part${r.total>1?"s":""}`;   // provenance: how many chunks rebuilt this image
     // once the blob decodes, fold in the pixel dimensions so the receive caption matches the
     // send-side "Compressed W×H" stat — the size/type is shown immediately, dimensions land on load
     rimg.onload = ()=>{
       if(!recovered || recovered.url !== url) return;   // a newer reveal already replaced this image
       if(!rimg.naturalWidth || !rimg.naturalHeight) return;
       const dims = `${rimg.naturalWidth}×${rimg.naturalHeight}`;
-      rimg.alt = `Received image (${fmtKB(img.length)}, ${resolvedMime}, ${dims})`;
-      $("#rCaption").textContent = `${fmtKB(img.length)} · ${resolvedMime} · ${dims}`;
-      $("#result").setAttribute("aria-label", `Received image · ${fmtKB(img.length)} · ${resolvedMime} · ${dims}`);
+      rimg.alt = `Received image (${fmtKB(img.length)}, ${resolvedMime}, ${dims}, ${parts})`;
+      $("#rCaption").textContent = `${fmtKB(img.length)} · ${resolvedMime} · ${dims} · ${parts}`;
+      $("#result").setAttribute("aria-label", `Received image · ${fmtKB(img.length)} · ${resolvedMime} · ${dims} · ${parts}`);
     };
     rimg.src = url;
     rimg.alt = `Received image (${fmtKB(img.length)}, ${resolvedMime})`;
-    $("#rCaption").textContent = `${fmtKB(img.length)} · ${resolvedMime}`;   // visible size/type under the image
+    $("#rCaption").textContent = `${fmtKB(img.length)} · ${resolvedMime} · ${parts}`;   // visible size/type/parts under the image
     const ext = { "image/jpeg":"jpg", "image/png":"png", "image/gif":"gif", "image/avif":"avif", "image/webp":"webp" }[resolvedMime] || "webp";
     recovered = { url, mime: resolvedMime, ext, bytes: img };   // keep bytes so the zoom can mint its own URL
     $("#save").title = `Save this ${fmtKB(img.length)} ${resolvedMime} image to your device`;
-    $("#result").setAttribute("aria-label", `Received image · ${fmtKB(img.length)} · ${resolvedMime}`);   // dims fold in on load
+    $("#result").setAttribute("aria-label", `Received image · ${fmtKB(img.length)} · ${resolvedMime} · ${parts}`);   // dims fold in on load
     $("#result").classList.remove("hidden");
     $("#result").removeAttribute("aria-hidden");
     $("#result").scrollIntoView({behavior:scrollBehavior(),block:"nearest"});
