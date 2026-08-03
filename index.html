@@ -606,6 +606,7 @@ async function refresh(){
   const note = $("#fitNote");
   const app = MSG_LIMITS[String(msgLimit)] || "this app";
   $("#meterTrack").title = `How full one ${app} message is — over 100% splits into multiple parts`;   // name the app the limit is for
+  $("#meterTrack").setAttribute("aria-label", `${app} message size`);   // name the app for screen readers too, not just the tooltip
   if(lastChunks.length === 1){
     note.className = "note ok";
     note.textContent = `Fits in a single ${app} message. ✓`;
