@@ -1280,6 +1280,11 @@ window.addEventListener("pageshow", e=>{
     recovered = null;
     $("#rimg").removeAttribute("src"); $("#rimg").alt = "Received image"; $("#rCaption").textContent = "";
     $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true");
+    $("#result").setAttribute("aria-label","Received image");
+    // the reveal also set a green "Received. ✓" note and a "✓ Image received" title; clear both, or the
+    // restored page shows success chrome pointing at an image that's no longer there
+    $("#rNote").className = "note"; $("#rNote").textContent = "";
+    if(!$("#recv").classList.contains("hidden")) document.title = "Carrier — receive images";
   }
 });
 
