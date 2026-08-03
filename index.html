@@ -872,7 +872,12 @@ function cancelFlash(btn){
 }
 $("#saveTxt").addEventListener("click", ()=>{
   if(!lastChunks.length) return;
-  const blob = new Blob([lastChunks.join("\n\n")], {type:"text/plain"});
+  // prepend a human-readable header so a saved backup is self-documenting. The Receive parser only
+  // matches "PXT/…" chunks (reassemble's regex), so this comment line is ignored on load — safe to include.
+  const appName = MSG_LIMITS[String(msgLimit)] || "your chat app";
+  const n = lastChunks.length;
+  const header = `# Carrier — ${n} message${n!==1?"s":""} for ${appName}. Paste every line below into Carrier's Receive tab (order doesn't matter) to rebuild the image.\n\n`;
+  const blob = new Blob([header + lastChunks.join("\n\n")], {type:"text/plain"});
   // reclaim the *previous* save's URL now rather than on a fixed timer: a timer set too short frees the
   // blob before a lingering "Always ask where to save" dialog reads it, producing a 0-byte/truncated
   // file. Keeping the URL alive until the next save (or pagehide) can't truncate and leaks at most one.
