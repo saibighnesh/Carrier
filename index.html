@@ -1280,14 +1280,18 @@ modeBtns.forEach((btn, idx)=>{
     if(m === "recv" && thumbUrl){ URL.revokeObjectURL(thumbUrl); thumbUrl = null; }
     // leaving Receive: tear the revealed image down fully via clearReveal so the result, its caption,
     // AND the "Received ✓" note all go — the note lives outside #result and otherwise stayed visible
-    if(m === "send") clearReveal();
     if(m === "send" && srcImage) queueRefresh();
     $("#send").classList.toggle("hidden", m!=="send");
     $("#recv").classList.toggle("hidden", m!=="recv");
+    // clearReveal only AFTER #recv is hidden: its title-setter keys on #recv visibility, so calling it
+    // while #recv was still visible stamped "receive images" onto a switch that goes INTO Send
+    if(m === "send") clearReveal();
     if(m === "send") clearDropErr();
     if(m === "recv") setTimeout(()=>{ if(!$("#recv").classList.contains("hidden") && e.isTrusted) $("#inbox").focus(); }, 50);
     if(m === "recv") document.title = "Carrier — receive images";
-    else if(!srcImage) document.title = "Carrier — send images through text-only chats";
+    // set a correct Send title immediately (refresh() refines it with the message count ~180ms later).
+    // Unconditional — not gated on !srcImage — so it always overrides any prior receive-mode title.
+    else document.title = (srcImage && srcImage._name) ? `${srcImage._name} — Carrier` : "Carrier — send images through text-only chats";
   });
   btn.addEventListener("keydown", e=>{
     let target = null;
