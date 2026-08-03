@@ -436,8 +436,19 @@ async function unpack(b64, password){
 /* ---------- chunking ---------- */
 function chunkify(b64){
   const sid = Array.from(crypto.getRandomValues(new Uint8Array(3)), b => b.toString(16).padStart(2,'0')).join('');
-  const per = msgLimit - 24;
-  const total = Math.max(1, Math.ceil(b64.length / per));
+  // the prefix is "PXT/" + sid + "/" + index + "/" + total + "/", so its length grows with the digit-count
+  // of index and total. A fixed 24-char reserve underestimates once both numbers reach 6 digits (≥100k
+  // chunks on a tiny per-message limit), letting a chunk exceed msgLimit — which a transport may split or
+  // truncate, silently losing data. Size `per` from the real prefix, iterating until total stops growing.
+  const fixed = 4 + sid.length + 3;   // "PXT/" + sid + the three "/" separators
+  let per = Math.max(1, msgLimit - 24), total = Math.max(1, Math.ceil(b64.length / per));
+  for(let k=0;k<4;k++){
+    const prefixLen = fixed + 2 * String(total).length;   // index ≤ total, so both fit in total's digit-count
+    const p = Math.max(1, msgLimit - prefixLen);
+    const t = Math.max(1, Math.ceil(b64.length / p));
+    if(p === per && t === total) break;
+    per = p; total = t;
+  }
   const out = [];
   for(let i=0;i<total;i++)
     out.push(`PXT/${sid}/${i+1}/${total}/` + b64.slice(i*per,(i+1)*per));
