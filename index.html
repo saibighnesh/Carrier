@@ -436,8 +436,19 @@ async function unpack(b64, password){
 /* ---------- chunking ---------- */
 function chunkify(b64){
   const sid = Array.from(crypto.getRandomValues(new Uint8Array(3)), b => b.toString(16).padStart(2,'0')).join('');
-  const per = msgLimit - 24;
-  const total = Math.max(1, Math.ceil(b64.length / per));
+  // the prefix is "PXT/" + sid + "/" + index + "/" + total + "/", so its length grows with the digit-count
+  // of index and total. A fixed 24-char reserve underestimates once both numbers reach 6 digits (≥100k
+  // chunks on a tiny per-message limit), letting a chunk exceed msgLimit — which a transport may split or
+  // truncate, silently losing data. Size `per` from the real prefix, iterating until total stops growing.
+  const fixed = 4 + sid.length + 3;   // "PXT/" + sid + the three "/" separators
+  let per = Math.max(1, msgLimit - 24), total = Math.max(1, Math.ceil(b64.length / per));
+  for(let k=0;k<4;k++){
+    const prefixLen = fixed + 2 * String(total).length;   // index ≤ total, so both fit in total's digit-count
+    const p = Math.max(1, msgLimit - prefixLen);
+    const t = Math.max(1, Math.ceil(b64.length / p));
+    if(p === per && t === total) break;
+    per = p; total = t;
+  }
   const out = [];
   for(let i=0;i<total;i++)
     out.push(`PXT/${sid}/${i+1}/${total}/` + b64.slice(i*per,(i+1)*per));
@@ -1269,14 +1280,18 @@ modeBtns.forEach((btn, idx)=>{
     if(m === "recv" && thumbUrl){ URL.revokeObjectURL(thumbUrl); thumbUrl = null; }
     // leaving Receive: tear the revealed image down fully via clearReveal so the result, its caption,
     // AND the "Received ✓" note all go — the note lives outside #result and otherwise stayed visible
-    if(m === "send") clearReveal();
     if(m === "send" && srcImage) queueRefresh();
     $("#send").classList.toggle("hidden", m!=="send");
     $("#recv").classList.toggle("hidden", m!=="recv");
+    // clearReveal only AFTER #recv is hidden: its title-setter keys on #recv visibility, so calling it
+    // while #recv was still visible stamped "receive images" onto a switch that goes INTO Send
+    if(m === "send") clearReveal();
     if(m === "send") clearDropErr();
     if(m === "recv") setTimeout(()=>{ if(!$("#recv").classList.contains("hidden") && e.isTrusted) $("#inbox").focus(); }, 50);
     if(m === "recv") document.title = "Carrier — receive images";
-    else if(!srcImage) document.title = "Carrier — send images through text-only chats";
+    // set a correct Send title immediately (refresh() refines it with the message count ~180ms later).
+    // Unconditional — not gated on !srcImage — so it always overrides any prior receive-mode title.
+    else document.title = (srcImage && srcImage._name) ? `${srcImage._name} — Carrier` : "Carrier — send images through text-only chats";
   });
   btn.addEventListener("keydown", e=>{
     let target = null;
