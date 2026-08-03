@@ -1032,6 +1032,7 @@ function clearReveal(){
   $("#save").title = SAVE_TITLE_DEFAULT;
   if(recovered){ URL.revokeObjectURL(recovered.url); recovered = null; }
   $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true");
+  $("#result").setAttribute("aria-label","Received image");
   $("#rCaption").textContent = "";
   if(!$("#recv").classList.contains("hidden")) document.title = "Carrier — receive images";   // drop the "✓ received" title once the image is torn down
 }
@@ -1144,6 +1145,7 @@ async function doReveal(){
       const dims = `${rimg.naturalWidth}×${rimg.naturalHeight}`;
       rimg.alt = `Received image (${fmtKB(img.length)}, ${resolvedMime}, ${dims})`;
       $("#rCaption").textContent = `${fmtKB(img.length)} · ${resolvedMime} · ${dims}`;
+      $("#result").setAttribute("aria-label", `Received image · ${fmtKB(img.length)} · ${resolvedMime} · ${dims}`);
     };
     rimg.src = url;
     rimg.alt = `Received image (${fmtKB(img.length)}, ${resolvedMime})`;
@@ -1151,6 +1153,7 @@ async function doReveal(){
     const ext = { "image/jpeg":"jpg", "image/png":"png", "image/gif":"gif", "image/avif":"avif", "image/webp":"webp" }[resolvedMime] || "webp";
     recovered = { url, mime: resolvedMime, ext, bytes: img };   // keep bytes so the zoom can mint its own URL
     $("#save").title = `Save this ${fmtKB(img.length)} ${resolvedMime} image to your device`;
+    $("#result").setAttribute("aria-label", `Received image · ${fmtKB(img.length)} · ${resolvedMime}`);   // dims fold in on load
     $("#result").classList.remove("hidden");
     $("#result").removeAttribute("aria-hidden");
     $("#result").scrollIntoView({behavior:scrollBehavior(),block:"nearest"});
