@@ -1009,7 +1009,8 @@ function updateProgress(){
     const approx = fmtKB(Math.floor(r.s.length * 3 / 4));
     p.append("Got all ", b(r.total), ` part${r.total>1?"s":""} (~${approx}). Ready to reveal.`);
   } else {
-    p.append("Got ", b(r.have), " of ", b(r.total), ` — still need part${r.missing.length>1?"s":""} ${r.missing.join(", ")}.`);
+    const pct = Math.round(r.have / r.total * 100);   // how far along the reassembly is, by part count
+    p.append("Got ", b(r.have), " of ", b(r.total), ` parts (${pct}%) — still need part${r.missing.length>1?"s":""} ${r.missing.join(", ")}.`);
   }
   if(r.multiSession){
     const warn = Object.assign(document.createElement("span"), {textContent: ` (${r.multiSession} different images detected — using the most complete one)`});
