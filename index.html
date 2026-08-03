@@ -935,17 +935,20 @@ async function handleFile(file){
     const img = await loadImage(file);
     if(myToken !== loadToken) return;   // Start over (or a newer load) ran during decode — don't resurrect this image
     srcImage = img;
-    srcImage._name = file.name;
+    // a pasted/dragged image can arrive with an empty File.name (notably from non-Chromium browsers);
+    // fall back to a placeholder so the bold prompt isn't blanked and the tab title isn't " — Carrier"
+    const name = file.name || "pasted image";
+    srcImage._name = name;
     srcImage._bytes = file.size;   // remember the original size to show the compression ratio in stats
     const sizeStr = fmtKB(file.size);
     drop.setAttribute("aria-label","Replace image");
     drop.title = "Drop or click to choose a different image, or paste with Ctrl/Cmd+V";   // match the "Replace image" state
     $("#tunePanel").classList.remove("hidden");
-    drop.querySelector("strong").textContent = file.name;
+    drop.querySelector("strong").textContent = name;
     drop.querySelector("small").textContent = `${sizeStr} · ${srcImage.naturalWidth}×${srcImage.naturalHeight}`;
-    $("#thumb").alt = `Compressed preview of ${file.name}`;
+    $("#thumb").alt = `Compressed preview of ${name}`;
     $("#origOut").innerHTML = sizeStr + ` <small>${srcImage.naturalWidth}×${srcImage.naturalHeight}</small>`;
-    document.title = `${file.name} — Carrier`;
+    document.title = `${name} — Carrier`;
     await refresh();
     $("#tunePanel").scrollIntoView({behavior:scrollBehavior(),block:"nearest"});
     $("#tunePanel").focus();
