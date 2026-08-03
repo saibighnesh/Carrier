@@ -1196,7 +1196,9 @@ $("#save").addEventListener("click", ()=>{
   if(!recovered) return;
   const ts = new Date().toISOString().replace(/[:.]/g,"-").slice(0,19);
   const rand = Math.random().toString(16).slice(2,6);   // avoid overwriting a prior save made within the same second
-  downloadURL(recovered.url, `carrier-image-${ts}-${rand}.${recovered.ext}`);   // don't revoke — #rimg still uses this URL
+  const rimg = $("#rimg");
+  const dims = (rimg.naturalWidth && rimg.naturalHeight) ? `-${rimg.naturalWidth}x${rimg.naturalHeight}` : "";   // record the pixel size in the filename
+  downloadURL(recovered.url, `carrier-image-${ts}-${rand}${dims}.${recovered.ext}`);   // don't revoke — #rimg still uses this URL
   flashButton($("#save"), "Saved ✓", "Image saved to your device");
 });
 
