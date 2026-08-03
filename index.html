@@ -1004,7 +1004,10 @@ function updateProgress(){
   const b = t => Object.assign(document.createElement("b"), {textContent: String(t)});
   if(r.missing.length===0){
     p.className = "progress ok";
-    p.append("Got all ", b(r.total), ` part${r.total>1?"s":""}. Ready to reveal.`);
+    // ~size of the assembled payload: Base64 decodes to ¾ its length (a rough figure — a couple bytes
+    // of padding — but enough to tell the user how big the incoming image is before they reveal it)
+    const approx = fmtKB(Math.floor(r.s.length * 3 / 4));
+    p.append("Got all ", b(r.total), ` part${r.total>1?"s":""} (~${approx}). Ready to reveal.`);
   } else {
     p.append("Got ", b(r.have), " of ", b(r.total), ` — still need part${r.missing.length>1?"s":""} ${r.missing.join(", ")}.`);
   }
