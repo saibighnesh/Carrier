@@ -542,7 +542,7 @@ async function autoFit(){
 /* ---------- SEND ui ---------- */
 const prefersReducedMotion = ()=>window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const scrollBehavior = ()=>prefersReducedMotion() ? "auto" : "smooth";
-let lastChunks = [], thumbUrl = null, refreshing = false, pendingRefresh = false, copyAllBusy = false;
+let lastChunks = [], thumbUrl = null, refreshing = false, pendingRefresh = false, copyAllBusy = false, lastTxtUrl = null;
 let lastPreviewBytes = null, lastPreviewMime = "image/webp";   // latest compressed bytes, for the full-size zoom tab
 const copyAllLabel = () => lastChunks.length === 1 ? "Copy message" : "Copy all messages";
 async function refresh(){
@@ -862,12 +862,16 @@ function cancelFlash(btn){
 $("#saveTxt").addEventListener("click", ()=>{
   if(!lastChunks.length) return;
   const blob = new Blob([lastChunks.join("\n\n")], {type:"text/plain"});
+  // reclaim the *previous* save's URL now rather than on a fixed timer: a timer set too short frees the
+  // blob before a lingering "Always ask where to save" dialog reads it, producing a 0-byte/truncated
+  // file. Keeping the URL alive until the next save (or pagehide) can't truncate and leaks at most one.
+  if(lastTxtUrl) URL.revokeObjectURL(lastTxtUrl);
   const url = URL.createObjectURL(blob);
+  lastTxtUrl = url;
   const base = (srcImage && srcImage._name ? srcImage._name.replace(/\.[^.]+$/, "") : "carrier").replace(/[^\w.-]+/g, "_").slice(0, 40) || "carrier";
   const app = (MSG_LIMITS[String(msgLimit)] || "").toLowerCase().replace(/[^a-z0-9]+/g, "");   // record which app's per-message limit these chunks fit
   const appTag = app ? `-${app}` : "";
   downloadURL(url, `${base}-carrier${appTag}-${lastChunks.length}msg.txt`);
-  setTimeout(()=>URL.revokeObjectURL(url), 10000);
   flashButton($("#saveTxt"), "Saved ✓", "Saved as text file");
 });
 
@@ -1235,6 +1239,7 @@ function maskPassword(id){
 window.addEventListener("pagehide", ()=>{
   if(thumbUrl) URL.revokeObjectURL(thumbUrl);
   if(recovered) URL.revokeObjectURL(recovered.url);
+  if(lastTxtUrl) URL.revokeObjectURL(lastTxtUrl);
 });
 // bfcache restore: scripts don't re-run but pagehide already revoked the blob URLs above, so #thumb
 // and #rimg point at freed objects and render broken. Rebuild the send preview and drop the stale
