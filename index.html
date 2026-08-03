@@ -864,7 +864,9 @@ $("#saveTxt").addEventListener("click", ()=>{
   const blob = new Blob([lastChunks.join("\n\n")], {type:"text/plain"});
   const url = URL.createObjectURL(blob);
   const base = (srcImage && srcImage._name ? srcImage._name.replace(/\.[^.]+$/, "") : "carrier").replace(/[^\w.-]+/g, "_").slice(0, 40) || "carrier";
-  downloadURL(url, `${base}-carrier-${lastChunks.length}msg.txt`);
+  const app = (MSG_LIMITS[String(msgLimit)] || "").toLowerCase().replace(/[^a-z0-9]+/g, "");   // record which app's per-message limit these chunks fit
+  const appTag = app ? `-${app}` : "";
+  downloadURL(url, `${base}-carrier${appTag}-${lastChunks.length}msg.txt`);
   setTimeout(()=>URL.revokeObjectURL(url), 10000);
   flashButton($("#saveTxt"), "Saved ✓", "Saved as text file");
 });
