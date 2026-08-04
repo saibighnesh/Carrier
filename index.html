@@ -481,10 +481,28 @@ function reassemble(text){
   // only keep chunks whose index is within [1,total] — a stray 0 or beyond-total index must not
   // inflate the "have" count or produce a "Got N of N, still need part N" contradiction
   for(const p of group){ const i = parseInt(p[2],10); if(i >= 1 && i <= total) map.set(i, p[4]); }
-  const missing = [];
+  // concatenate the present parts in index order (absent indices are simply skipped). NEVER iterate
+  // 1..total: <total> comes straight from the pasted text, so a corrupt/oversized value like 999999999
+  // would spin a billion-iteration loop and push a billion entries into `missing` — freezing / OOMing the
+  // tab on a single keystroke (updateProgress runs on every input). The scoring loop above is already
+  // bounded to present indices; this makes reassembly consistent with it.
+  const have = map.size;
   let s = "";
-  for(let i=1;i<=total;i++){ if(map.has(i)) s += map.get(i); else missing.push(i); }
-  return { s, total, have: map.size, missing, multiSession: sessions.length > 1 ? sessions.length : 0 };
+  for(const k of [...map.keys()].sort((a,b)=>a-b)) s += map.get(k);
+  // list only the first N missing indices for display; stop early so a huge <total> can't blow up here
+  // either. The loop is bounded by (max present index)+N — and present indices are limited by how many
+  // chunks were actually pasted, so it can never run away regardless of what <total> claims.
+  const MISSING_SHOWN = 50;
+  const missing = [];
+  let missingTrunc = false;
+  if(have < total){
+    for(let i=1;i<=total;i++){
+      if(map.has(i)) continue;
+      if(missing.length < MISSING_SHOWN) missing.push(i);
+      else { missingTrunc = true; break; }
+    }
+  }
+  return { s, total, have, missing, missingTrunc, multiSession: sessions.length > 1 ? sessions.length : 0 };
 }
 
 /* ---------- compression ---------- */
@@ -1027,7 +1045,7 @@ function updateProgress(){
     if(headerFlags(r.s) & 1) p.append(" 🔒 Locked — enter the password below, then Reveal.");
   } else {
     const pct = Math.round(r.have / r.total * 100);   // how far along the reassembly is, by part count
-    p.append("Got ", b(r.have), " of ", b(r.total), ` parts (${pct}%) — still need part${r.missing.length>1?"s":""} ${r.missing.join(", ")}.`);
+    p.append("Got ", b(r.have), " of ", b(r.total), ` parts (${pct}%) — still need part${r.missing.length>1?"s":""} ${r.missing.join(", ")}${r.missingTrunc?", …":""}.`);
   }
   if(r.multiSession){
     const warn = Object.assign(document.createElement("span"), {textContent: ` (${r.multiSession} different images detected — using the most complete one)`});
@@ -1151,7 +1169,7 @@ async function doReveal(){
     const r = reassemble($("#inbox").value);
     if(!r){ note.className="note err"; note.textContent="No Carrier message found in the box above."; return; }
     if(r.missing.length){ note.className="note err";
-      note.textContent = `Missing part${r.missing.length>1?"s":""} ${r.missing.join(", ")} — paste the remaining message(s) first.`; return; }
+      note.textContent = `Missing part${r.missing.length>1?"s":""} ${r.missing.join(", ")}${r.missingTrunc?", …":""} — paste the remaining message(s) first.`; return; }
     const { mime, img } = await unpack(r.s, $("#rpass").value);   // raw value — must match the sender's exactly, whitespace included
     const claimed = mime || "image/webp";
     // the mime is attacker-controlled (it comes straight from the decoded payload). Never build a blob
