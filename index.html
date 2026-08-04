@@ -1017,6 +1017,9 @@ function updateProgress(){
     // of padding — but enough to tell the user how big the incoming image is before they reveal it)
     const approx = fmtKB(Math.floor(r.s.length * 3 / 4));
     p.append("Got all ", b(r.total), ` part${r.total>1?"s":""} (~${approx}). Ready to reveal.`);
+    // peek the header without decrypting: a locked message won't auto-reveal, so tell the user a
+    // password is needed rather than leaving them to guess why nothing appeared
+    if(headerFlags(r.s) & 1) p.append(" 🔒 Locked — enter the password below, then Reveal.");
   } else {
     const pct = Math.round(r.have / r.total * 100);   // how far along the reassembly is, by part count
     p.append("Got ", b(r.have), " of ", b(r.total), ` parts (${pct}%) — still need part${r.missing.length>1?"s":""} ${r.missing.join(", ")}.`);
