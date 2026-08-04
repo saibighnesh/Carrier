@@ -667,6 +667,10 @@ function renderChunks(){
       : `Copies all ${lastChunks.length} messages separated by a blank line — paste the whole block into your chat`;
   }
   cancelFlash($("#saveTxt"));   // these chunks are freshly (re)built — a prior "Saved ✓" no longer applies
+  // reflect the real count in the Save tooltip (mirrors the Copy-all tooltip) instead of a static "all messages"
+  $("#saveTxt").title = lastChunks.length === 1
+    ? "Downloads the message as a .txt file — send it as an attachment or keep it as a backup"
+    : `Downloads all ${lastChunks.length} messages as a .txt file — send it as an attachment or keep it as a backup`;
   box.setAttribute("aria-label", `${lastChunks.length} message chunk${lastChunks.length !== 1 ? "s" : ""}`);
   // render at most CHUNK_RENDER_CAP cards: a small chat-app limit (e.g. SMS) can split a photo into
   // thousands of parts, and rebuilding every card on each debounced refresh would freeze the page.
