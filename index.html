@@ -403,15 +403,29 @@ async function deriveKey(password, salt){
     { name:"PBKDF2", salt, iterations:250000, hash:"SHA-256" },
     base, { name:"AES-GCM", length:256 }, false, ["encrypt","decrypt"]);
 }
+// PBKDF2 at 250k rounds costs hundreds of ms (1-2 s on a slow phone). refresh() re-packs on every
+// debounced control change, so with a password set, dragging the quality slider re-derived the key every
+// ~180 ms and the whole panel stalled a full derivation behind the controls. Cache the derivation per
+// password (with its salt); a fresh random IV is still generated for every encryption (GCM's real
+// requirement), so ciphertexts stay unique. Reusing one session-random salt across re-encodes of the same
+// password is fine — the key is identical for that password regardless, and the salt still blocks
+// precomputation. Cleared on Start over and whenever the password changes.
+let keyCache = null;   // { password, salt, key }
+async function getKeyMaterial(password){
+  if(keyCache && keyCache.password === password) return keyCache;
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const key  = await deriveKey(password, salt);
+  keyCache = { password, salt, key };
+  return keyCache;
+}
 async function pack(img, mime, password){
   const plain = buildPlain(mime, img);
   let flags = 0, body;
   if(password){
     flags = 1;
-    const salt = crypto.getRandomValues(new Uint8Array(16));
-    const iv   = crypto.getRandomValues(new Uint8Array(12));
-    const key  = await deriveKey(password, salt);
-    const ct   = new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv}, key, plain));
+    const { salt, key } = await getKeyMaterial(password);
+    const iv = crypto.getRandomValues(new Uint8Array(12));   // unique per encryption — never cached
+    const ct = new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv}, key, plain));
     body = new Uint8Array(28 + ct.length);
     body.set(salt,0); body.set(iv,16); body.set(ct,28);
   } else body = plain;
@@ -1001,7 +1015,7 @@ function resetSend(){
   clearTimeout(debounce);
   loadToken++;   // invalidate any in-flight handleFile decode so it can't repopulate the panels after this reset
   if(thumbUrl){ URL.revokeObjectURL(thumbUrl); thumbUrl = null; }
-  lastPreviewBytes = null;
+  lastPreviewBytes = null; keyCache = null;   // drop the cached derived key when the image is cleared
   srcImage = null; lastChunks = [];
   $("#chunks").innerHTML = "";
   ["tunePanel","lockPanel","outPanel"].forEach(id => $("#"+id).classList.add("hidden"));
