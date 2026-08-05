@@ -646,7 +646,10 @@ async function refresh(){
   const fname = srcImage._name || "";
   const msgLabel = lastChunks.length === 1 ? "1 msg" : `${lastChunks.length} msgs`;
   const inSend = !$("#send").classList.contains("hidden");
-  if(fname && inSend) document.title = `${fname} · ${msgLabel} — Carrier`;
+  // when it splits into multiple parts, name the target app in the tab title so a user juggling several
+  // Carrier tabs can tell which chat each one is being sized for
+  const appTag = lastChunks.length > 1 ? ` · ${app}` : "";
+  if(fname && inSend) document.title = `${fname} · ${msgLabel}${appTag} — Carrier`;
   } catch(err) {
     // debounced callers (queueRefresh → setTimeout) don't await refresh(), so without this catch a
     // compress/encode/pack rejection became a silent unhandled rejection — the stats just froze.
