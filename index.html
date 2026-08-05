@@ -574,13 +574,22 @@ async function compressOnce(maxDim, quality){
 }
 async function autoFit(){
   const dims = [1280,1024,768,512,384,256];
+  // the packed payload is bigger than the raw image blob: MAGIC(4)+flags(1) + mimeLen(1)+mime + , when a
+  // password is set, salt(16)+iv(12)+GCM tag(16)=44. Comparing the raw blob to targetBytes() ignored all
+  // of it, so "Auto-fit to 1 message" could still split into 2 parts (mostly with a password, on small-
+  // limit apps). Subtract the overhead from the budget so the fit accounts for what actually ships.
+  const pw = $("#pass").value;
+  const overhead = 5 + 1 + 10 + (pw ? 44 : 0);   // 10 ≈ longest mime ("image/webp"); pw adds salt+iv+tag
+  const budget = () => targetBytes() - overhead;
   for(const d of dims){
+    if(!srcImage) return null;   // Start over / a new load ran mid-fit — abandon (don't deref null)
     const cv = drawScaled(srcImage, d);
     let lo = 0.25, hi = 0.92, pick = null;
     for(let i=0;i<7;i++){
       const q = (lo+hi)/2;
       const blob = await encodeCanvas(cv, q);
-      if(blob.size <= targetBytes()){ pick = {q:Math.round(q*100), d}; lo = q; }
+      if(!srcImage) return null;   // abandoned during the encode await
+      if(blob.size <= budget()){ pick = {q:Math.round(q*100), d}; lo = q; }
       else hi = q;
     }
     if(pick) return pick;
@@ -848,6 +857,7 @@ $("#autofit").addEventListener("click", async ()=>{
   const fitNote = $("#fitNote");
   try{
     const best = await autoFit();
+    if(!best || !srcImage) return;   // Start over ran during the fit — autoFit abandoned; don't touch the (now hidden) panel
     const hitFallback = best.q === 25 && best.d === 256;
     clearTimeout(debounce);
     while(refreshing) await new Promise(r=>requestAnimationFrame(r));
