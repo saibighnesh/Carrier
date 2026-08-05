@@ -1086,7 +1086,10 @@ function maybeAutoReveal(){
   doReveal();
 }
 let progDebounce;
-$("#inbox").addEventListener("input", ()=>{ clearTimeout(progDebounce); progDebounce=setTimeout(updateProgress,80); if($("#rNote").classList.contains("ok")) clearReveal(); });
+// supersede ANY prior reveal when the box is edited — keying on an "ok" note missed the warn (multiSession)
+// and err (wrong-password, which deliberately keeps the old image) states, leaving a stale image still wired
+// to Save while progress reported a different, newly-assembled message as ready
+$("#inbox").addEventListener("input", ()=>{ clearTimeout(progDebounce); progDebounce=setTimeout(updateProgress,80); if(recovered) clearReveal(); });
 $("#inbox").addEventListener("blur", ()=>{ const v=$("#inbox").value; const t=v.trim(); if(t!==v){$("#inbox").value=t; clearTimeout(progDebounce); updateProgress();} });
 // manual Ctrl/Cmd+V into the box: after the paste settles, refresh progress and auto-reveal if complete+unlocked
 $("#inbox").addEventListener("paste", ()=>{ setTimeout(()=>{ clearTimeout(progDebounce); updateProgress(); maybeAutoReveal(); }, 0); });
