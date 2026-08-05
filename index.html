@@ -984,8 +984,10 @@ async function handleFile(file){
   if(handling) return;
   handling = true;
   clearDropErr();
-  if(!file.type.startsWith("image/")){ showDropErr("Please choose an image file."); handling = false; return; }
+  // clear the picker value BEFORE the reject-return, so re-picking the SAME rejected file still fires
+  // `change` (an unchanged value emits no event) and gives feedback instead of silently doing nothing
   fileInput.value = "";
+  if(!file.type.startsWith("image/")){ showDropErr("Please choose an image file."); handling = false; return; }
   drop.querySelector("strong").textContent = "Reading…";   // decoding a big photo isn't instant — show progress
   const myToken = ++loadToken;   // bumped by resetSend too, so a Start-over mid-decode abandons this load
   try{
