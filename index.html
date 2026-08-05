@@ -280,9 +280,11 @@
       </div>
       <div class="stats" role="region" aria-label="Compression statistics">
         <div class="stat"><div class="k" title="Original image pixel dimensions">Original</div><div class="v" id="origOut" translate="no">—</div></div>
-        <div class="stat"><div class="k" title="Compressed image size and pixel dimensions">Compressed</div><div class="v" id="sizeOut" aria-live="polite" aria-atomic="true">—</div></div>
-        <div class="stat"><div class="k" title="Total Base64 characters to send">As text</div><div class="v" id="charOut" aria-live="polite" aria-atomic="true">—</div></div>
-        <div class="stat"><div class="k" title="Number of chat messages needed">Messages</div><div class="v" id="msgOut" translate="no" aria-live="polite" aria-atomic="true">—</div></div>
+        <!-- aria-live + aria-atomic sit on the whole .stat (not just the value) so each announcement reads
+             the label with its value ("Compressed 42 KB 800×600"), never a context-free bare number -->
+        <div class="stat" aria-live="polite" aria-atomic="true"><div class="k" title="Compressed image size and pixel dimensions">Compressed</div><div class="v" id="sizeOut">—</div></div>
+        <div class="stat" aria-live="polite" aria-atomic="true"><div class="k" title="Total Base64 characters to send">As text</div><div class="v" id="charOut">—</div></div>
+        <div class="stat" aria-live="polite" aria-atomic="true"><div class="k" title="Number of chat messages needed">Messages</div><div class="v" id="msgOut" translate="no">—</div></div>
       </div>
       <p class="note" id="fitNote" role="status"></p>
     </div>
@@ -984,8 +986,10 @@ async function handleFile(file){
   if(handling) return;
   handling = true;
   clearDropErr();
-  if(!file.type.startsWith("image/")){ showDropErr("Please choose an image file."); handling = false; return; }
+  // clear the picker value BEFORE the reject-return, so re-picking the SAME rejected file still fires
+  // `change` (an unchanged value emits no event) and gives feedback instead of silently doing nothing
   fileInput.value = "";
+  if(!file.type.startsWith("image/")){ showDropErr("Please choose an image file."); handling = false; return; }
   drop.querySelector("strong").textContent = "Reading…";   // decoding a big photo isn't instant — show progress
   const myToken = ++loadToken;   // bumped by resetSend too, so a Start-over mid-decode abandons this load
   try{
