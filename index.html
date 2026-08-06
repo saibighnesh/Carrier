@@ -1084,7 +1084,10 @@ function updateProgress(){
     p.append("Got all ", b(r.total), ` part${r.total>1?"s":""} (~${approx}). Ready to reveal.`);
     // peek the header without decrypting: a locked message won't auto-reveal, so tell the user a
     // password is needed rather than leaving them to guess why nothing appeared
-    if(headerFlags(r.s) & 1) p.append(" 🔒 Locked — enter the password below, then Reveal.");
+    if(headerFlags(r.s) & 1){
+      p.append(" 🔒 Locked — enter the password below, then Reveal.");
+      $("#reveal").title = "Enter the password, then decrypt & reveal (Ctrl/Cmd+Enter)";   // refine the button hint for a locked message
+    }
   } else {
     const pct = Math.round(r.have / r.total * 100);   // how far along the reassembly is, by part count
     p.append("Got ", b(r.have), " of ", b(r.total), ` parts (${pct}%) — still need part${r.missing.length>1?"s":""} ${r.missing.join(", ")}${r.missingTrunc?", …":""}.`);
