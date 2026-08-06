@@ -387,6 +387,10 @@ function b64ToBytes(b64){
 /* ---------- container (mime + image, optional encryption) ---------- */
 function buildPlain(mime, img){
   const m = new TextEncoder().encode(mime);
+  // the mime length is stored in a single byte; a mime > 255 bytes would wrap mod-256 and desync
+  // parsePlain, silently corrupting the payload. Today mime is always a short encoder type (≤10 B), so
+  // this only fires if a future change routes some other string here — fail loudly instead of corrupting.
+  if(m.length > 255) throw new Error("MIME type too long to encode.");
   const out = new Uint8Array(1 + m.length + img.length);
   out[0] = m.length; out.set(m,1); out.set(img,1+m.length);
   return out;
