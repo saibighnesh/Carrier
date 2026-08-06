@@ -1218,7 +1218,14 @@ async function doReveal(){
     if(!r){ note.className="note err"; note.textContent="No Carrier message found in the box above."; return; }
     if(r.missing.length){ note.className="note err";
       note.textContent = `Missing part${r.missing.length>1?"s":""} ${r.missing.join(", ")}${r.missingTrunc?", …":""} — paste the remaining message(s) first.`; return; }
+    const snapshot = r.s;   // the exact payload we're about to decrypt
     const { mime, img } = await unpack(r.s, $("#rpass").value);   // raw value — must match the sender's exactly, whitespace included
+    // a locked reveal awaits 250k-round PBKDF2 (~1-2 s on a phone). If the user edited the inbox or left
+    // Receive mode during that window, this result now describes a stale message — showing it would put a
+    // different image on screen than the "Ready to reveal" progress line (and, mid mode-switch, leak a live
+    // blob + wrong title into Send). Re-reassemble and bail if the winning payload changed or we left Receive.
+    const now = reassemble($("#inbox").value);
+    if(!now || now.s !== snapshot || $("#recv").classList.contains("hidden")) return;
     const claimed = mime || "image/webp";
     // the mime is attacker-controlled (it comes straight from the decoded payload). Never build a blob
     // the browser would render as a document — text/html or image/svg+xml opened in a new tab (the
