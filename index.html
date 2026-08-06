@@ -591,12 +591,15 @@ async function autoFit(){
       const q = (lo+hi)/2;
       const blob = await encodeCanvas(cv, q);
       if(!srcImage) return null;   // abandoned during the encode await
-      if(blob.size <= budget()){ pick = {q:Math.round(q*100), d}; lo = q; }
+      // FLOOR, not round: the search parks q right at the budget edge, so rounding UP would make refresh
+      // re-encode at a higher quality than we measured to fit — pushing the payload past the budget and
+      // back into 2 messages. Flooring guarantees the integer quality is ≤ the fractional q that fit.
+      if(blob.size <= budget()){ pick = {q:Math.floor(q*100), d}; lo = q; }
       else hi = q;
     }
     if(pick) return pick;
   }
-  return { q:25, d:256 };
+  return { q:25, d:256, fallback:true };   // nothing fit at any rung — flag it so a genuine {25,256} fit isn't mistaken for this
 }
 
 /* ---------- SEND ui ---------- */
@@ -862,13 +865,13 @@ $("#autofit").addEventListener("click", async ()=>{
   try{
     const best = await autoFit();
     if(!best || !srcImage) return;   // Start over ran during the fit — autoFit abandoned; don't touch the (now hidden) panel
-    const hitFallback = best.q === 25 && best.d === 256;
+    const hitFallback = best.fallback === true;   // real success at {25,256} no longer masquerades as the fallback
     clearTimeout(debounce);
     while(refreshing) await new Promise(r=>requestAnimationFrame(r));
     clearTimeout(debounce);
     $("#maxdim").value = String(best.d);
     setQuality(best.q);
-    if(best.q !== 25 || best.d !== 256){
+    if(!hitFallback){   // persist a working fit — including a legitimate one that landed on the minimum rung
       lsSet("carrier_quality", String(best.q));
       lsSet("carrier_maxdim", String(best.d));
     }
