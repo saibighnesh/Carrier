@@ -1008,8 +1008,9 @@ async function handleFile(file){
     drop.querySelector("strong").textContent = name;
     drop.querySelector("small").textContent = `${sizeStr} · ${srcImage.naturalWidth}×${srcImage.naturalHeight}`;
     $("#thumb").alt = `Compressed preview of ${name}`;
-    $("#origOut").innerHTML = sizeStr + ` <small>${srcImage.naturalWidth}×${srcImage.naturalHeight}</small>`;
-    $("#origOut").title = `${file.size.toLocaleString()} bytes · ${srcImage.naturalWidth}×${srcImage.naturalHeight}`;   // exact size on hover
+    const fmt = file.type ? file.type.replace(/^image\//, "").split(/[+;]/)[0].toUpperCase() : "";   // "image/jpeg" → "JPEG"
+    $("#origOut").innerHTML = sizeStr + ` <small>${fmt ? fmt + " · " : ""}${srcImage.naturalWidth}×${srcImage.naturalHeight}</small>`;
+    $("#origOut").title = `${file.size.toLocaleString()} bytes${fmt ? " · " + fmt : ""} · ${srcImage.naturalWidth}×${srcImage.naturalHeight}`;   // exact size on hover
     document.title = `${name} — Carrier`;
     await refresh();
     $("#tunePanel").scrollIntoView({behavior:scrollBehavior(),block:"nearest"});
