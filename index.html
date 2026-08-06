@@ -580,9 +580,10 @@ async function autoFit(){
   // password is set, salt(16)+iv(12)+GCM tag(16)=44. Comparing the raw blob to targetBytes() ignored all
   // of it, so "Auto-fit to 1 message" could still split into 2 parts (mostly with a password, on small-
   // limit apps). Subtract the overhead from the budget so the fit accounts for what actually ships.
-  const pw = $("#pass").value;
-  const overhead = 5 + 1 + 10 + (pw ? 44 : 0);   // 10 ≈ longest mime ("image/webp"); pw adds salt+iv+tag
-  const budget = () => targetBytes() - overhead;
+  // read the password INSIDE the budget, not once up front: the field isn't disabled during the multi-
+  // encode fit, so a password typed/cleared mid-fit would otherwise leave the overhead off by 44 bytes
+  // (salt+iv+tag) versus what refresh() actually packs, quietly missing the one-message goal.
+  const budget = () => targetBytes() - (5 + 1 + 10 + ($("#pass").value ? 44 : 0));   // 10 ≈ longest mime; pw adds salt+iv+tag
   for(const d of dims){
     if(!srcImage) return null;   // Start over / a new load ran mid-fit — abandon (don't deref null)
     const cv = drawScaled(srcImage, d);
