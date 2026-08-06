@@ -821,6 +821,10 @@ $("#quality").addEventListener("input", e=>{ const v = e.target.value; setQualit
 $("#maxdim").addEventListener("change", e=>{ lsSet("carrier_maxdim", e.target.value); syncPresets(); queueRefresh(); });
 // switching chat app changes the per-message char budget → re-chunk and redraw the meter/stats
 $("#chatLimit").addEventListener("change", e=>{ msgLimit = +e.target.value; lsSet("carrier_msglimit", e.target.value); queueRefresh(); });
+// drop the cached derived key the instant the password changes — don't retain the previous secret's key
+// in the heap until Start over, and don't let a future cache-keying refactor risk encrypting under a
+// stale key. getKeyMaterial re-derives on the next pack; correctness no longer rests only on its equality check.
+$("#pass").addEventListener("input", ()=>{ keyCache = null; });
 $("#pass").addEventListener("input", queueRefresh);
 // advisory passphrase-strength meter: scores length + character variety, purely a nudge (never blocks)
 const PW_LABELS = ["", "Weak", "Fair", "Good", "Strong"];
