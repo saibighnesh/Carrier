@@ -636,7 +636,8 @@ async function refresh(){
   }
   // scope translate=no to the numbers/units only, so page-translation can still render the prose
   // ("% of original", "chars") while never rewriting the digits, KB/MB, or the × separator
-  $("#sizeOut").innerHTML = `<span translate="no">${fmtKB(img.length)}</span> <small><span translate="no">${img._w}×${img._h}</span>${pctOrig}</small>`;
+  const outFmt = (srcMime || "").replace(/^image\//, "").toUpperCase();   // WEBP or JPEG — the encoder's chosen format
+  $("#sizeOut").innerHTML = `<span translate="no">${fmtKB(img.length)}</span> <small>${outFmt ? `<span translate="no">${outFmt}</span> · ` : ""}<span translate="no">${img._w}×${img._h}</span>${pctOrig}</small>`;
   $("#charOut").innerHTML = `<span translate="no">${b64.length.toLocaleString()}</span> <small>chars</small>`;
   $("#charOut").title = `≈ ${fmtKB(b64.length)} of text once Base64-encoded`;   // put the byte weight of the text on hover
   $("#msgOut").textContent = lastChunks.length;
