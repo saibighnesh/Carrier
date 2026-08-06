@@ -1381,6 +1381,9 @@ window.addEventListener("pagehide", ()=>{
 window.addEventListener("pageshow", e=>{
   if(!e.persisted) return;   // a normal (non-bfcache) load already built everything fresh
   thumbUrl = null;
+  // a field left in "Show" (type=text) when the page was frozen restores in plaintext — re-mask both, so
+  // Back-navigation can't leave a passphrase exposed on screen (every other secret-hiding transition re-masks)
+  maskPassword("pass"); maskPassword("rpass");
   if(srcImage) queueRefresh();   // recompress → sets a new #thumb src
   if(recovered){
     recovered = null;
