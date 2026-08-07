@@ -1145,7 +1145,7 @@ const SAVE_TITLE_DEFAULT = $("#save").title;   // restored on clear; made specif
 // tear down any revealed image and clear the reveal note (does NOT touch the inbox/password)
 function clearReveal(){
   $("#rNote").className="note"; $("#rNote").textContent="";
-  $("#save").title = SAVE_TITLE_DEFAULT;
+  $("#save").title = SAVE_TITLE_DEFAULT; $("#save").removeAttribute("aria-label");   // revert to the button's text label
   if(recovered){ URL.revokeObjectURL(recovered.url); recovered = null; }
   $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true");
   $("#result").setAttribute("aria-label","Received image");
@@ -1278,6 +1278,7 @@ async function doReveal(){
     const ext = { "image/jpeg":"jpg", "image/png":"png", "image/gif":"gif", "image/avif":"avif", "image/webp":"webp" }[resolvedMime] || "webp";
     recovered = { url, mime: resolvedMime, ext, bytes: img };   // keep bytes so the zoom can mint its own URL
     $("#save").title = `Save this ${fmtKB(img.length)} ${resolvedMime} image to your device`;
+    $("#save").setAttribute("aria-label", `Download the received image as a .${ext} file`);   // name the actual file type for screen readers
     $("#result").setAttribute("aria-label", `Received image · ${fmtKB(img.length)} · ${resolvedMime} · ${parts}${lockTag}`);   // dims fold in on load
     $("#result").classList.remove("hidden");
     $("#result").removeAttribute("aria-hidden");
