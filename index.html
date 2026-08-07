@@ -1022,6 +1022,9 @@ async function handleFile(file){
     drop.querySelector("strong").textContent = name;
     drop.querySelector("small").textContent = `${sizeStr} · ${srcImage.naturalWidth}×${srcImage.naturalHeight}`;
     $("#thumb").alt = `Compressed preview of ${name}`;
+    // a role=button element's aria-label WINS over alt, so fold the alt's description INTO the label —
+    // otherwise a screen reader hears only "open full size, button" and loses the image description
+    $("#thumb").setAttribute("aria-label", `Compressed preview of ${name} — activate to open full size in a new tab`);
     const fmt = file.type ? file.type.replace(/^image\//, "").split(/[+;]/)[0].toUpperCase() : "";   // "image/jpeg" → "JPEG"
     $("#origOut").innerHTML = sizeStr + ` <small>${fmt ? fmt + " · " : ""}${srcImage.naturalWidth}×${srcImage.naturalHeight}</small>`;
     $("#origOut").title = `${file.size.toLocaleString()} bytes${fmt ? " · " + fmt : ""} · ${srcImage.naturalWidth}×${srcImage.naturalHeight}`;   // exact size on hover
@@ -1055,6 +1058,7 @@ function resetSend(){
   $("#meter").classList.remove("over","near");
   $("#fitNote").className = "note"; $("#fitNote").textContent = "";
   $("#thumb").removeAttribute("src"); $("#thumb").alt = "Compressed preview";
+  $("#thumb").setAttribute("aria-label", "Open the compressed preview full size in a new tab");   // restore the resting label
   drop.setAttribute("aria-label","Choose an image");
   drop.title = DROP_TITLE_DEFAULT;
   drop.querySelector("strong").textContent = DROP_STRONG_DEFAULT;
@@ -1149,6 +1153,7 @@ function clearReveal(){
   if(recovered){ URL.revokeObjectURL(recovered.url); recovered = null; }
   $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true");
   $("#result").setAttribute("aria-label","Received image");
+  $("#rimg").setAttribute("aria-label","Open the received image full size in a new tab");   // restore the resting label
   $("#rCaption").textContent = "";
   if(!$("#recv").classList.contains("hidden")) document.title = "Carrier — receive images";   // drop the "✓ received" title once the image is torn down
 }
@@ -1255,7 +1260,7 @@ async function doReveal(){
     rimg.onerror = ()=>{
       if(!recovered || recovered.url !== url) return;   // a newer reveal already replaced this image — ignore the stale error
       URL.revokeObjectURL(recovered.url); recovered = null;
-      rimg.removeAttribute("src"); rimg.alt = "Received image"; $("#rCaption").textContent = "";
+      rimg.removeAttribute("src"); rimg.alt = "Received image"; rimg.setAttribute("aria-label","Open the received image full size in a new tab"); $("#rCaption").textContent = "";
       $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true");
       note.className = "note err";
       note.textContent = "The data decoded, but it isn't a valid image — the message is likely corrupted or was altered in transit.";
@@ -1273,11 +1278,13 @@ async function doReveal(){
       if(!rimg.naturalWidth || !rimg.naturalHeight) return;
       const dims = `${rimg.naturalWidth}×${rimg.naturalHeight}`;
       rimg.alt = `Received image (${fmtKB(img.length)}, ${resolvedMime}, ${dims}, ${parts}${lockTag ? ", encrypted" : ""})`;
+      rimg.setAttribute("aria-label", `Received image, ${fmtKB(img.length)}, ${resolvedMime}, ${dims}, ${parts}${lockTag ? ", encrypted" : ""} — activate to open full size in a new tab`);
       $("#rCaption").textContent = `${fmtKB(img.length)} · ${resolvedMime} · ${dims} · ${parts}${lockTag}`;
       $("#result").setAttribute("aria-label", `Received image · ${fmtKB(img.length)} · ${resolvedMime} · ${dims} · ${parts}${lockTag}`);
     };
     rimg.src = url;
     rimg.alt = `Received image (${fmtKB(img.length)}, ${resolvedMime})`;
+    rimg.setAttribute("aria-label", `Received image, ${fmtKB(img.length)}, ${resolvedMime} — activate to open full size in a new tab`);   // dims fold in on load
     $("#rCaption").textContent = `${fmtKB(img.length)} · ${resolvedMime} · ${parts}${lockTag}`;   // visible size/type/parts under the image
     const ext = { "image/jpeg":"jpg", "image/png":"png", "image/gif":"gif", "image/avif":"avif", "image/webp":"webp" }[resolvedMime] || "webp";
     recovered = { url, mime: resolvedMime, ext, bytes: img };   // keep bytes so the zoom can mint its own URL
@@ -1399,7 +1406,7 @@ window.addEventListener("pageshow", e=>{
   if(srcImage) queueRefresh();   // recompress → sets a new #thumb src
   if(recovered){
     recovered = null;
-    $("#rimg").removeAttribute("src"); $("#rimg").alt = "Received image"; $("#rCaption").textContent = "";
+    $("#rimg").removeAttribute("src"); $("#rimg").alt = "Received image"; $("#rimg").setAttribute("aria-label","Open the received image full size in a new tab"); $("#rCaption").textContent = "";
     $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true");
     $("#result").setAttribute("aria-label","Received image");
     // the reveal also set a green "Received. ✓" note and a "✓ Image received" title; clear both, or the
