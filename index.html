@@ -962,7 +962,7 @@ $("#saveTxt").addEventListener("click", ()=>{
   const app = (MSG_LIMITS[String(msgLimit)] || "").toLowerCase().replace(/[^a-z0-9]+/g, "");   // record which app's per-message limit these chunks fit
   const appTag = app ? `-${app}` : "";
   downloadURL(url, `${base}-carrier${appTag}-${lastChunks.length}msg.txt`);
-  flashButton($("#saveTxt"), "Saved ✓", "Saved as text file");
+  flashButton($("#saveTxt"), "Saved ✓", `Saved ${lastChunks.length} message${lastChunks.length!==1?"s":""} as a text file`);
 });
 
 /* file input */
