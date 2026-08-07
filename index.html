@@ -1222,6 +1222,7 @@ $("#inbox").addEventListener("drop", e=>{
 async function doReveal(){
   if(revealing) return;
   revealing = true;
+  let abandoned = false;   // set if we bail after the await because the inbox changed under us
   const revBtn = $("#reveal");
   revBtn.textContent = "Revealing…"; revBtn.setAttribute("aria-busy","true");
   const note = $("#rNote"); note.className = "note"; note.textContent = "";
@@ -1237,7 +1238,7 @@ async function doReveal(){
     // different image on screen than the "Ready to reveal" progress line (and, mid mode-switch, leak a live
     // blob + wrong title into Send). Re-reassemble and bail if the winning payload changed or we left Receive.
     const now = reassemble($("#inbox").value);
-    if(!now || now.s !== snapshot || $("#recv").classList.contains("hidden")) return;
+    if(!now || now.s !== snapshot || $("#recv").classList.contains("hidden")){ abandoned = true; return; }
     const claimed = mime || "image/webp";
     // the mime is attacker-controlled (it comes straight from the decoded payload). Never build a blob
     // the browser would render as a document — text/html or image/svg+xml opened in a new tab (the
@@ -1260,8 +1261,11 @@ async function doReveal(){
       note.textContent = "The data decoded, but it isn't a valid image — the message is likely corrupted or was altered in transit.";
       document.title = "Carrier — receive images";
     };
-    const parts = `${r.total} part${r.total>1?"s":""}`;   // provenance: how many chunks rebuilt this image
-    const lockTag = (headerFlags(r.s) & 1) ? " · 🔒 encrypted" : "";   // note the message travelled encrypted
+    // use `now` (the re-validated reassembly), not the pre-await `r`: the winning payload is identical
+    // (now.s === snapshot) but the session SET may have changed during the await, so r.multiSession /
+    // r.total could be stale — a stray chunk added or removed mid-derive would mislabel the result.
+    const parts = `${now.total} part${now.total>1?"s":""}`;   // provenance: how many chunks rebuilt this image
+    const lockTag = (headerFlags(now.s) & 1) ? " · 🔒 encrypted" : "";   // note the message travelled encrypted
     // once the blob decodes, fold in the pixel dimensions so the receive caption matches the
     // send-side "Compressed W×H" stat — the size/type is shown immediately, dimensions land on load
     rimg.onload = ()=>{
@@ -1287,9 +1291,9 @@ async function doReveal(){
     // reassemble picked — and "most complete" can be a stale leftover, not the image the user is
     // assembling. Don't claim a plain "Received ✓" in that case; say the box held several images and this
     // was the most complete, so a wrong pick isn't silent.
-    if(r.multiSession){
+    if(now.multiSession){
       note.className="note warn";
-      note.textContent = `Showed the most complete of ${r.multiSession} images in the box. If this isn't the one you meant, Clear and paste just that image.`;
+      note.textContent = `Showed the most complete of ${now.multiSession} images in the box. If this isn't the one you meant, Clear and paste just that image.`;
     } else {
       note.className="note ok"; note.textContent="Received. ✓";
     }
@@ -1302,7 +1306,14 @@ async function doReveal(){
     // Just report the error; recovered is untouched, so nothing dangles at a dead URL either.
     note.className="note err"; note.textContent = err instanceof Error ? err.message : String(err);
   }
-  finally { revealing = false; revBtn.textContent = "Reveal image"; revBtn.removeAttribute("aria-busy"); }
+  finally {
+    revealing = false; revBtn.textContent = "Reveal image"; revBtn.removeAttribute("aria-busy");
+    // if this reveal was abandoned because the inbox changed mid-derive, the message that superseded it
+    // may itself be complete + unlocked — its own maybeAutoReveal was dropped by the `revealing` guard and
+    // nothing else re-fires it. Retry now that we're idle. (A successful/failed reveal doesn't retry, so a
+    // complete unlocked image can't loop: the retry only reveals it once, and its finally won't re-arm.)
+    if(abandoned) maybeAutoReveal();
+  }
 }
 $("#reveal").addEventListener("click", doReveal);
 // click the revealed image to open it full size in a new tab (the on-page view is capped at 80vh)
