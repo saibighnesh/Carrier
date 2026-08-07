@@ -908,7 +908,7 @@ $("#copyAll").addEventListener("click", async ()=>{
   try{
     await navigator.clipboard.writeText(lastChunks.join("\n\n"));
     b.textContent = lastChunks.length === 1 ? "Copied ✓" : "Copied all ✓";
-    b.setAttribute("aria-label", lastChunks.length === 1 ? "Copied message" : "Copied all messages");
+    b.setAttribute("aria-label", lastChunks.length === 1 ? "Copied the message" : `Copied all ${lastChunks.length} messages`);
     copyAllTimer = setTimeout(restore, 2000);
   }catch{
     b.textContent = "Copy failed"; b.setAttribute("aria-label","Copy failed — clipboard access denied");
