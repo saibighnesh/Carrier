@@ -307,6 +307,7 @@
         <button type="button" class="btn" id="saveTxt" aria-label="Save all messages as a text file" title="Downloads all messages as a .txt file — send it as an attachment or keep it as a backup">Save as .txt</button>
       </div>
       <div class="chunks" id="chunks" role="list" translate="no"></div>
+      <p class="note warn hidden" id="chunksMore" role="note" style="margin:8px 2px 0"></p>
     </div>
   </section>
 
@@ -736,18 +737,24 @@ function renderChunks(){
   $("#saveTxt").title = lastChunks.length === 1
     ? "Downloads the message as a .txt file — send it as an attachment or keep it as a backup"
     : `Downloads all ${lastChunks.length} messages as a .txt file — send it as an attachment or keep it as a backup`;
-  box.setAttribute("aria-label", `${lastChunks.length} message chunk${lastChunks.length !== 1 ? "s" : ""}`);
   // render at most CHUNK_RENDER_CAP cards: a small chat-app limit (e.g. SMS) can split a photo into
   // thousands of parts, and rebuilding every card on each debounced refresh would freeze the page.
   // The full set is still in lastChunks, so Copy-all and Save-as-.txt always emit every part.
   const shown = Math.min(lastChunks.length, CHUNK_RENDER_CAP);
+  // report the count that's actually IN the list, not the full total — otherwise a screen reader hears
+  // "3,214 chunks" over a list that exposes only 200 listitems
+  box.setAttribute("aria-label", lastChunks.length > CHUNK_RENDER_CAP
+    ? `${lastChunks.length} message chunks — showing the first ${CHUNK_RENDER_CAP}`
+    : `${lastChunks.length} message chunk${lastChunks.length !== 1 ? "s" : ""}`);
   for(let i=0;i<shown;i++) box.appendChild(makeChunkCard(lastChunks[i], i));
+  // the "+N more" note lives OUTSIDE #chunks: a <p role="note"> is an illegal direct child of a role="list"
+  const moreEl = $("#chunksMore");
   if(lastChunks.length > CHUNK_RENDER_CAP){
-    const more = document.createElement("p");
-    more.className = "note warn"; more.setAttribute("role","note"); more.style.margin = "4px 2px 0";
     const rest = lastChunks.length - CHUNK_RENDER_CAP;
-    more.textContent = `+${rest.toLocaleString()} more message${rest!==1?"s":""} not shown — use “Copy all messages” or “Save as .txt” to get every part.`;
-    box.appendChild(more);
+    moreEl.textContent = `+${rest.toLocaleString()} more message${rest!==1?"s":""} not shown — use “Copy all messages” or “Save as .txt” to get every part.`;
+    moreEl.classList.remove("hidden");
+  } else {
+    moreEl.textContent = ""; moreEl.classList.add("hidden");
   }
   const copyoneTimers = new WeakMap();
   box.querySelectorAll(".copyone").forEach(b=>{
