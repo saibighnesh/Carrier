@@ -950,7 +950,8 @@ $("#saveTxt").addEventListener("click", ()=>{
   // matches "PXT/…" chunks (reassemble's regex), so this comment line is ignored on load — safe to include.
   const appName = MSG_LIMITS[String(msgLimit)] || "your chat app";
   const n = lastChunks.length;
-  const header = `# Carrier — ${n} message${n!==1?"s":""} for ${appName}. Paste every line below into Carrier's Receive tab (order doesn't matter) to rebuild the image.\n\n`;
+  const savedOn = new Date().toISOString().slice(0, 10);   // YYYY-MM-DD — a backup should record when it was made
+  const header = `# Carrier — ${n} message${n!==1?"s":""} for ${appName}, saved ${savedOn}. Paste every line below into Carrier's Receive tab (order doesn't matter) to rebuild the image.\n\n`;
   const blob = new Blob([header + lastChunks.join("\n\n")], {type:"text/plain"});
   // reclaim the *previous* save's URL now rather than on a fixed timer: a timer set too short frees the
   // blob before a lingering "Always ask where to save" dialog reads it, producing a 0-byte/truncated
