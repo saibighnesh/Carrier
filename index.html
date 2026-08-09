@@ -739,6 +739,10 @@ function renderChunks(){
   $("#saveTxt").title = lastChunks.length === 1
     ? "Downloads the message as a .txt file — send it as an attachment or keep it as a backup"
     : `Downloads all ${lastChunks.length} messages as a .txt file — send it as an attachment or keep it as a backup`;
+  // reassure the user the copied/saved text is locked when a password is set
+  const encNote = $("#pass").value ? " These messages are encrypted." : "";
+  if(!copyAllBusy) $("#copyAll").title += encNote;
+  $("#saveTxt").title += encNote;
   // render at most CHUNK_RENDER_CAP cards: a small chat-app limit (e.g. SMS) can split a photo into
   // thousands of parts, and rebuilding every card on each debounced refresh would freeze the page.
   // The full set is still in lastChunks, so Copy-all and Save-as-.txt always emit every part.
