@@ -911,6 +911,9 @@ $("#autofit").addEventListener("click", async ()=>{
     btn.disabled = false;
     btn.innerHTML = autofitOrigHtml || '<span aria-hidden="true">⚡ </span>Auto-fit to 1 message';
     btn.removeAttribute("aria-busy");
+    // disabling the button dropped keyboard focus to <body> for the duration of the fit; return it to the
+    // button now — but only if focus is still adrift (don't yank it back if the user moved on meanwhile)
+    if(document.activeElement === document.body) btn.focus();
   }
 });
 let copyAllTimer;
@@ -1087,7 +1090,9 @@ function resetSend(){
 $("#startOver").addEventListener("click", resetSend);
 // Esc in Send starts over (parity with Esc-clears in Receive) — but never while typing in a field
 document.addEventListener("keydown", e=>{
-  if(e.key !== "Escape" || $("#send").classList.contains("hidden") || !srcImage) return;
+  // ignore Esc while Auto-fit runs: the button self-disables (focus falls to <body>), so the BUTTON guard
+  // below no longer suppresses Esc — without this, an Esc mid-fit would wipe the whole session
+  if(e.key !== "Escape" || $("#send").classList.contains("hidden") || !srcImage || $("#autofit").getAttribute("aria-busy") === "true") return;
   const ae = document.activeElement;
   // never hijack Esc from a control that has its own Escape meaning — a SELECT (close the dropdown) or
   // a BUTTON, as well as text fields; otherwise the dropdown-dismiss reflex would wipe the whole session
