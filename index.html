@@ -1326,7 +1326,13 @@ async function doReveal(){
       note.className="note ok"; note.textContent="Received. ✓";
     }
     document.title = `${lockTag ? "🔒 " : ""}✓ Image received (${fmtKB(img.length)}) — Carrier`;
-    setTimeout(()=>{ if(!$("#recv").classList.contains("hidden")) $("#save").focus(); }, 400);
+    // move focus to Download as a convenience — but only if focus is still idle (on <body>) or on the
+    // Reveal button that triggered a manual reveal. Don't rip the caret out of the inbox/password: on the
+    // auto-reveal path the user is mid-type in #inbox, and this 400ms steal would land on Download instead.
+    setTimeout(()=>{
+      const ae = document.activeElement;
+      if(!$("#recv").classList.contains("hidden") && (ae === document.body || ae === revBtn)) $("#save").focus();
+    }, 400);
   }catch(err){
     // every throw above (wrong password, disallowed mime, unpack/decode error) fires BEFORE the old
     // recovered image is revoked/replaced (line ~1153), so it's still valid and on-screen. Do NOT call
