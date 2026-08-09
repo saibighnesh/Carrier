@@ -973,7 +973,7 @@ $("#saveTxt").addEventListener("click", ()=>{
   const base = (srcImage && srcImage._name ? srcImage._name.replace(/\.[^.]+$/, "") : "carrier").replace(/[^\w.-]+/g, "_").slice(0, 40) || "carrier";
   const app = (MSG_LIMITS[String(msgLimit)] || "").toLowerCase().replace(/[^a-z0-9]+/g, "");   // record which app's per-message limit these chunks fit
   const appTag = app ? `-${app}` : "";
-  downloadURL(url, `${base}-carrier${appTag}-${lastChunks.length}msg.txt`);
+  downloadURL(url, `${base}-carrier${appTag}-${lastChunks.length}msg-${savedOn.replace(/-/g, "")}.txt`);   // YYYYMMDD in the name too
   flashButton($("#saveTxt"), "Saved ✓", `Saved ${lastChunks.length} message${lastChunks.length!==1?"s":""} as a text file`);
 });
 
