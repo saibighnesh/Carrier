@@ -360,7 +360,14 @@ let msgLimit = 60000;             // chars per message for the chosen chat app (
 const MSG_LIMITS = { 60000:"WhatsApp", 4096:"Telegram", 4000:"Slack", 2000:"Discord", 160:"SMS" };
 // bytes of compressed image that Base64-encode to fit one message: N bytes → ceil(N/3)*4 chars, so
 // N ≈ (limit − prefix) · 3/4; the 0.72 factor keeps a small safety margin under the raw ceiling
-const targetBytes = () => Math.floor((msgLimit - 24) * 0.72);
+const SID_LEN = 6;   // chunkify's session id: 3 random bytes rendered as hex
+// exact length of a chunk's "PXT/<sid>/<index>/<total>/" prefix. index ≤ total, so both numbers fit in
+// total's digit-count. Three call sites used to hardcode 24 for this: too generous at one message (the
+// real prefix is 15, so the fit budget was 9 chars tighter than needed) and too small once a tiny
+// per-message limit pushes the part count to six digits (prefix 25) — where the meter then read "under
+// the limit" for a payload that had already spilled into another part.
+const chunkPrefixLen = total => 4 + SID_LEN + 3 + 2 * String(total).length;
+const targetBytes = () => Math.floor((msgLimit - chunkPrefixLen(1)) * 0.72);
 const CHUNK_RENDER_CAP = 200;     // cap DOM cards — tiny per-app limits (SMS) can produce thousands of chunks
 // only these raster image types may be turned into a blob and opened — never text/html or svg (XSS)
 const ALLOWED_IMG = new Set(["image/webp","image/jpeg","image/png","image/gif","image/avif"]);
@@ -466,16 +473,13 @@ async function unpack(b64, password){
 
 /* ---------- chunking ---------- */
 function chunkify(b64){
-  const sid = Array.from(crypto.getRandomValues(new Uint8Array(3)), b => b.toString(16).padStart(2,'0')).join('');
-  // the prefix is "PXT/" + sid + "/" + index + "/" + total + "/", so its length grows with the digit-count
-  // of index and total. A fixed 24-char reserve underestimates once both numbers reach 6 digits (≥100k
-  // chunks on a tiny per-message limit), letting a chunk exceed msgLimit — which a transport may split or
-  // truncate, silently losing data. Size `per` from the real prefix, iterating until total stops growing.
-  const fixed = 4 + sid.length + 3;   // "PXT/" + sid + the three "/" separators
-  let per = Math.max(1, msgLimit - 24), total = Math.max(1, Math.ceil(b64.length / per));
+  const sid = Array.from(crypto.getRandomValues(new Uint8Array(SID_LEN/2)), b => b.toString(16).padStart(2,'0')).join('');
+  // the prefix length grows with the digit-count of index and total, so a chunk sized against a fixed
+  // reserve can exceed msgLimit once the part count gets long — and a transport may split or truncate
+  // that, silently losing data. Size `per` from chunkPrefixLen(), iterating until total stops growing.
+  let per = Math.max(1, msgLimit - chunkPrefixLen(1)), total = Math.max(1, Math.ceil(b64.length / per));
   for(let k=0;k<4;k++){
-    const prefixLen = fixed + 2 * String(total).length;   // index ≤ total, so both fit in total's digit-count
-    const p = Math.max(1, msgLimit - prefixLen);
+    const p = Math.max(1, msgLimit - chunkPrefixLen(total));
     const t = Math.max(1, Math.ceil(b64.length / p));
     if(p === per && t === total) break;
     per = p; total = t;
@@ -663,7 +667,7 @@ async function refresh(){
   $("#encTag").textContent = pw ? " · 🔒 encrypted" : "";   // tell the user the copied text is locked
   // meter (fill of one message) — divide by the real data capacity (limit minus the chunk prefix),
   // not the raw limit, so at small app limits the % doesn't read "under" while already spilling to 2 parts
-  const ratio = Math.min(1, b64.length / (msgLimit - 24));
+  const ratio = Math.min(1, b64.length / Math.max(1, msgLimit - chunkPrefixLen(lastChunks.length)));
   const meter = $("#meter"), fill = $("#meterFill");
   const pct = (ratio*100).toFixed(0);
   fill.style.width = pct + "%";
