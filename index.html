@@ -543,7 +543,20 @@ function chunkify(b64){
     out.push(`PXT/${sid}/${i+1}/${total}/` + b64.slice(i*per,(i+1)*per));
   return out;
 }
+// reassemble() is called far more often than the text changes: a paste runs updateProgress() and
+// maybeAutoReveal(), which runs doReveal(), which re-reassembles after its await to detect the inbox
+// changing mid-derive — four full regex scans, match-array allocations, and payload concatenations over
+// the same unchanged input, on a box that accepts up to 8 MB. Memoize on the exact string. The post-await
+// staleness check keeps working: an inbox that actually changed misses the cache and re-parses, which is
+// precisely the case it guards against. No caller mutates the returned object.
+let reassembleIn = null, reassembleOut = null;
 function reassemble(text){
+  if(text === reassembleIn) return reassembleOut;
+  reassembleOut = reassembleParse(text);
+  reassembleIn = text;
+  return reassembleOut;
+}
+function reassembleParse(text){
   // the data group stops (negative lookahead) before the next "PXT/<sid>/<n>/<total>/" prefix, so a
   // greedy match can't swallow the following chunk when a transport strips the separators between them
   const re = /PXT\/([0-9a-f]+)\/(\d+)\/(\d+)\/((?:(?!PXT\/[0-9a-f]+\/\d+\/\d+\/)[A-Za-z0-9+/=])+)/g;
@@ -602,16 +615,19 @@ function reassemble(text){
 let srcImage = null, srcMime = "image/webp", handling = false, loadToken = 0;
 function loadImage(file){
   return new Promise((res,rej)=>{
-    const reader = new FileReader();
-    reader.onload = ()=>{
-      const img = new Image();
-      img.decoding = "async";   // don't block the main thread decoding the source before onload fires
-      img.onload = ()=>res(img);
-      img.onerror = ()=>rej(new Error("Couldn't decode that image — try JPG, PNG, WebP, or GIF (AVIF requires a modern browser)."));
-      img.src = reader.result;
-    };
-    reader.onerror = ()=>rej(new Error("Couldn't read that file."));
-    reader.readAsDataURL(file);
+    // hand the file straight to the decoder. readAsDataURL Base64-encoded the whole photo into a JS
+    // string first: for an 8 MB JPEG that's the 8 MB file, a ~10.7 MB Base64 string (~21 MB resident as
+    // UTF-16), and the browser decoding that Base64 back to the same bytes — all on the main thread
+    // before onload fires. An object URL costs none of it, and first paint lands sooner.
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.decoding = "async";   // don't block the main thread decoding the source before onload fires
+    // keep the URL alive for as long as the image is loaded, rather than revoking here: a bfcache
+    // restore re-runs nothing but may need the src again, and the callers already have clear ownership
+    // points (replace, Start over) to free it at.
+    img.onload = ()=>{ img._objUrl = url; res(img); };
+    img.onerror = ()=>{ URL.revokeObjectURL(url); rej(new Error("Couldn't decode that image — try JPG, PNG, WebP, or GIF (AVIF requires a modern browser).")); };
+    img.src = url;
   });
 }
 function drawScaled(img, maxDim){
@@ -917,6 +933,24 @@ $("#chunks").addEventListener("copy", e=>{
 
 let debounce;
 function queueRefresh(){ clearTimeout(debounce); debounce = setTimeout(refresh, 180); }
+// wait for an in-flight refresh() to land. Polls with setTimeout, NOT requestAnimationFrame: browsers
+// stop firing rAF entirely in a hidden or backgrounded tab, so a user who started Auto-fit and switched
+// away came back to a button frozen on "Fitting…" — and, because the Esc handler keys on that button's
+// aria-busy to avoid wiping the session mid-fit, to a Send panel Esc couldn't reset either. setTimeout
+// keeps firing when hidden (throttled to ~1 s). Bounded, so a wedged refresh reports an error instead of
+// hanging forever. Resolves true when idle, false on timeout.
+function waitForIdle(timeoutMs = 30000, stepMs = 50){
+  return new Promise(resolve=>{
+    if(!refreshing) return resolve(true);
+    const started = Date.now();
+    const tick = ()=>{
+      if(!refreshing) return resolve(true);
+      if(Date.now() - started > timeoutMs) return resolve(false);
+      setTimeout(tick, stepMs);
+    };
+    setTimeout(tick, stepMs);
+  });
+}
 
 const autofitOrigHtml = $("#autofit").innerHTML;
 
@@ -1015,7 +1049,7 @@ $("#autofit").addEventListener("click", async ()=>{
     if(!best || !srcImage) return;   // Start over ran during the fit — autoFit abandoned; don't touch the (now hidden) panel
     const hitFallback = best.fallback === true;   // real success at {25,256} no longer masquerades as the fallback
     clearTimeout(debounce);
-    while(refreshing) await new Promise(r=>requestAnimationFrame(r));
+    if(!await waitForIdle()) throw new Error("Timed out waiting for the current compression to finish.");
     clearTimeout(debounce);
     $("#maxdim").value = String(best.d);
     setQuality(best.q);
@@ -1177,7 +1211,10 @@ async function handleFile(file){
   const myToken = ++loadToken;   // bumped by resetSend too, so a Start-over mid-decode abandons this load
   try{
     const img = await loadImage(file);
-    if(myToken !== loadToken) return;   // Start over (or a newer load) ran during decode — don't resurrect this image
+    // Start over (or a newer load) ran during decode — don't resurrect this image, and free the object
+    // URL it is holding, since nothing else will ever own it
+    if(myToken !== loadToken){ URL.revokeObjectURL(img._objUrl); return; }
+    if(srcImage && srcImage._objUrl) URL.revokeObjectURL(srcImage._objUrl);   // replacing: release the outgoing file
     srcImage = img;
     // a pasted/dragged image can arrive with an empty File.name (notably from non-Chromium browsers);
     // fall back to a placeholder so the bold prompt isn't blanked and the tab title isn't " — Carrier"
@@ -1216,6 +1253,7 @@ function resetSend(){
   clearTimeout(debounce);
   loadToken++;   // invalidate any in-flight handleFile decode so it can't repopulate the panels after this reset
   if(thumbUrl){ URL.revokeObjectURL(thumbUrl); thumbUrl = null; }
+  if(srcImage && srcImage._objUrl) URL.revokeObjectURL(srcImage._objUrl);   // free the source file's object URL
   lastPreviewBytes = null; keyCache = null;   // drop the cached derived key when the image is cleared
   srcImage = null; lastChunks = [];
   sentChunks.clear(); paintSent();   // the copy-checklist belongs to the payload being cleared
@@ -1342,6 +1380,7 @@ function clearReveal(){
 function resetReceive(){
   clearReveal();
   clearTimeout(progDebounce);
+  reassembleIn = reassembleOut = null;   // don't keep a multi-MB paste (and its payload) referenced after a Clear
   $("#inbox").value=""; updateProgress();
   $("#rpass").value=""; maskPassword("rpass");
   $("#inbox").focus();
@@ -1581,6 +1620,8 @@ function maskPassword(id){
 }
 
 window.addEventListener("pagehide", ()=>{
+  // srcImage._objUrl is deliberately NOT revoked here: pagehide also fires when the page goes into the
+  // bfcache, and the pageshow handler recompresses from srcImage on restore. The real unload reclaims it.
   if(thumbUrl) URL.revokeObjectURL(thumbUrl);
   if(recovered) URL.revokeObjectURL(recovered.url);
   if(lastTxtUrl) URL.revokeObjectURL(lastTxtUrl);
