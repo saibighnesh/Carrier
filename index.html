@@ -917,6 +917,24 @@ $("#chunks").addEventListener("copy", e=>{
 
 let debounce;
 function queueRefresh(){ clearTimeout(debounce); debounce = setTimeout(refresh, 180); }
+// wait for an in-flight refresh() to land. Polls with setTimeout, NOT requestAnimationFrame: browsers
+// stop firing rAF entirely in a hidden or backgrounded tab, so a user who started Auto-fit and switched
+// away came back to a button frozen on "Fitting…" — and, because the Esc handler keys on that button's
+// aria-busy to avoid wiping the session mid-fit, to a Send panel Esc couldn't reset either. setTimeout
+// keeps firing when hidden (throttled to ~1 s). Bounded, so a wedged refresh reports an error instead of
+// hanging forever. Resolves true when idle, false on timeout.
+function waitForIdle(timeoutMs = 30000, stepMs = 50){
+  return new Promise(resolve=>{
+    if(!refreshing) return resolve(true);
+    const started = Date.now();
+    const tick = ()=>{
+      if(!refreshing) return resolve(true);
+      if(Date.now() - started > timeoutMs) return resolve(false);
+      setTimeout(tick, stepMs);
+    };
+    setTimeout(tick, stepMs);
+  });
+}
 
 const autofitOrigHtml = $("#autofit").innerHTML;
 
@@ -1015,7 +1033,7 @@ $("#autofit").addEventListener("click", async ()=>{
     if(!best || !srcImage) return;   // Start over ran during the fit — autoFit abandoned; don't touch the (now hidden) panel
     const hitFallback = best.fallback === true;   // real success at {25,256} no longer masquerades as the fallback
     clearTimeout(debounce);
-    while(refreshing) await new Promise(r=>requestAnimationFrame(r));
+    if(!await waitForIdle()) throw new Error("Timed out waiting for the current compression to finish.");
     clearTimeout(debounce);
     $("#maxdim").value = String(best.d);
     setQuality(best.q);
