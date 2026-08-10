@@ -375,6 +375,13 @@ const lsGet = k => { try { return localStorage.getItem(k); } catch { return null
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
 const lsRemove = k => { try { localStorage.removeItem(k); } catch {} };
 const fmtKB = b => b < 1024 ? b + " B" : b < 1048576 ? (b/1024).toFixed(b < 100*1024 ? 1 : 0) + " KB" : (b/1048576).toFixed(1) + " MB";
+// stamp saved files with the LOCAL calendar date/time, never toISOString(). ISO renders the moment in
+// UTC, so a user behind UTC saving in the evening got tomorrow's date in both the .txt header ("saved
+// 2026-08-10" on the 9th) and the filename — and a user ahead of UTC saving after midnight got
+// yesterday's. A backup is read by a human in their own timezone; stamp it in theirs.
+const pad2 = n => String(n).padStart(2, "0");
+const localDate = (d = new Date()) => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+const localStamp = (d = new Date()) => `${localDate(d)}-${pad2(d.getHours())}-${pad2(d.getMinutes())}-${pad2(d.getSeconds())}`;
 
 /* ---------- byte <-> base64 ---------- */
 function bytesToB64(bytes){
@@ -968,7 +975,7 @@ $("#saveTxt").addEventListener("click", ()=>{
   // matches "PXT/…" chunks (reassemble's regex), so this comment line is ignored on load — safe to include.
   const appName = MSG_LIMITS[String(msgLimit)] || "your chat app";
   const n = lastChunks.length;
-  const savedOn = new Date().toISOString().slice(0, 10);   // YYYY-MM-DD — a backup should record when it was made
+  const savedOn = localDate();   // YYYY-MM-DD in the user's own timezone — a backup should record when it was made
   const header = `# Carrier — ${n} message${n!==1?"s":""} for ${appName}, saved ${savedOn}. Paste every line below into Carrier's Receive tab (order doesn't matter) to rebuild the image.\n\n`;
   const blob = new Blob([header + lastChunks.join("\n\n")], {type:"text/plain"});
   // reclaim the *previous* save's URL now rather than on a fixed timer: a timer set too short frees the
@@ -1380,7 +1387,7 @@ bindZoom("thumb", ()=>{
 });
 $("#save").addEventListener("click", ()=>{
   if(!recovered) return;
-  const ts = new Date().toISOString().replace(/[:.]/g,"-").slice(0,19);
+  const ts = localStamp();   // local YYYY-MM-DD-HH-MM-SS, so the saved image sorts by the user's own clock
   const rand = Math.random().toString(16).slice(2,6);   // avoid overwriting a prior save made within the same second
   const rimg = $("#rimg");
   const dims = (rimg.naturalWidth && rimg.naturalHeight) ? `-${rimg.naturalWidth}x${rimg.naturalHeight}` : "";   // record the pixel size in the filename
