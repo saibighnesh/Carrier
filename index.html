@@ -182,6 +182,7 @@
   .progress{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:10px;overflow-wrap:anywhere}
   .progress b{color:var(--recv);font-variant-numeric:tabular-nums}
   .progress.ok{color:var(--ok)}
+  .progress.warn{color:var(--send)}
   .result{margin-top:16px;text-align:center}
   .result img{max-width:100%;max-height:80vh;min-height:1px;border-radius:10px;border:1px solid var(--line);cursor:zoom-in}
 
@@ -1122,7 +1123,16 @@ function updateProgress(){
   $("#reveal").title = ready
     ? "Reassembles the pasted chunks and decrypts them (Ctrl/Cmd+Enter)"
     : "Paste a complete Carrier message first";
-  if(!r) return;
+  if(!r){
+    // an empty box is just the resting state, but text that parses to NO chunks used to leave the
+    // progress line blank — the user saw their paste land and then absolutely nothing happen, with only
+    // a disabled Reveal button to explain it. Say what's wrong while the text is still on screen.
+    if($("#inbox").value.trim()) {
+      p.className = "progress warn";
+      p.textContent = "No Carrier messages found in that text — each part starts with “PXT/”. Paste the messages exactly as you received them.";
+    }
+    return;
+  }
   const b = t => Object.assign(document.createElement("b"), {textContent: String(t)});
   if(r.missing.length===0){
     p.className = "progress ok";
