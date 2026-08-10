@@ -602,16 +602,19 @@ function reassemble(text){
 let srcImage = null, srcMime = "image/webp", handling = false, loadToken = 0;
 function loadImage(file){
   return new Promise((res,rej)=>{
-    const reader = new FileReader();
-    reader.onload = ()=>{
-      const img = new Image();
-      img.decoding = "async";   // don't block the main thread decoding the source before onload fires
-      img.onload = ()=>res(img);
-      img.onerror = ()=>rej(new Error("Couldn't decode that image — try JPG, PNG, WebP, or GIF (AVIF requires a modern browser)."));
-      img.src = reader.result;
-    };
-    reader.onerror = ()=>rej(new Error("Couldn't read that file."));
-    reader.readAsDataURL(file);
+    // hand the file straight to the decoder. readAsDataURL Base64-encoded the whole photo into a JS
+    // string first: for an 8 MB JPEG that's the 8 MB file, a ~10.7 MB Base64 string (~21 MB resident as
+    // UTF-16), and the browser decoding that Base64 back to the same bytes — all on the main thread
+    // before onload fires. An object URL costs none of it, and first paint lands sooner.
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.decoding = "async";   // don't block the main thread decoding the source before onload fires
+    // keep the URL alive for as long as the image is loaded, rather than revoking here: a bfcache
+    // restore re-runs nothing but may need the src again, and the callers already have clear ownership
+    // points (replace, Start over) to free it at.
+    img.onload = ()=>{ img._objUrl = url; res(img); };
+    img.onerror = ()=>{ URL.revokeObjectURL(url); rej(new Error("Couldn't decode that image — try JPG, PNG, WebP, or GIF (AVIF requires a modern browser).")); };
+    img.src = url;
   });
 }
 function drawScaled(img, maxDim){
@@ -1195,7 +1198,10 @@ async function handleFile(file){
   const myToken = ++loadToken;   // bumped by resetSend too, so a Start-over mid-decode abandons this load
   try{
     const img = await loadImage(file);
-    if(myToken !== loadToken) return;   // Start over (or a newer load) ran during decode — don't resurrect this image
+    // Start over (or a newer load) ran during decode — don't resurrect this image, and free the object
+    // URL it is holding, since nothing else will ever own it
+    if(myToken !== loadToken){ URL.revokeObjectURL(img._objUrl); return; }
+    if(srcImage && srcImage._objUrl) URL.revokeObjectURL(srcImage._objUrl);   // replacing: release the outgoing file
     srcImage = img;
     // a pasted/dragged image can arrive with an empty File.name (notably from non-Chromium browsers);
     // fall back to a placeholder so the bold prompt isn't blanked and the tab title isn't " — Carrier"
@@ -1234,6 +1240,7 @@ function resetSend(){
   clearTimeout(debounce);
   loadToken++;   // invalidate any in-flight handleFile decode so it can't repopulate the panels after this reset
   if(thumbUrl){ URL.revokeObjectURL(thumbUrl); thumbUrl = null; }
+  if(srcImage && srcImage._objUrl) URL.revokeObjectURL(srcImage._objUrl);   // free the source file's object URL
   lastPreviewBytes = null; keyCache = null;   // drop the cached derived key when the image is cleared
   srcImage = null; lastChunks = [];
   sentChunks.clear(); paintSent();   // the copy-checklist belongs to the payload being cleared
@@ -1599,6 +1606,8 @@ function maskPassword(id){
 }
 
 window.addEventListener("pagehide", ()=>{
+  // srcImage._objUrl is deliberately NOT revoked here: pagehide also fires when the page goes into the
+  // bfcache, and the pageshow handler recompresses from srcImage on restore. The real unload reclaims it.
   if(thumbUrl) URL.revokeObjectURL(thumbUrl);
   if(recovered) URL.revokeObjectURL(recovered.url);
   if(lastTxtUrl) URL.revokeObjectURL(lastTxtUrl);
