@@ -698,6 +698,10 @@ function paintSent(){
   const prog = $("#sendProg"), nextBtn = $("#copyNext"), resetBtn = $("#resetSent");
   if(multi){
     if(next >= 0){
+      // end any "Copied N ✓" flash before relabelling. flashButton captures the resting label when the
+      // flash starts and restores it on expiry, so a second Copy-next within the 1.2 s window would put
+      // the PREVIOUS part number back on a button that has already advanced.
+      cancelFlash(nextBtn);
       nextBtn.textContent = `Copy message ${next+1}`;
       nextBtn.setAttribute("aria-label", `Copy message ${next+1} of ${total} — the next one not yet copied`);
       nextBtn.title = `Copies message ${next+1} of ${total} and marks it off`;
