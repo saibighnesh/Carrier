@@ -153,6 +153,12 @@
   .chunks{display:flex;flex-direction:column;gap:10px;margin-top:6px}
   .chunk{background:var(--bg);border:1px solid var(--line);border-radius:8px;overflow:hidden}
   .chunk:focus-within{border-color:var(--send)}
+  /* a copied part is dimmed and marked so a long send can be worked top-to-bottom without losing
+     the place; the checkmark carries the state for anyone who can't see the opacity/colour shift */
+  .chunk.sent{border-color:var(--ok)}
+  .chunk.sent .pill{color:var(--ok)}
+  .chunk.sent .data{opacity:.55}
+  .sentmark{font-family:var(--mono);font-size:11px;color:var(--ok);margin-left:8px}
   .chunk .head{display:flex;align-items:center;justify-content:space-between;
     padding:8px 12px;border-bottom:1px solid var(--line)}
   .chunk .pill{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--send)}
@@ -305,8 +311,11 @@
       <span class="lbl" id="outPanelLabel">4 · Copy &amp; paste into your chat<span id="encTag" translate="no" style="color:var(--ok)"></span></span>
       <div class="btnrow btnrow--below">
         <button type="button" class="btn amber" id="copyAll" title="Copies all chunks separated by a blank line — paste the whole block into your chat">Copy all messages</button>
+        <button type="button" class="btn hidden" id="copyNext" title="Copies the next message you haven't copied yet and marks it off">Copy next message</button>
         <button type="button" class="btn" id="saveTxt" aria-label="Save all messages as a text file" title="Downloads all messages as a .txt file — send it as an attachment or keep it as a backup">Save as .txt</button>
+        <button type="button" class="btn hidden" id="resetSent" title="Clears the copied marks and starts the send over from part 1">Reset marks</button>
       </div>
+      <p class="note hidden" id="sendProg" role="status" aria-live="polite" style="margin:0 2px 10px"></p>
       <div class="chunks" id="chunks" role="list" translate="no"></div>
       <p class="note warn hidden" id="chunksMore" role="note" style="margin:8px 2px 0"></p>
     </div>
@@ -402,7 +411,27 @@ function b64ToBytes(b64){
   return Uint8Array.from(atob(b64), c => c.charCodeAt(0));
 }
 
+/* ---------- CRC-32 (IEEE 802.3) ---------- */
+// table built once at load; the classic byte-at-a-time loop clears a few MB in single-digit milliseconds,
+// so adding it to every pack/unpack costs nothing the user can perceive
+const CRC32_TABLE = (()=>{
+  const t = new Uint32Array(256);
+  for(let n=0;n<256;n++){
+    let c = n;
+    for(let k=0;k<8;k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+function crc32(bytes){
+  let c = 0xFFFFFFFF;
+  for(let i=0;i<bytes.length;i++) c = CRC32_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+
 /* ---------- container (mime + image, optional encryption) ---------- */
+const FLAG_ENCRYPTED = 1;   // body is salt+iv+AES-256-GCM ciphertext
+const FLAG_CRC32     = 2;   // body carries a 4-byte big-endian CRC-32 trailer over everything before it
 function buildPlain(mime, img){
   const m = new TextEncoder().encode(mime);
   // the mime length is stored in a single byte; a mime > 255 bytes would wrap mod-256 and desync
@@ -446,13 +475,29 @@ async function pack(img, mime, password){
   const plain = buildPlain(mime, img);
   let flags = 0, body;
   if(password){
-    flags = 1;
+    flags = FLAG_ENCRYPTED;
     const { salt, key } = await getKeyMaterial(password);
     const iv = crypto.getRandomValues(new Uint8Array(12));   // unique per encryption — never cached
     const ct = new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv}, key, plain));
     body = new Uint8Array(28 + ct.length);
     body.set(salt,0); body.set(iv,16); body.set(ct,28);
-  } else body = plain;
+  } else {
+    // An unlocked payload has no GCM tag, so nothing catches a chunk that arrived mangled: the Base64
+    // still decodes, MAGIC still matches, parsePlain still "succeeds", and the receiver is left with a
+    // broken-image icon and no idea whether the sender, the chat app, or a bad copy/paste was at fault.
+    // Append a CRC-32 so damage is detected and named. APPENDED (not prepended) and flagged in bit 1 on
+    // purpose: a Carrier build predating this flag sees flags & 1 == 0, parses the mime exactly as before,
+    // and hands the decoder four extra trailing bytes — which both WebP (RIFF is length-delimited) and
+    // JPEG (data ends at the EOI marker) ignore. Old receivers keep rendering these messages.
+    flags = FLAG_CRC32;
+    const crc = crc32(plain);
+    body = new Uint8Array(plain.length + 4);
+    body.set(plain, 0);
+    body[plain.length]   = (crc >>> 24) & 0xFF;
+    body[plain.length+1] = (crc >>> 16) & 0xFF;
+    body[plain.length+2] = (crc >>> 8) & 0xFF;
+    body[plain.length+3] =  crc & 0xFF;
+  }
   const c = new Uint8Array(5 + body.length);
   c.set(MAGIC,0); c[4] = flags; c.set(body,5);
   return bytesToB64(c);
@@ -461,15 +506,23 @@ async function unpack(b64, password){
   let c; try { c = b64ToBytes(b64.trim()); } catch { throw new Error("That text isn't valid — a chunk may be missing or mistyped."); }
   for(let i=0;i<4;i++) if(c[i]!==MAGIC[i]) throw new Error("This doesn't look like a Carrier message.");
   const flags = c[4], body = c.subarray(5);
-  let plain;
-  if(flags & 1){
+  let plain, verified = false;   // verified = the bytes were checked against an integrity value, not just parsed
+  if(flags & FLAG_ENCRYPTED){
     if(!password) throw new Error("This message is locked. Enter the password.");
     const salt = body.subarray(0,16), iv = body.subarray(16,28), ct = body.subarray(28);
     const key = await deriveKey(password, salt);
     try { plain = new Uint8Array(await crypto.subtle.decrypt({name:"AES-GCM",iv}, key, ct)); }
     catch { throw new Error("Wrong password — or the text was altered in transit."); }
-  } else plain = body;
-  return parsePlain(plain);
+    verified = true;   // GCM's authentication tag already proves the ciphertext arrived intact
+  } else if(flags & FLAG_CRC32){
+    if(body.length < 6) throw new Error("This message is too short to hold an image — a part is probably missing.");
+    const data = body.subarray(0, body.length - 4);
+    const t = body.subarray(body.length - 4);
+    const want = ((t[0] << 24) | (t[1] << 16) | (t[2] << 8) | t[3]) >>> 0;
+    if(crc32(data) !== want) throw new Error("This message is damaged — some characters were changed or lost on the way. Ask the sender to resend it.");
+    plain = data; verified = true;
+  } else plain = body;   // a pre-checksum sender: nothing to verify against, parse as before
+  return Object.assign(parsePlain(plain), { verified });
 }
 
 /* ---------- chunking ---------- */
@@ -602,7 +655,7 @@ async function autoFit(){
   // read the password INSIDE the budget, not once up front: the field isn't disabled during the multi-
   // encode fit, so a password typed/cleared mid-fit would otherwise leave the overhead off by 44 bytes
   // (salt+iv+tag) versus what refresh() actually packs, quietly missing the one-message goal.
-  const budget = () => targetBytes() - (5 + 1 + 10 + ($("#pass").value ? 44 : 0));   // 10 ≈ longest mime; pw adds salt+iv+tag
+  const budget = () => targetBytes() - (5 + 1 + 10 + ($("#pass").value ? 44 : 4));   // 10 ≈ longest mime; pw adds salt+iv+tag, unlocked adds the CRC-32 trailer
   for(const d of dims){
     if(!srcImage) return null;   // Start over / a new load ran mid-fit — abandon (don't deref null)
     const cv = drawScaled(srcImage, d);
@@ -628,6 +681,55 @@ const scrollBehavior = ()=>prefersReducedMotion() ? "auto" : "smooth";
 let lastChunks = [], thumbUrl = null, refreshing = false, pendingRefresh = false, copyAllBusy = false, lastTxtUrl = null;
 let lastPreviewBytes = null, lastPreviewMime = "image/webp";   // latest compressed bytes, for the full-size zoom tab
 const copyAllLabel = () => lastChunks.length === 1 ? "Copy message" : "Copy all messages";
+// which parts have already been copied out to the chat. Keyed by the chunk TEXT, not its index: any
+// control or password change re-packs into different strings, so a mark can never bleed onto a payload
+// it wasn't made against, while an identical re-render (mode switch, bfcache restore, a no-op refresh)
+// keeps the user's place in a long send. Pruned to the live chunk list on every render.
+const sentChunks = new Set();
+const nextUnsentIndex = () => lastChunks.findIndex(c => !sentChunks.has(c));
+// repaint the copied marks on the cards, the "copy next" button, and the summary line. Cheap enough to
+// call on every mark — it only touches the ≤CHUNK_RENDER_CAP cards actually in the DOM.
+function paintSent(){
+  const total = lastChunks.length;
+  const multi = total > 1;   // a single-message payload has nothing to keep track of
+  let sent = 0;
+  if(multi) for(const c of lastChunks) if(sentChunks.has(c)) sent++;
+  const next = multi ? nextUnsentIndex() : -1;
+  const prog = $("#sendProg"), nextBtn = $("#copyNext"), resetBtn = $("#resetSent");
+  if(multi){
+    if(next >= 0){
+      // end any "Copied N ✓" flash before relabelling. flashButton captures the resting label when the
+      // flash starts and restores it on expiry, so a second Copy-next within the 1.2 s window would put
+      // the PREVIOUS part number back on a button that has already advanced.
+      cancelFlash(nextBtn);
+      nextBtn.textContent = `Copy message ${next+1}`;
+      nextBtn.setAttribute("aria-label", `Copy message ${next+1} of ${total} — the next one not yet copied`);
+      nextBtn.title = `Copies message ${next+1} of ${total} and marks it off`;
+    }
+    prog.textContent = sent >= total
+      ? `All ${total} parts copied. ✓`
+      : `Copied ${sent} of ${total} parts — next up: part ${next+1}.`;
+    prog.className = sent >= total ? "note ok" : "note";   // set BEFORE the hidden toggle — className assignment wipes it
+  }
+  nextBtn.classList.toggle("hidden", !multi || next < 0);
+  resetBtn.classList.toggle("hidden", !multi || sent === 0);
+  prog.classList.toggle("hidden", !multi || sent === 0);
+  $("#chunks").querySelectorAll(".chunk").forEach(el=>{
+    const i = +el.querySelector(".data").dataset.i;
+    const isSent = multi && sentChunks.has(lastChunks[i]);
+    el.classList.toggle("sent", isSent);
+    // plain text inside the listitem, so the state reaches a screen reader without a live region
+    el.querySelector(".sentmark").textContent = isSent ? "✓ copied" : "";
+  });
+}
+// record that chunk i made it to the clipboard. Never marks on a failed copy — a mark the user didn't
+// earn would make them skip a part and ship an unassemblable message.
+function markSent(i){
+  const c = lastChunks[i];
+  if(c == null || sentChunks.has(c)) return;
+  sentChunks.add(c);
+  paintSent();
+}
 async function refresh(){
   if(!srcImage) return;
   if(refreshing){ pendingRefresh = true; return; }
@@ -731,6 +833,7 @@ function makeChunkCard(c, i){
   const pillLabel = lastChunks.length === 1 ? "SINGLE MESSAGE" : `MESSAGE ${i+1} / ${lastChunks.length}`;
   el.innerHTML =
     `<div class="head"><span class="pill" title="Part ${i+1} of ${lastChunks.length}">${pillLabel}</span>
+     <span class="sentmark"></span>
      <span style="font-family:var(--mono);font-size:10px;color:var(--faint);margin-right:auto;padding-left:10px">${c.length.toLocaleString()} chars</span>
      <button type="button" class="copyone" data-i="${i}" aria-label="Copy message ${i+1} of ${lastChunks.length}" data-orig-label="Copy message ${i+1} of ${lastChunks.length}">Copy</button></div>
      <div class="data" data-i="${i}" tabindex="0" translate="no" aria-label="Message ${i+1} of ${lastChunks.length} content — use Copy button to copy"></div>`;
@@ -739,6 +842,12 @@ function makeChunkCard(c, i){
 }
 function renderChunks(){
   const box = $("#chunks"); box.innerHTML = "";
+  // drop marks whose chunk text is no longer in the payload — a re-pack at a new quality/password
+  // produces entirely different strings, so this clears the whole set in exactly the cases it should
+  if(sentChunks.size){
+    const live = new Set(lastChunks);
+    for(const c of sentChunks) if(!live.has(c)) sentChunks.delete(c);
+  }
   if(!copyAllBusy){
     $("#copyAll").textContent = copyAllLabel();   // don't clobber active copy feedback
     // keep the tooltip honest: a single-message payload isn't "all chunks separated by a blank line"
@@ -775,6 +884,7 @@ function renderChunks(){
     moreEl.textContent = ""; moreEl.classList.add("hidden");
   }
   const copyoneTimers = new WeakMap();
+  paintSent();   // cards are freshly built — re-apply whichever marks survived the prune above
   box.querySelectorAll(".copyone").forEach(b=>{
     b.onclick = async ()=>{
       const origLabel = b.dataset.origLabel;
@@ -782,6 +892,7 @@ function renderChunks(){
       try{
         await navigator.clipboard.writeText(lastChunks[+b.dataset.i]);
         b.textContent = "Copied"; b.setAttribute("aria-label","Copied");
+        markSent(+b.dataset.i);
       }catch{
         b.textContent = "Failed"; b.setAttribute("aria-label","Copy failed");
       }
@@ -800,6 +911,7 @@ $("#chunks").addEventListener("copy", e=>{
   if(Number.isInteger(i) && lastChunks[i] != null && e.clipboardData){
     e.clipboardData.setData("text/plain", lastChunks[i]);
     e.preventDefault();
+    markSent(i);   // a hand-copied card counts the same as one copied by its button
   }
 });
 
@@ -937,6 +1049,8 @@ $("#copyAll").addEventListener("click", async ()=>{
   const restore = ()=>{ copyAllBusy = false; b.textContent = copyAllLabel(); b.removeAttribute("aria-label"); };
   try{
     await navigator.clipboard.writeText(lastChunks.join("\n\n"));
+    for(const c of lastChunks) sentChunks.add(c);   // the whole payload is on the clipboard — mark it all
+    paintSent();
     b.textContent = lastChunks.length === 1 ? "Copied ✓" : "Copied all ✓";
     b.setAttribute("aria-label", lastChunks.length === 1 ? "Copied the message" : `Copied all ${lastChunks.length} messages`);
     copyAllTimer = setTimeout(restore, 2000);
@@ -944,6 +1058,30 @@ $("#copyAll").addEventListener("click", async ()=>{
     b.textContent = "Copy failed"; b.setAttribute("aria-label","Copy failed — clipboard access denied");
     copyAllTimer = setTimeout(restore, 2000);
   }
+});
+// Copy-next: the practical way to send a multi-part payload. Pasting a 12-part image into a chat means
+// twelve alternating copy/paste trips, and the only thing tracking which part you're on is your memory —
+// one skipped or repeated part and the receiver just sees "still need part 7". This copies the lowest
+// part not yet copied, marks it, and scrolls its card into view so the next tap is already in place.
+$("#copyNext").addEventListener("click", async ()=>{
+  const i = nextUnsentIndex();
+  if(i < 0) return;
+  const btn = $("#copyNext");
+  try{
+    await navigator.clipboard.writeText(lastChunks[i]);
+    markSent(i);   // repaints, and advances the button to the following part
+    // only the first CHUNK_RENDER_CAP parts have a card; beyond that there's nothing to scroll to
+    const card = $("#chunks").querySelector(`.data[data-i="${i}"]`);
+    if(card) card.closest(".chunk").scrollIntoView({behavior:scrollBehavior(),block:"nearest"});
+    flashButton(btn, `Copied ${i+1} ✓`, `Copied message ${i+1} of ${lastChunks.length}`, 1200);
+  }catch{
+    flashButton(btn, "Copy failed", "Copy failed — clipboard access denied", 1200);
+  }
+});
+$("#resetSent").addEventListener("click", ()=>{
+  sentChunks.clear();
+  paintSent();
+  $("#copyNext").focus();   // the reset button hides itself — don't drop focus to <body>
 });
 // trigger a browser download for an object URL (does not revoke — caller owns the URL lifecycle)
 function downloadURL(url, filename){
@@ -1080,6 +1218,7 @@ function resetSend(){
   if(thumbUrl){ URL.revokeObjectURL(thumbUrl); thumbUrl = null; }
   lastPreviewBytes = null; keyCache = null;   // drop the cached derived key when the image is cleared
   srcImage = null; lastChunks = [];
+  sentChunks.clear(); paintSent();   // the copy-checklist belongs to the payload being cleared
   $("#chunks").innerHTML = "";
   ["tunePanel","lockPanel","outPanel"].forEach(id => $("#"+id).classList.add("hidden"));
   $("#pass").value = ""; maskPassword("pass"); updatePwStrength();
@@ -1142,7 +1281,7 @@ function updateProgress(){
     p.append("Got all ", b(r.total), ` part${r.total>1?"s":""} (~${approx}). Ready to reveal.`);
     // peek the header without decrypting: a locked message won't auto-reveal, so tell the user a
     // password is needed rather than leaving them to guess why nothing appeared
-    if(headerFlags(r.s) & 1){
+    if(headerFlags(r.s) & FLAG_ENCRYPTED){
       p.append(" 🔒 Locked — enter the password below, then Reveal.");
       $("#reveal").title = "Enter the password, then decrypt & reveal (Ctrl/Cmd+Enter)";   // refine the button hint for a locked message
     }
@@ -1174,7 +1313,7 @@ function maybeAutoReveal(){
   // stray leftover chunk over a freshly-pasted (momentarily incomplete) image. Ambiguity → user decides.
   if(r.multiSession) return;
   const flags = headerFlags(r.s);
-  if(flags === null || (flags & 1)) return;
+  if(flags === null || (flags & FLAG_ENCRYPTED)) return;
   doReveal();
 }
 let progDebounce;
@@ -1279,7 +1418,7 @@ async function doReveal(){
     if(r.missing.length){ note.className="note err";
       note.textContent = `Missing part${r.missing.length>1?"s":""} ${r.missing.join(", ")}${r.missingTrunc?", …":""} — paste the remaining message(s) first.`; return; }
     const snapshot = r.s;   // the exact payload we're about to decrypt
-    const { mime, img } = await unpack(r.s, $("#rpass").value);   // raw value — must match the sender's exactly, whitespace included
+    const { mime, img, verified } = await unpack(r.s, $("#rpass").value);   // raw value — must match the sender's exactly, whitespace included
     // a locked reveal awaits 250k-round PBKDF2 (~1-2 s on a phone). If the user edited the inbox or left
     // Receive mode during that window, this result now describes a stale message — showing it would put a
     // different image on screen than the "Ready to reveal" progress line (and, mid mode-switch, leak a live
@@ -1312,7 +1451,11 @@ async function doReveal(){
     // (now.s === snapshot) but the session SET may have changed during the await, so r.multiSession /
     // r.total could be stale — a stray chunk added or removed mid-derive would mislabel the result.
     const parts = `${now.total} part${now.total>1?"s":""}`;   // provenance: how many chunks rebuilt this image
-    const lockTag = (headerFlags(now.s) & 1) ? " · 🔒 encrypted" : "";   // note the message travelled encrypted
+    const lockTag = (headerFlags(now.s) & FLAG_ENCRYPTED) ? " · 🔒 encrypted" : "";   // note the message travelled encrypted
+    // an unlocked message that passed its CRC-32 is worth saying so: it's the difference between "this
+    // rendered" and "these are byte-for-byte the sender's pixels". Encrypted messages already imply it
+    // via the lock tag (GCM authenticates), so don't print both.
+    const intactTag = (verified && !lockTag) ? " · ✓ intact" : "";
     // once the blob decodes, fold in the pixel dimensions so the receive caption matches the
     // send-side "Compressed W×H" stat — the size/type is shown immediately, dimensions land on load
     rimg.onload = ()=>{
@@ -1321,18 +1464,18 @@ async function doReveal(){
       const dims = `${rimg.naturalWidth}×${rimg.naturalHeight}`;
       rimg.alt = `Received image (${fmtKB(img.length)}, ${resolvedMime}, ${dims}, ${parts}${lockTag ? ", encrypted" : ""})`;
       rimg.setAttribute("aria-label", `Received image, ${fmtKB(img.length)}, ${resolvedMime}, ${dims}, ${parts}${lockTag ? ", encrypted" : ""} — activate to open full size in a new tab`);
-      $("#rCaption").textContent = `${fmtKB(img.length)} · ${resolvedMime} · ${dims} · ${parts}${lockTag}`;
-      $("#result").setAttribute("aria-label", `Received image · ${fmtKB(img.length)} · ${resolvedMime} · ${dims} · ${parts}${lockTag}`);
+      $("#rCaption").textContent = `${fmtKB(img.length)} · ${resolvedMime} · ${dims} · ${parts}${lockTag}${intactTag}`;
+      $("#result").setAttribute("aria-label", `Received image · ${fmtKB(img.length)} · ${resolvedMime} · ${dims} · ${parts}${lockTag}${intactTag}`);
     };
     rimg.src = url;
     rimg.alt = `Received image (${fmtKB(img.length)}, ${resolvedMime})`;
     rimg.setAttribute("aria-label", `Received image, ${fmtKB(img.length)}, ${resolvedMime} — activate to open full size in a new tab`);   // dims fold in on load
-    $("#rCaption").textContent = `${fmtKB(img.length)} · ${resolvedMime} · ${parts}${lockTag}`;   // visible size/type/parts under the image
+    $("#rCaption").textContent = `${fmtKB(img.length)} · ${resolvedMime} · ${parts}${lockTag}${intactTag}`;   // visible size/type/parts under the image
     const ext = { "image/jpeg":"jpg", "image/png":"png", "image/gif":"gif", "image/avif":"avif", "image/webp":"webp" }[resolvedMime] || "webp";
     recovered = { url, mime: resolvedMime, ext, bytes: img };   // keep bytes so the zoom can mint its own URL
     $("#save").title = `Save this ${fmtKB(img.length)} ${resolvedMime} image to your device`;
     $("#save").setAttribute("aria-label", `Download the received image as a .${ext} file`);   // name the actual file type for screen readers
-    $("#result").setAttribute("aria-label", `Received image · ${fmtKB(img.length)} · ${resolvedMime} · ${parts}${lockTag}`);   // dims fold in on load
+    $("#result").setAttribute("aria-label", `Received image · ${fmtKB(img.length)} · ${resolvedMime} · ${parts}${lockTag}${intactTag}`);   // dims fold in on load
     $("#result").classList.remove("hidden");
     $("#result").removeAttribute("aria-hidden");
     $("#result").scrollIntoView({behavior:scrollBehavior(),block:"nearest"});
