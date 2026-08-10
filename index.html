@@ -153,6 +153,12 @@
   .chunks{display:flex;flex-direction:column;gap:10px;margin-top:6px}
   .chunk{background:var(--bg);border:1px solid var(--line);border-radius:8px;overflow:hidden}
   .chunk:focus-within{border-color:var(--send)}
+  /* a copied part is dimmed and marked so a long send can be worked top-to-bottom without losing
+     the place; the checkmark carries the state for anyone who can't see the opacity/colour shift */
+  .chunk.sent{border-color:var(--ok)}
+  .chunk.sent .pill{color:var(--ok)}
+  .chunk.sent .data{opacity:.55}
+  .sentmark{font-family:var(--mono);font-size:11px;color:var(--ok);margin-left:8px}
   .chunk .head{display:flex;align-items:center;justify-content:space-between;
     padding:8px 12px;border-bottom:1px solid var(--line)}
   .chunk .pill{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--send)}
@@ -305,8 +311,11 @@
       <span class="lbl" id="outPanelLabel">4 · Copy &amp; paste into your chat<span id="encTag" translate="no" style="color:var(--ok)"></span></span>
       <div class="btnrow btnrow--below">
         <button type="button" class="btn amber" id="copyAll" title="Copies all chunks separated by a blank line — paste the whole block into your chat">Copy all messages</button>
+        <button type="button" class="btn hidden" id="copyNext" title="Copies the next message you haven't copied yet and marks it off">Copy next message</button>
         <button type="button" class="btn" id="saveTxt" aria-label="Save all messages as a text file" title="Downloads all messages as a .txt file — send it as an attachment or keep it as a backup">Save as .txt</button>
+        <button type="button" class="btn hidden" id="resetSent" title="Clears the copied marks and starts the send over from part 1">Reset marks</button>
       </div>
+      <p class="note hidden" id="sendProg" role="status" aria-live="polite" style="margin:0 2px 10px"></p>
       <div class="chunks" id="chunks" role="list" translate="no"></div>
       <p class="note warn hidden" id="chunksMore" role="note" style="margin:8px 2px 0"></p>
     </div>
@@ -628,6 +637,51 @@ const scrollBehavior = ()=>prefersReducedMotion() ? "auto" : "smooth";
 let lastChunks = [], thumbUrl = null, refreshing = false, pendingRefresh = false, copyAllBusy = false, lastTxtUrl = null;
 let lastPreviewBytes = null, lastPreviewMime = "image/webp";   // latest compressed bytes, for the full-size zoom tab
 const copyAllLabel = () => lastChunks.length === 1 ? "Copy message" : "Copy all messages";
+// which parts have already been copied out to the chat. Keyed by the chunk TEXT, not its index: any
+// control or password change re-packs into different strings, so a mark can never bleed onto a payload
+// it wasn't made against, while an identical re-render (mode switch, bfcache restore, a no-op refresh)
+// keeps the user's place in a long send. Pruned to the live chunk list on every render.
+const sentChunks = new Set();
+const nextUnsentIndex = () => lastChunks.findIndex(c => !sentChunks.has(c));
+// repaint the copied marks on the cards, the "copy next" button, and the summary line. Cheap enough to
+// call on every mark — it only touches the ≤CHUNK_RENDER_CAP cards actually in the DOM.
+function paintSent(){
+  const total = lastChunks.length;
+  const multi = total > 1;   // a single-message payload has nothing to keep track of
+  let sent = 0;
+  if(multi) for(const c of lastChunks) if(sentChunks.has(c)) sent++;
+  const next = multi ? nextUnsentIndex() : -1;
+  const prog = $("#sendProg"), nextBtn = $("#copyNext"), resetBtn = $("#resetSent");
+  if(multi){
+    if(next >= 0){
+      nextBtn.textContent = `Copy message ${next+1}`;
+      nextBtn.setAttribute("aria-label", `Copy message ${next+1} of ${total} — the next one not yet copied`);
+      nextBtn.title = `Copies message ${next+1} of ${total} and marks it off`;
+    }
+    prog.textContent = sent >= total
+      ? `All ${total} parts copied. ✓`
+      : `Copied ${sent} of ${total} parts — next up: part ${next+1}.`;
+    prog.className = sent >= total ? "note ok" : "note";   // set BEFORE the hidden toggle — className assignment wipes it
+  }
+  nextBtn.classList.toggle("hidden", !multi || next < 0);
+  resetBtn.classList.toggle("hidden", !multi || sent === 0);
+  prog.classList.toggle("hidden", !multi || sent === 0);
+  $("#chunks").querySelectorAll(".chunk").forEach(el=>{
+    const i = +el.querySelector(".data").dataset.i;
+    const isSent = multi && sentChunks.has(lastChunks[i]);
+    el.classList.toggle("sent", isSent);
+    // plain text inside the listitem, so the state reaches a screen reader without a live region
+    el.querySelector(".sentmark").textContent = isSent ? "✓ copied" : "";
+  });
+}
+// record that chunk i made it to the clipboard. Never marks on a failed copy — a mark the user didn't
+// earn would make them skip a part and ship an unassemblable message.
+function markSent(i){
+  const c = lastChunks[i];
+  if(c == null || sentChunks.has(c)) return;
+  sentChunks.add(c);
+  paintSent();
+}
 async function refresh(){
   if(!srcImage) return;
   if(refreshing){ pendingRefresh = true; return; }
@@ -731,6 +785,7 @@ function makeChunkCard(c, i){
   const pillLabel = lastChunks.length === 1 ? "SINGLE MESSAGE" : `MESSAGE ${i+1} / ${lastChunks.length}`;
   el.innerHTML =
     `<div class="head"><span class="pill" title="Part ${i+1} of ${lastChunks.length}">${pillLabel}</span>
+     <span class="sentmark"></span>
      <span style="font-family:var(--mono);font-size:10px;color:var(--faint);margin-right:auto;padding-left:10px">${c.length.toLocaleString()} chars</span>
      <button type="button" class="copyone" data-i="${i}" aria-label="Copy message ${i+1} of ${lastChunks.length}" data-orig-label="Copy message ${i+1} of ${lastChunks.length}">Copy</button></div>
      <div class="data" data-i="${i}" tabindex="0" translate="no" aria-label="Message ${i+1} of ${lastChunks.length} content — use Copy button to copy"></div>`;
@@ -739,6 +794,12 @@ function makeChunkCard(c, i){
 }
 function renderChunks(){
   const box = $("#chunks"); box.innerHTML = "";
+  // drop marks whose chunk text is no longer in the payload — a re-pack at a new quality/password
+  // produces entirely different strings, so this clears the whole set in exactly the cases it should
+  if(sentChunks.size){
+    const live = new Set(lastChunks);
+    for(const c of sentChunks) if(!live.has(c)) sentChunks.delete(c);
+  }
   if(!copyAllBusy){
     $("#copyAll").textContent = copyAllLabel();   // don't clobber active copy feedback
     // keep the tooltip honest: a single-message payload isn't "all chunks separated by a blank line"
@@ -775,6 +836,7 @@ function renderChunks(){
     moreEl.textContent = ""; moreEl.classList.add("hidden");
   }
   const copyoneTimers = new WeakMap();
+  paintSent();   // cards are freshly built — re-apply whichever marks survived the prune above
   box.querySelectorAll(".copyone").forEach(b=>{
     b.onclick = async ()=>{
       const origLabel = b.dataset.origLabel;
@@ -782,6 +844,7 @@ function renderChunks(){
       try{
         await navigator.clipboard.writeText(lastChunks[+b.dataset.i]);
         b.textContent = "Copied"; b.setAttribute("aria-label","Copied");
+        markSent(+b.dataset.i);
       }catch{
         b.textContent = "Failed"; b.setAttribute("aria-label","Copy failed");
       }
@@ -800,6 +863,7 @@ $("#chunks").addEventListener("copy", e=>{
   if(Number.isInteger(i) && lastChunks[i] != null && e.clipboardData){
     e.clipboardData.setData("text/plain", lastChunks[i]);
     e.preventDefault();
+    markSent(i);   // a hand-copied card counts the same as one copied by its button
   }
 });
 
@@ -937,6 +1001,8 @@ $("#copyAll").addEventListener("click", async ()=>{
   const restore = ()=>{ copyAllBusy = false; b.textContent = copyAllLabel(); b.removeAttribute("aria-label"); };
   try{
     await navigator.clipboard.writeText(lastChunks.join("\n\n"));
+    for(const c of lastChunks) sentChunks.add(c);   // the whole payload is on the clipboard — mark it all
+    paintSent();
     b.textContent = lastChunks.length === 1 ? "Copied ✓" : "Copied all ✓";
     b.setAttribute("aria-label", lastChunks.length === 1 ? "Copied the message" : `Copied all ${lastChunks.length} messages`);
     copyAllTimer = setTimeout(restore, 2000);
@@ -944,6 +1010,30 @@ $("#copyAll").addEventListener("click", async ()=>{
     b.textContent = "Copy failed"; b.setAttribute("aria-label","Copy failed — clipboard access denied");
     copyAllTimer = setTimeout(restore, 2000);
   }
+});
+// Copy-next: the practical way to send a multi-part payload. Pasting a 12-part image into a chat means
+// twelve alternating copy/paste trips, and the only thing tracking which part you're on is your memory —
+// one skipped or repeated part and the receiver just sees "still need part 7". This copies the lowest
+// part not yet copied, marks it, and scrolls its card into view so the next tap is already in place.
+$("#copyNext").addEventListener("click", async ()=>{
+  const i = nextUnsentIndex();
+  if(i < 0) return;
+  const btn = $("#copyNext");
+  try{
+    await navigator.clipboard.writeText(lastChunks[i]);
+    markSent(i);   // repaints, and advances the button to the following part
+    // only the first CHUNK_RENDER_CAP parts have a card; beyond that there's nothing to scroll to
+    const card = $("#chunks").querySelector(`.data[data-i="${i}"]`);
+    if(card) card.closest(".chunk").scrollIntoView({behavior:scrollBehavior(),block:"nearest"});
+    flashButton(btn, `Copied ${i+1} ✓`, `Copied message ${i+1} of ${lastChunks.length}`, 1200);
+  }catch{
+    flashButton(btn, "Copy failed", "Copy failed — clipboard access denied", 1200);
+  }
+});
+$("#resetSent").addEventListener("click", ()=>{
+  sentChunks.clear();
+  paintSent();
+  $("#copyNext").focus();   // the reset button hides itself — don't drop focus to <body>
 });
 // trigger a browser download for an object URL (does not revoke — caller owns the URL lifecycle)
 function downloadURL(url, filename){
@@ -1080,6 +1170,7 @@ function resetSend(){
   if(thumbUrl){ URL.revokeObjectURL(thumbUrl); thumbUrl = null; }
   lastPreviewBytes = null; keyCache = null;   // drop the cached derived key when the image is cleared
   srcImage = null; lastChunks = [];
+  sentChunks.clear(); paintSent();   // the copy-checklist belongs to the payload being cleared
   $("#chunks").innerHTML = "";
   ["tunePanel","lockPanel","outPanel"].forEach(id => $("#"+id).classList.add("hidden"));
   $("#pass").value = ""; maskPassword("pass"); updatePwStrength();
