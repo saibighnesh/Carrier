@@ -25,7 +25,9 @@ Save the single `index.html` file and it works offline — on a plane, on a trai
 - **Smart compression** — auto-resizes and re-encodes (WebP → JPEG fallback) to hit a target size
 - **Auto-fit** — one click finds the best quality/dimension combo to land in a single message
 - **Multi-part chunking** — if the image is still too big, splits into numbered parts (`PXT/id/1/3`, `2/3`, `3/3`) that reassemble in any order
+- **Copy-tracking** — a multi-part send marks off each part as you copy it, and **Copy next message** hands you the one you haven't sent yet, so you never lose your place mid-send
 - **AES-256-GCM encryption** — optional password lock using browser-native Web Crypto (PBKDF2, 250k iterations)
+- **Damage detection** — unlocked messages carry a CRC-32, so a part mangled in transit is reported as damaged instead of showing up as a broken image (encrypted messages get this from GCM's authentication tag)
 - **Fully offline** — no network calls at all; works without internet after first load
 - **Accessible** — keyboard navigable, screen reader announcements for chunk progress
 
@@ -38,7 +40,7 @@ Save the single `index.html` file and it works offline — on a plane, on a trai
 2. Drop or click to choose an image (JPG, PNG, WebP, GIF)
 3. Adjust **Quality** and **Max size**, or click **⚡ Auto-fit to 1 message**
 4. Optionally set a password under **Lock it**
-5. Copy the text and paste into your chat
+5. Copy the text and paste into your chat — if it split into parts, **Copy next message** walks you through them one at a time and marks off what you've already sent
 
 ### Receive
 1. Switch to the **← Receive** tab
@@ -75,8 +77,14 @@ When a password is set:
 ```
 Magic "PXT1" (4 bytes) | flags (1 byte) | body
 ```
-- `flags = 0` → plain: `mimeLen(1) | mime | imageBytes`
-- `flags = 1` → encrypted: `salt(16) | iv(12) | ciphertext`
+
+| `flags` | Body |
+|---|---|
+| `0` | `mimeLen(1) │ mime │ imageBytes` — written by Carrier builds predating the checksum |
+| `1` | `salt(16) │ iv(12) │ AES-256-GCM ciphertext` |
+| `2` | `mimeLen(1) │ mime │ imageBytes │ CRC-32(4, big-endian)` |
+
+The CRC-32 is **appended**, not prepended, so an older Carrier build reads `flags & 1 == 0`, parses the mime exactly as before, and hands the decoder four extra trailing bytes — which WebP (RIFF is length-delimited) and JPEG (data ends at the EOI marker) both ignore. Messages stay readable in both directions across versions.
 
 ---
 
@@ -95,7 +103,8 @@ Magic "PXT1" (4 bytes) | flags (1 byte) | body
 ## Security Notes
 
 - **Password channel** — send the password through a *different* channel than the Carrier text, otherwise the lock adds nothing
-- **Message limit** — default is 60,000 chars (safe for WhatsApp); tune `MSG_LIMIT` in the source for other platforms (Telegram: ~4,096, SMS: ~160)
+- **Message limit** — pick your chat app from the **Chat app** dropdown (WhatsApp 60,000 · Telegram 4,096 · Slack 4,000 · Discord 2,000 · SMS 160); the choice is remembered and drives both the fit meter and the chunk size
+- **Integrity, not authenticity** — the CRC-32 on unlocked messages detects accidental damage. It is not a signature: anyone who can rewrite the text can recompute it. Use a password if you need to know the bytes came from the sender
 - **Scope** — this is convenience privacy for everyday use, not a substitute for audited secure-messaging tools like Signal
 
 ---
