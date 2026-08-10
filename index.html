@@ -411,7 +411,27 @@ function b64ToBytes(b64){
   return Uint8Array.from(atob(b64), c => c.charCodeAt(0));
 }
 
+/* ---------- CRC-32 (IEEE 802.3) ---------- */
+// table built once at load; the classic byte-at-a-time loop clears a few MB in single-digit milliseconds,
+// so adding it to every pack/unpack costs nothing the user can perceive
+const CRC32_TABLE = (()=>{
+  const t = new Uint32Array(256);
+  for(let n=0;n<256;n++){
+    let c = n;
+    for(let k=0;k<8;k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+function crc32(bytes){
+  let c = 0xFFFFFFFF;
+  for(let i=0;i<bytes.length;i++) c = CRC32_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+
 /* ---------- container (mime + image, optional encryption) ---------- */
+const FLAG_ENCRYPTED = 1;   // body is salt+iv+AES-256-GCM ciphertext
+const FLAG_CRC32     = 2;   // body carries a 4-byte big-endian CRC-32 trailer over everything before it
 function buildPlain(mime, img){
   const m = new TextEncoder().encode(mime);
   // the mime length is stored in a single byte; a mime > 255 bytes would wrap mod-256 and desync
@@ -455,13 +475,29 @@ async function pack(img, mime, password){
   const plain = buildPlain(mime, img);
   let flags = 0, body;
   if(password){
-    flags = 1;
+    flags = FLAG_ENCRYPTED;
     const { salt, key } = await getKeyMaterial(password);
     const iv = crypto.getRandomValues(new Uint8Array(12));   // unique per encryption — never cached
     const ct = new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv}, key, plain));
     body = new Uint8Array(28 + ct.length);
     body.set(salt,0); body.set(iv,16); body.set(ct,28);
-  } else body = plain;
+  } else {
+    // An unlocked payload has no GCM tag, so nothing catches a chunk that arrived mangled: the Base64
+    // still decodes, MAGIC still matches, parsePlain still "succeeds", and the receiver is left with a
+    // broken-image icon and no idea whether the sender, the chat app, or a bad copy/paste was at fault.
+    // Append a CRC-32 so damage is detected and named. APPENDED (not prepended) and flagged in bit 1 on
+    // purpose: a Carrier build predating this flag sees flags & 1 == 0, parses the mime exactly as before,
+    // and hands the decoder four extra trailing bytes — which both WebP (RIFF is length-delimited) and
+    // JPEG (data ends at the EOI marker) ignore. Old receivers keep rendering these messages.
+    flags = FLAG_CRC32;
+    const crc = crc32(plain);
+    body = new Uint8Array(plain.length + 4);
+    body.set(plain, 0);
+    body[plain.length]   = (crc >>> 24) & 0xFF;
+    body[plain.length+1] = (crc >>> 16) & 0xFF;
+    body[plain.length+2] = (crc >>> 8) & 0xFF;
+    body[plain.length+3] =  crc & 0xFF;
+  }
   const c = new Uint8Array(5 + body.length);
   c.set(MAGIC,0); c[4] = flags; c.set(body,5);
   return bytesToB64(c);
@@ -470,15 +506,23 @@ async function unpack(b64, password){
   let c; try { c = b64ToBytes(b64.trim()); } catch { throw new Error("That text isn't valid — a chunk may be missing or mistyped."); }
   for(let i=0;i<4;i++) if(c[i]!==MAGIC[i]) throw new Error("This doesn't look like a Carrier message.");
   const flags = c[4], body = c.subarray(5);
-  let plain;
-  if(flags & 1){
+  let plain, verified = false;   // verified = the bytes were checked against an integrity value, not just parsed
+  if(flags & FLAG_ENCRYPTED){
     if(!password) throw new Error("This message is locked. Enter the password.");
     const salt = body.subarray(0,16), iv = body.subarray(16,28), ct = body.subarray(28);
     const key = await deriveKey(password, salt);
     try { plain = new Uint8Array(await crypto.subtle.decrypt({name:"AES-GCM",iv}, key, ct)); }
     catch { throw new Error("Wrong password — or the text was altered in transit."); }
-  } else plain = body;
-  return parsePlain(plain);
+    verified = true;   // GCM's authentication tag already proves the ciphertext arrived intact
+  } else if(flags & FLAG_CRC32){
+    if(body.length < 6) throw new Error("This message is too short to hold an image — a part is probably missing.");
+    const data = body.subarray(0, body.length - 4);
+    const t = body.subarray(body.length - 4);
+    const want = ((t[0] << 24) | (t[1] << 16) | (t[2] << 8) | t[3]) >>> 0;
+    if(crc32(data) !== want) throw new Error("This message is damaged — some characters were changed or lost on the way. Ask the sender to resend it.");
+    plain = data; verified = true;
+  } else plain = body;   // a pre-checksum sender: nothing to verify against, parse as before
+  return Object.assign(parsePlain(plain), { verified });
 }
 
 /* ---------- chunking ---------- */
@@ -611,7 +655,7 @@ async function autoFit(){
   // read the password INSIDE the budget, not once up front: the field isn't disabled during the multi-
   // encode fit, so a password typed/cleared mid-fit would otherwise leave the overhead off by 44 bytes
   // (salt+iv+tag) versus what refresh() actually packs, quietly missing the one-message goal.
-  const budget = () => targetBytes() - (5 + 1 + 10 + ($("#pass").value ? 44 : 0));   // 10 ≈ longest mime; pw adds salt+iv+tag
+  const budget = () => targetBytes() - (5 + 1 + 10 + ($("#pass").value ? 44 : 4));   // 10 ≈ longest mime; pw adds salt+iv+tag, unlocked adds the CRC-32 trailer
   for(const d of dims){
     if(!srcImage) return null;   // Start over / a new load ran mid-fit — abandon (don't deref null)
     const cv = drawScaled(srcImage, d);
@@ -1233,7 +1277,7 @@ function updateProgress(){
     p.append("Got all ", b(r.total), ` part${r.total>1?"s":""} (~${approx}). Ready to reveal.`);
     // peek the header without decrypting: a locked message won't auto-reveal, so tell the user a
     // password is needed rather than leaving them to guess why nothing appeared
-    if(headerFlags(r.s) & 1){
+    if(headerFlags(r.s) & FLAG_ENCRYPTED){
       p.append(" 🔒 Locked — enter the password below, then Reveal.");
       $("#reveal").title = "Enter the password, then decrypt & reveal (Ctrl/Cmd+Enter)";   // refine the button hint for a locked message
     }
@@ -1265,7 +1309,7 @@ function maybeAutoReveal(){
   // stray leftover chunk over a freshly-pasted (momentarily incomplete) image. Ambiguity → user decides.
   if(r.multiSession) return;
   const flags = headerFlags(r.s);
-  if(flags === null || (flags & 1)) return;
+  if(flags === null || (flags & FLAG_ENCRYPTED)) return;
   doReveal();
 }
 let progDebounce;
@@ -1370,7 +1414,7 @@ async function doReveal(){
     if(r.missing.length){ note.className="note err";
       note.textContent = `Missing part${r.missing.length>1?"s":""} ${r.missing.join(", ")}${r.missingTrunc?", …":""} — paste the remaining message(s) first.`; return; }
     const snapshot = r.s;   // the exact payload we're about to decrypt
-    const { mime, img } = await unpack(r.s, $("#rpass").value);   // raw value — must match the sender's exactly, whitespace included
+    const { mime, img, verified } = await unpack(r.s, $("#rpass").value);   // raw value — must match the sender's exactly, whitespace included
     // a locked reveal awaits 250k-round PBKDF2 (~1-2 s on a phone). If the user edited the inbox or left
     // Receive mode during that window, this result now describes a stale message — showing it would put a
     // different image on screen than the "Ready to reveal" progress line (and, mid mode-switch, leak a live
@@ -1403,7 +1447,11 @@ async function doReveal(){
     // (now.s === snapshot) but the session SET may have changed during the await, so r.multiSession /
     // r.total could be stale — a stray chunk added or removed mid-derive would mislabel the result.
     const parts = `${now.total} part${now.total>1?"s":""}`;   // provenance: how many chunks rebuilt this image
-    const lockTag = (headerFlags(now.s) & 1) ? " · 🔒 encrypted" : "";   // note the message travelled encrypted
+    const lockTag = (headerFlags(now.s) & FLAG_ENCRYPTED) ? " · 🔒 encrypted" : "";   // note the message travelled encrypted
+    // an unlocked message that passed its CRC-32 is worth saying so: it's the difference between "this
+    // rendered" and "these are byte-for-byte the sender's pixels". Encrypted messages already imply it
+    // via the lock tag (GCM authenticates), so don't print both.
+    const intactTag = (verified && !lockTag) ? " · ✓ intact" : "";
     // once the blob decodes, fold in the pixel dimensions so the receive caption matches the
     // send-side "Compressed W×H" stat — the size/type is shown immediately, dimensions land on load
     rimg.onload = ()=>{
@@ -1412,18 +1460,18 @@ async function doReveal(){
       const dims = `${rimg.naturalWidth}×${rimg.naturalHeight}`;
       rimg.alt = `Received image (${fmtKB(img.length)}, ${resolvedMime}, ${dims}, ${parts}${lockTag ? ", encrypted" : ""})`;
       rimg.setAttribute("aria-label", `Received image, ${fmtKB(img.length)}, ${resolvedMime}, ${dims}, ${parts}${lockTag ? ", encrypted" : ""} — activate to open full size in a new tab`);
-      $("#rCaption").textContent = `${fmtKB(img.length)} · ${resolvedMime} · ${dims} · ${parts}${lockTag}`;
-      $("#result").setAttribute("aria-label", `Received image · ${fmtKB(img.length)} · ${resolvedMime} · ${dims} · ${parts}${lockTag}`);
+      $("#rCaption").textContent = `${fmtKB(img.length)} · ${resolvedMime} · ${dims} · ${parts}${lockTag}${intactTag}`;
+      $("#result").setAttribute("aria-label", `Received image · ${fmtKB(img.length)} · ${resolvedMime} · ${dims} · ${parts}${lockTag}${intactTag}`);
     };
     rimg.src = url;
     rimg.alt = `Received image (${fmtKB(img.length)}, ${resolvedMime})`;
     rimg.setAttribute("aria-label", `Received image, ${fmtKB(img.length)}, ${resolvedMime} — activate to open full size in a new tab`);   // dims fold in on load
-    $("#rCaption").textContent = `${fmtKB(img.length)} · ${resolvedMime} · ${parts}${lockTag}`;   // visible size/type/parts under the image
+    $("#rCaption").textContent = `${fmtKB(img.length)} · ${resolvedMime} · ${parts}${lockTag}${intactTag}`;   // visible size/type/parts under the image
     const ext = { "image/jpeg":"jpg", "image/png":"png", "image/gif":"gif", "image/avif":"avif", "image/webp":"webp" }[resolvedMime] || "webp";
     recovered = { url, mime: resolvedMime, ext, bytes: img };   // keep bytes so the zoom can mint its own URL
     $("#save").title = `Save this ${fmtKB(img.length)} ${resolvedMime} image to your device`;
     $("#save").setAttribute("aria-label", `Download the received image as a .${ext} file`);   // name the actual file type for screen readers
-    $("#result").setAttribute("aria-label", `Received image · ${fmtKB(img.length)} · ${resolvedMime} · ${parts}${lockTag}`);   // dims fold in on load
+    $("#result").setAttribute("aria-label", `Received image · ${fmtKB(img.length)} · ${resolvedMime} · ${parts}${lockTag}${intactTag}`);   // dims fold in on load
     $("#result").classList.remove("hidden");
     $("#result").removeAttribute("aria-hidden");
     $("#result").scrollIntoView({behavior:scrollBehavior(),block:"nearest"});
