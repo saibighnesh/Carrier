@@ -380,6 +380,7 @@ const SID_LEN = 6;   // chunkify's session id: 3 random bytes rendered as hex
 const chunkPrefixLen = total => 4 + SID_LEN + 3 + 2 * String(total).length;
 const targetBytes = () => Math.floor((msgLimit - chunkPrefixLen(1)) * 0.72);
 const CHUNK_RENDER_CAP = 200;     // cap DOM cards — tiny per-app limits (SMS) can produce thousands of chunks
+const CHUNK_PREVIEW = 280;        // chars of a chunk shown on a card; the full text is swapped in for printing
 // only these raster image types may be turned into a blob and opened — never text/html or svg (XSS)
 const ALLOWED_IMG = new Set(["image/webp","image/jpeg","image/png","image/gif","image/avif"]);
 const MAGIC = [0x50,0x58,0x54,0x31]; // "PXT1"
@@ -864,7 +865,7 @@ function makeChunkCard(c, i){
   const el = document.createElement("div");
   el.className = "chunk";
   el.setAttribute("role","listitem");
-  const preview = c.length > 280 ? c.slice(0,280) + " …" : c;
+  const preview = c.length > CHUNK_PREVIEW ? c.slice(0, CHUNK_PREVIEW) + " …" : c;
   const pillLabel = lastChunks.length === 1 ? "SINGLE MESSAGE" : `MESSAGE ${i+1} / ${lastChunks.length}`;
   el.innerHTML =
     `<div class="head"><span class="pill" title="Part ${i+1} of ${lastChunks.length}">${pillLabel}</span>
@@ -934,6 +935,28 @@ function renderChunks(){
       copyoneTimers.set(b, setTimeout(()=>{ b.textContent="Copy"; b.setAttribute("aria-label",origLabel); },1200));
     };
   });
+}
+
+// The print stylesheet un-clamps .data and hides the controls, i.e. it exists to put the chunks on paper —
+// but .data holds a 280-char PREVIEW, so every printed part stopped at "…" and the printout couldn't be
+// decoded, with nothing on the page admitting it. Swap the full text in for the print, then put the
+// previews back. Bounded by CHUNK_RENDER_CAP: at most 200 cards exist, and #chunksMore already tells a
+// reader on paper how many parts aren't shown at all.
+function setChunkText(full){
+  $("#chunks").querySelectorAll(".data").forEach(d=>{
+    const c = lastChunks[+d.dataset.i];
+    if(c == null) return;
+    d.textContent = full ? c : (c.length > CHUNK_PREVIEW ? c.slice(0, CHUNK_PREVIEW) + " …" : c);
+  });
+}
+window.addEventListener("beforeprint", ()=>setChunkText(true));
+window.addEventListener("afterprint", ()=>setChunkText(false));
+// Safari fires no beforeprint/afterprint; matchMedia("print") is its equivalent hook
+if(window.matchMedia){
+  const mq = window.matchMedia("print");
+  const onPrint = e => setChunkText(e.matches);
+  if(mq.addEventListener) mq.addEventListener("change", onPrint);
+  else if(mq.addListener) mq.addListener(onPrint);   // Safari < 14
 }
 
 // the .data box only shows a truncated preview (…) for performance, but it's user-select:all/cursor:copy,
