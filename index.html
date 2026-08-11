@@ -1286,7 +1286,16 @@ async function handleFile(file){
   // clear the picker value BEFORE the reject-return, so re-picking the SAME rejected file still fires
   // `change` (an unchanged value emits no event) and gives feedback instead of silently doing nothing
   fileInput.value = "";
-  if(!file.type.startsWith("image/")){ showDropErr("Please choose an image file."); handling = false; return; }
+  // File.type is a best-effort guess and is routinely "" — files dragged from some file managers and
+  // archive tools, files on filesystems the browser can't map an extension for, some Android pickers.
+  // Rejecting those said "Please choose an image file" about a file that IS one, with no way for the user
+  // to find out otherwise. Mirror loadTextFile: trust the type when the OS gives one, fall back to the
+  // extension when it doesn't. This is a UX gate, not a security boundary — the file only ever reaches a
+  // canvas via loadImage, and a RECEIVED payload's mime is still checked against ALLOWED_IMG before any
+  // blob is built. A file that genuinely isn't an image now fails at loadImage with the accurate
+  // "Couldn't decode that image" instead of a wrong error up front.
+  const looksImage = file.type ? file.type.startsWith("image/") : /\.(jpe?g|png|webp|gif|avif|bmp|heic|heif)$/i.test(file.name || "");
+  if(!looksImage){ showDropErr("Please choose an image file."); handling = false; return; }
   drop.querySelector("strong").textContent = "Reading…";   // decoding a big photo isn't instant — show progress
   const myToken = ++loadToken;   // bumped by resetSend too, so a Start-over mid-decode abandons this load
   try{
