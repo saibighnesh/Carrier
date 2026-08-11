@@ -1032,10 +1032,28 @@ function setQuality(q){
   else if(ml) lsRemove("carrier_msglimit");
 })();
 
-$("#quality").addEventListener("input", e=>{ const v = e.target.value; setQuality(v); lsSet("carrier_quality", v); queueRefresh(); });
-$("#maxdim").addEventListener("change", e=>{ lsSet("carrier_maxdim", e.target.value); syncPresets(); queueRefresh(); });
+// `input` fires continuously while a range is dragged — once per pixel on a mouse, at sample rate on a
+// touchscreen — and lsSet is a synchronous, disk-backed, main-thread write. One slow drag across 20–92
+// was several hundred writes of a value the user was still choosing; only the last one is ever read, and
+// only on the next page load. Coalesce to a trailing write, the same treatment queueRefresh already gives
+// the recompression on this exact path. Flushed on pagehide so a tab closed mid-drag still persists.
+let persistTimer, pendingPersist = null;
+function queuePersist(k, v){
+  pendingPersist = pendingPersist || {};
+  pendingPersist[k] = v;
+  clearTimeout(persistTimer);
+  persistTimer = setTimeout(flushPersist, 250);
+}
+function flushPersist(){
+  clearTimeout(persistTimer);
+  if(!pendingPersist) return;
+  for(const k in pendingPersist) lsSet(k, pendingPersist[k]);
+  pendingPersist = null;
+}
+$("#quality").addEventListener("input", e=>{ const v = e.target.value; setQuality(v); queuePersist("carrier_quality", v); queueRefresh(); });
+$("#maxdim").addEventListener("change", e=>{ queuePersist("carrier_maxdim", e.target.value); syncPresets(); queueRefresh(); });
 // switching chat app changes the per-message char budget → re-chunk and redraw the meter/stats
-$("#chatLimit").addEventListener("change", e=>{ msgLimit = +e.target.value; lsSet("carrier_msglimit", e.target.value); queueRefresh(); });
+$("#chatLimit").addEventListener("change", e=>{ msgLimit = +e.target.value; queuePersist("carrier_msglimit", e.target.value); queueRefresh(); });
 // drop the cached derived key the instant the password changes — don't retain the previous secret's key
 // in the heap until Start over, and don't let a future cache-keying refactor risk encrypting under a
 // stale key. getKeyMaterial re-derives on the next pack; correctness no longer rests only on its equality check.
@@ -1071,8 +1089,10 @@ $("#pass").addEventListener("input", updatePwStrength);
 function applyPreset(q, d){
   setQuality(q);
   if([...$("#maxdim").options].some(o => o.value === String(d))) $("#maxdim").value = String(d);
-  lsSet("carrier_quality", String(q));
-  lsSet("carrier_maxdim", String(d));
+  // through the same queue as the slider, not a direct lsSet: a write still pending from a drag would
+  // otherwise land after this one and clobber the preset the user just chose
+  queuePersist("carrier_quality", String(q));
+  queuePersist("carrier_maxdim", String(d));
   syncPresets();   // re-run now that maxdim is set too, so setQuality's earlier pass (old dim) is corrected
   queueRefresh();
 }
@@ -1096,8 +1116,8 @@ $("#autofit").addEventListener("click", async ()=>{
     $("#maxdim").value = String(best.d);
     setQuality(best.q);
     if(!hitFallback){   // persist a working fit — including a legitimate one that landed on the minimum rung
-      lsSet("carrier_quality", String(best.q));
-      lsSet("carrier_maxdim", String(best.d));
+      queuePersist("carrier_quality", String(best.q));
+      queuePersist("carrier_maxdim", String(best.d));
     }
     await refresh();
     if(hitFallback){
@@ -1680,6 +1700,7 @@ function maskPassword(id){
 }
 
 window.addEventListener("pagehide", ()=>{
+  flushPersist();   // a tab closed mid-drag still keeps the setting the user landed on
   // srcImage._objUrl is deliberately NOT revoked here: pagehide also fires when the page goes into the
   // bfcache, and the pageshow handler recompresses from srcImage on restore. The real unload reclaims it.
   if(thumbUrl) URL.revokeObjectURL(thumbUrl);
