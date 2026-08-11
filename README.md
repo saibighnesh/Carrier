@@ -25,7 +25,7 @@ Save the single `index.html` file and it works offline — on a plane, on a trai
 - **Smart compression** — auto-resizes and re-encodes (WebP → JPEG fallback) to hit a target size
 - **Auto-fit** — one click finds the best quality/dimension combo to land in a single message
 - **Multi-part chunking** — if the image is still too big, splits into numbered parts (`PXT/id/1/3`, `2/3`, `3/3`) that reassemble in any order
-- **Copy-tracking** — a multi-part send marks off each part as you copy it, and **Copy next message** hands you the one you haven't sent yet, so you never lose your place mid-send
+- **Send-tracking** — a multi-part send marks off each part as it goes out (copied, or saved into a `.txt`), and **Copy next message** hands you the one you haven't sent yet, so you never lose your place mid-send. Progress shows in the tab title too
 - **AES-256-GCM encryption** — optional password lock using browser-native Web Crypto (PBKDF2, 250k iterations)
 - **Damage detection** — unlocked messages carry a CRC-32, so a part mangled in transit is reported as damaged instead of showing up as a broken image (encrypted messages get this from GCM's authentication tag)
 - **Fully offline** — no network calls at all; works without internet after first load
