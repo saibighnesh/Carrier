@@ -703,6 +703,26 @@ const copyAllLabel = () => lastChunks.length === 1 ? "Copy message" : "Copy all 
 // keeps the user's place in a long send. Pruned to the live chunk list on every render.
 const sentChunks = new Set();
 const nextUnsentIndex = () => lastChunks.findIndex(c => !sentChunks.has(c));
+// compose the Send-mode tab title. Pasting a long payload means living in the chat app, not here, so the
+// tab strip is the only place a user can see how far along the send is without switching back. Called
+// from refresh() (payload changed) and paintSent() (a part was sent), so the count never goes stale.
+function updateSendTitle(){
+  if(!srcImage || $("#send").classList.contains("hidden")) return;
+  const fname = srcImage._name || "";
+  const total = lastChunks.length;
+  if(!fname || !total) return;
+  let sent = 0;
+  for(const c of lastChunks) if(sentChunks.has(c)) sent++;
+  const msgLabel = total === 1 ? "1 msg"
+    : sent === 0     ? `${total} msgs`
+    : sent  <  total ? `${sent}/${total} sent`
+    :                  `all ${total} sent ✓`;
+  // when it splits into multiple parts, name the target app so a user juggling several Carrier tabs can
+  // tell which chat each one is being sized for
+  const appTag = total > 1 ? ` · ${MSG_LIMITS[String(msgLimit)] || "this app"}` : "";
+  const lockPrefix = $("#pass").value ? "🔒 " : "";   // mark a locked send in the tab title
+  document.title = `${lockPrefix}${fname} · ${msgLabel}${appTag} — Carrier`;
+}
 // repaint the copied marks on the cards, the "copy next" button, and the summary line. Cheap enough to
 // call on every mark — it only touches the ≤CHUNK_RENDER_CAP cards actually in the DOM.
 function paintSent(){
@@ -737,6 +757,7 @@ function paintSent(){
     // plain text inside the listitem, so the state reaches a screen reader without a live region
     el.querySelector(".sentmark").textContent = isSent ? "✓ copied" : "";
   });
+  updateSendTitle();   // keep the tab-strip count in step with the marks
 }
 // record that chunk i made it to the clipboard. Never marks on a failed copy — a mark the user didn't
 // earn would make them skip a part and ship an unassemblable message.
@@ -819,14 +840,7 @@ async function refresh(){
   // NOTE: don't scroll/focus #outPanel here. #outPanel only first appears via handleFile's initial
   // refresh, and handleFile already scrolls+focuses #tunePanel right after — so focusing #outPanel here
   // fought that, producing a double smooth-scroll and a focus that jumped #outPanel → #tunePanel.
-  const fname = srcImage._name || "";
-  const msgLabel = lastChunks.length === 1 ? "1 msg" : `${lastChunks.length} msgs`;
-  const inSend = !$("#send").classList.contains("hidden");
-  // when it splits into multiple parts, name the target app in the tab title so a user juggling several
-  // Carrier tabs can tell which chat each one is being sized for
-  const appTag = lastChunks.length > 1 ? ` · ${app}` : "";
-  const lockPrefix = pw ? "🔒 " : "";   // mark a locked send in the tab title
-  if(fname && inSend) document.title = `${lockPrefix}${fname} · ${msgLabel}${appTag} — Carrier`;
+  updateSendTitle();
   } catch(err) {
     // debounced callers (queueRefresh → setTimeout) don't await refresh(), so without this catch a
     // compress/encode/pack rejection became a silent unhandled rejection — the stats just froze.
