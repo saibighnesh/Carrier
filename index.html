@@ -316,7 +316,7 @@
         <button type="button" class="btn hidden" id="resetSent" title="Clears the sent marks and starts the send over from part 1">Reset marks</button>
       </div>
       <p class="note hidden" id="sendProg" role="status" aria-live="polite" style="margin:0 2px 10px"></p>
-      <p class="note kbdhint" aria-hidden="true" style="margin-top:0"><kbd>Ctrl/Cmd</kbd>+<kbd>Enter</kbd> copies the next message</p>
+      <p class="note kbdhint" id="sendKbdHint" aria-hidden="true" style="margin-top:0"><kbd>Ctrl/Cmd</kbd>+<kbd>Enter</kbd> copies the next message</p>
       <div class="chunks" id="chunks" role="list" translate="no"></div>
       <p class="note warn hidden" id="chunksMore" role="note" style="margin:8px 2px 0"></p>
     </div>
@@ -748,6 +748,10 @@ function paintSent(){
       : `Sent ${sent} of ${total} parts — next up: part ${next+1}.`;
     prog.className = sent >= total ? "note ok" : "note";   // set BEFORE the hidden toggle — className assignment wipes it
   }
+  // the chord falls through to Copy all for a single message, so the hint must not promise a "next" one
+  $("#sendKbdHint").innerHTML = multi
+    ? "<kbd>Ctrl/Cmd</kbd>+<kbd>Enter</kbd> copies the next message"
+    : "<kbd>Ctrl/Cmd</kbd>+<kbd>Enter</kbd> copies the message";
   nextBtn.classList.toggle("hidden", !multi || next < 0);
   resetBtn.classList.toggle("hidden", !multi || sent === 0);
   prog.classList.toggle("hidden", !multi || sent === 0);
