@@ -153,8 +153,8 @@
   .chunks{display:flex;flex-direction:column;gap:10px;margin-top:6px}
   .chunk{background:var(--bg);border:1px solid var(--line);border-radius:8px;overflow:hidden}
   .chunk:focus-within{border-color:var(--send)}
-  /* a copied part is dimmed and marked so a long send can be worked top-to-bottom without losing
-     the place; the checkmark carries the state for anyone who can't see the opacity/colour shift */
+  /* a part that has gone out is dimmed and marked so a long send can be worked top-to-bottom without
+     losing the place; the checkmark carries the state for anyone who can't see the opacity/colour shift */
   .chunk.sent{border-color:var(--ok)}
   .chunk.sent .pill{color:var(--ok)}
   .chunk.sent .data{opacity:.55}
@@ -313,7 +313,7 @@
         <button type="button" class="btn amber" id="copyAll" aria-keyshortcuts="Control+Enter Meta+Enter" title="Copies all chunks separated by a blank line — paste the whole block into your chat">Copy all messages</button>
         <button type="button" class="btn hidden" id="copyNext" aria-keyshortcuts="Control+Enter Meta+Enter" title="Copies the next message you haven't copied yet and marks it off (Ctrl/Cmd+Enter)">Copy next message</button>
         <button type="button" class="btn" id="saveTxt" aria-label="Save all messages as a text file" title="Downloads all messages as a .txt file — send it as an attachment or keep it as a backup">Save as .txt</button>
-        <button type="button" class="btn hidden" id="resetSent" title="Clears the copied marks and starts the send over from part 1">Reset marks</button>
+        <button type="button" class="btn hidden" id="resetSent" title="Clears the sent marks and starts the send over from part 1">Reset marks</button>
       </div>
       <p class="note hidden" id="sendProg" role="status" aria-live="polite" style="margin:0 2px 10px"></p>
       <p class="note kbdhint" aria-hidden="true" style="margin-top:0"><kbd>Ctrl/Cmd</kbd>+<kbd>Enter</kbd> copies the next message</p>
@@ -698,7 +698,7 @@ const scrollBehavior = ()=>prefersReducedMotion() ? "auto" : "smooth";
 let lastChunks = [], thumbUrl = null, refreshing = false, pendingRefresh = false, copyAllBusy = false, lastTxtUrl = null;
 let lastPreviewBytes = null, lastPreviewMime = "image/webp";   // latest compressed bytes, for the full-size zoom tab
 const copyAllLabel = () => lastChunks.length === 1 ? "Copy message" : "Copy all messages";
-// which parts have already been copied out to the chat. Keyed by the chunk TEXT, not its index: any
+// which parts have already gone out — copied to the clipboard, or written into a saved .txt. Keyed by the chunk TEXT, not its index: any
 // control or password change re-packs into different strings, so a mark can never bleed onto a payload
 // it wasn't made against, while an identical re-render (mode switch, bfcache restore, a no-op refresh)
 // keeps the user's place in a long send. Pruned to the live chunk list on every render.
@@ -744,8 +744,8 @@ function paintSent(){
       nextBtn.title = `Copies message ${next+1} of ${total} and marks it off`;
     }
     prog.textContent = sent >= total
-      ? `All ${total} parts copied. ✓`
-      : `Copied ${sent} of ${total} parts — next up: part ${next+1}.`;
+      ? `All ${total} parts sent. ✓`
+      : `Sent ${sent} of ${total} parts — next up: part ${next+1}.`;
     prog.className = sent >= total ? "note ok" : "note";   // set BEFORE the hidden toggle — className assignment wipes it
   }
   nextBtn.classList.toggle("hidden", !multi || next < 0);
@@ -756,7 +756,7 @@ function paintSent(){
     const isSent = multi && sentChunks.has(lastChunks[i]);
     el.classList.toggle("sent", isSent);
     // plain text inside the listitem, so the state reaches a screen reader without a live region
-    el.querySelector(".sentmark").textContent = isSent ? "✓ copied" : "";
+    el.querySelector(".sentmark").textContent = isSent ? "✓ sent" : "";
   });
   updateSendTitle();   // keep the tab-strip count in step with the marks
 }
@@ -1193,6 +1193,11 @@ $("#saveTxt").addEventListener("click", ()=>{
   const app = (MSG_LIMITS[String(msgLimit)] || "").toLowerCase().replace(/[^a-z0-9]+/g, "");   // record which app's per-message limit these chunks fit
   const appTag = app ? `-${app}` : "";
   downloadURL(url, `${base}-carrier${appTag}-${lastChunks.length}msg-${savedOn.replace(/-/g, "")}.txt`);   // YYYYMMDD in the name too
+  // the .txt holds every part verbatim, so saving it delivers the whole payload exactly as Copy all
+  // does — just down a different pipe. Leaving the tracker at "0 of 7" after a save would have the
+  // checklist contradict what the user just did, and Copy next would offer part 1 again.
+  for(const c of lastChunks) sentChunks.add(c);
+  paintSent();
   flashButton($("#saveTxt"), "Saved ✓", `Saved ${lastChunks.length} message${lastChunks.length!==1?"s":""} as a text file`);
 });
 
