@@ -380,6 +380,7 @@ const SID_LEN = 6;   // chunkify's session id: 3 random bytes rendered as hex
 const chunkPrefixLen = total => 4 + SID_LEN + 3 + 2 * String(total).length;
 const targetBytes = () => Math.floor((msgLimit - chunkPrefixLen(1)) * 0.72);
 const CHUNK_RENDER_CAP = 200;     // cap DOM cards — tiny per-app limits (SMS) can produce thousands of chunks
+const CHUNK_PREVIEW = 280;        // chars of a chunk shown on a card; the full text is swapped in for printing
 // only these raster image types may be turned into a blob and opened — never text/html or svg (XSS)
 const ALLOWED_IMG = new Set(["image/webp","image/jpeg","image/png","image/gif","image/avif"]);
 const MAGIC = [0x50,0x58,0x54,0x31]; // "PXT1"
@@ -864,7 +865,7 @@ function makeChunkCard(c, i){
   const el = document.createElement("div");
   el.className = "chunk";
   el.setAttribute("role","listitem");
-  const preview = c.length > 280 ? c.slice(0,280) + " …" : c;
+  const preview = c.length > CHUNK_PREVIEW ? c.slice(0, CHUNK_PREVIEW) + " …" : c;
   const pillLabel = lastChunks.length === 1 ? "SINGLE MESSAGE" : `MESSAGE ${i+1} / ${lastChunks.length}`;
   el.innerHTML =
     `<div class="head"><span class="pill" title="Part ${i+1} of ${lastChunks.length}">${pillLabel}</span>
@@ -934,6 +935,28 @@ function renderChunks(){
       copyoneTimers.set(b, setTimeout(()=>{ b.textContent="Copy"; b.setAttribute("aria-label",origLabel); },1200));
     };
   });
+}
+
+// The print stylesheet un-clamps .data and hides the controls, i.e. it exists to put the chunks on paper —
+// but .data holds a 280-char PREVIEW, so every printed part stopped at "…" and the printout couldn't be
+// decoded, with nothing on the page admitting it. Swap the full text in for the print, then put the
+// previews back. Bounded by CHUNK_RENDER_CAP: at most 200 cards exist, and #chunksMore already tells a
+// reader on paper how many parts aren't shown at all.
+function setChunkText(full){
+  $("#chunks").querySelectorAll(".data").forEach(d=>{
+    const c = lastChunks[+d.dataset.i];
+    if(c == null) return;
+    d.textContent = full ? c : (c.length > CHUNK_PREVIEW ? c.slice(0, CHUNK_PREVIEW) + " …" : c);
+  });
+}
+window.addEventListener("beforeprint", ()=>setChunkText(true));
+window.addEventListener("afterprint", ()=>setChunkText(false));
+// Safari fires no beforeprint/afterprint; matchMedia("print") is its equivalent hook
+if(window.matchMedia){
+  const mq = window.matchMedia("print");
+  const onPrint = e => setChunkText(e.matches);
+  if(mq.addEventListener) mq.addEventListener("change", onPrint);
+  else if(mq.addListener) mq.addListener(onPrint);   // Safari < 14
 }
 
 // the .data box only shows a truncated preview (…) for performance, but it's user-select:all/cursor:copy,
@@ -1009,10 +1032,28 @@ function setQuality(q){
   else if(ml) lsRemove("carrier_msglimit");
 })();
 
-$("#quality").addEventListener("input", e=>{ const v = e.target.value; setQuality(v); lsSet("carrier_quality", v); queueRefresh(); });
-$("#maxdim").addEventListener("change", e=>{ lsSet("carrier_maxdim", e.target.value); syncPresets(); queueRefresh(); });
+// `input` fires continuously while a range is dragged — once per pixel on a mouse, at sample rate on a
+// touchscreen — and lsSet is a synchronous, disk-backed, main-thread write. One slow drag across 20–92
+// was several hundred writes of a value the user was still choosing; only the last one is ever read, and
+// only on the next page load. Coalesce to a trailing write, the same treatment queueRefresh already gives
+// the recompression on this exact path. Flushed on pagehide so a tab closed mid-drag still persists.
+let persistTimer, pendingPersist = null;
+function queuePersist(k, v){
+  pendingPersist = pendingPersist || {};
+  pendingPersist[k] = v;
+  clearTimeout(persistTimer);
+  persistTimer = setTimeout(flushPersist, 250);
+}
+function flushPersist(){
+  clearTimeout(persistTimer);
+  if(!pendingPersist) return;
+  for(const k in pendingPersist) lsSet(k, pendingPersist[k]);
+  pendingPersist = null;
+}
+$("#quality").addEventListener("input", e=>{ const v = e.target.value; setQuality(v); queuePersist("carrier_quality", v); queueRefresh(); });
+$("#maxdim").addEventListener("change", e=>{ queuePersist("carrier_maxdim", e.target.value); syncPresets(); queueRefresh(); });
 // switching chat app changes the per-message char budget → re-chunk and redraw the meter/stats
-$("#chatLimit").addEventListener("change", e=>{ msgLimit = +e.target.value; lsSet("carrier_msglimit", e.target.value); queueRefresh(); });
+$("#chatLimit").addEventListener("change", e=>{ msgLimit = +e.target.value; queuePersist("carrier_msglimit", e.target.value); queueRefresh(); });
 // drop the cached derived key the instant the password changes — don't retain the previous secret's key
 // in the heap until Start over, and don't let a future cache-keying refactor risk encrypting under a
 // stale key. getKeyMaterial re-derives on the next pack; correctness no longer rests only on its equality check.
@@ -1048,8 +1089,10 @@ $("#pass").addEventListener("input", updatePwStrength);
 function applyPreset(q, d){
   setQuality(q);
   if([...$("#maxdim").options].some(o => o.value === String(d))) $("#maxdim").value = String(d);
-  lsSet("carrier_quality", String(q));
-  lsSet("carrier_maxdim", String(d));
+  // through the same queue as the slider, not a direct lsSet: a write still pending from a drag would
+  // otherwise land after this one and clobber the preset the user just chose
+  queuePersist("carrier_quality", String(q));
+  queuePersist("carrier_maxdim", String(d));
   syncPresets();   // re-run now that maxdim is set too, so setQuality's earlier pass (old dim) is corrected
   queueRefresh();
 }
@@ -1073,8 +1116,8 @@ $("#autofit").addEventListener("click", async ()=>{
     $("#maxdim").value = String(best.d);
     setQuality(best.q);
     if(!hitFallback){   // persist a working fit — including a legitimate one that landed on the minimum rung
-      lsSet("carrier_quality", String(best.q));
-      lsSet("carrier_maxdim", String(best.d));
+      queuePersist("carrier_quality", String(best.q));
+      queuePersist("carrier_maxdim", String(best.d));
     }
     await refresh();
     if(hitFallback){
@@ -1243,7 +1286,16 @@ async function handleFile(file){
   // clear the picker value BEFORE the reject-return, so re-picking the SAME rejected file still fires
   // `change` (an unchanged value emits no event) and gives feedback instead of silently doing nothing
   fileInput.value = "";
-  if(!file.type.startsWith("image/")){ showDropErr("Please choose an image file."); handling = false; return; }
+  // File.type is a best-effort guess and is routinely "" — files dragged from some file managers and
+  // archive tools, files on filesystems the browser can't map an extension for, some Android pickers.
+  // Rejecting those said "Please choose an image file" about a file that IS one, with no way for the user
+  // to find out otherwise. Mirror loadTextFile: trust the type when the OS gives one, fall back to the
+  // extension when it doesn't. This is a UX gate, not a security boundary — the file only ever reaches a
+  // canvas via loadImage, and a RECEIVED payload's mime is still checked against ALLOWED_IMG before any
+  // blob is built. A file that genuinely isn't an image now fails at loadImage with the accurate
+  // "Couldn't decode that image" instead of a wrong error up front.
+  const looksImage = file.type ? file.type.startsWith("image/") : /\.(jpe?g|png|webp|gif|avif|bmp|heic|heif)$/i.test(file.name || "");
+  if(!looksImage){ showDropErr("Please choose an image file."); handling = false; return; }
   drop.querySelector("strong").textContent = "Reading…";   // decoding a big photo isn't instant — show progress
   const myToken = ++loadToken;   // bumped by resetSend too, so a Start-over mid-decode abandons this load
   try{
@@ -1657,6 +1709,7 @@ function maskPassword(id){
 }
 
 window.addEventListener("pagehide", ()=>{
+  flushPersist();   // a tab closed mid-drag still keeps the setting the user landed on
   // srcImage._objUrl is deliberately NOT revoked here: pagehide also fires when the page goes into the
   // bfcache, and the pageshow handler recompresses from srcImage on restore. The real unload reclaims it.
   if(thumbUrl) URL.revokeObjectURL(thumbUrl);
