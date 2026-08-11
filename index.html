@@ -310,12 +310,13 @@
     <div class="panel hidden" id="outPanel" role="group" tabindex="-1" aria-labelledby="outPanelLabel">
       <span class="lbl" id="outPanelLabel">4 · Copy &amp; paste into your chat<span id="encTag" translate="no" style="color:var(--ok)"></span></span>
       <div class="btnrow btnrow--below">
-        <button type="button" class="btn amber" id="copyAll" title="Copies all chunks separated by a blank line — paste the whole block into your chat">Copy all messages</button>
-        <button type="button" class="btn hidden" id="copyNext" title="Copies the next message you haven't copied yet and marks it off">Copy next message</button>
+        <button type="button" class="btn amber" id="copyAll" aria-keyshortcuts="Control+Enter Meta+Enter" title="Copies all chunks separated by a blank line — paste the whole block into your chat">Copy all messages</button>
+        <button type="button" class="btn hidden" id="copyNext" aria-keyshortcuts="Control+Enter Meta+Enter" title="Copies the next message you haven't copied yet and marks it off (Ctrl/Cmd+Enter)">Copy next message</button>
         <button type="button" class="btn" id="saveTxt" aria-label="Save all messages as a text file" title="Downloads all messages as a .txt file — send it as an attachment or keep it as a backup">Save as .txt</button>
         <button type="button" class="btn hidden" id="resetSent" title="Clears the copied marks and starts the send over from part 1">Reset marks</button>
       </div>
       <p class="note hidden" id="sendProg" role="status" aria-live="polite" style="margin:0 2px 10px"></p>
+      <p class="note kbdhint" aria-hidden="true" style="margin-top:0"><kbd>Ctrl/Cmd</kbd>+<kbd>Enter</kbd> copies the next message</p>
       <div class="chunks" id="chunks" role="list" translate="no"></div>
       <p class="note warn hidden" id="chunksMore" role="note" style="margin:8px 2px 0"></p>
     </div>
@@ -1125,6 +1126,19 @@ $("#copyNext").addEventListener("click", async ()=>{
   }catch{
     flashButton(btn, "Copy failed", "Copy failed — clipboard access denied", 1200);
   }
+});
+// Ctrl/Cmd+Enter in Send copies the next part — the mirror of the same chord revealing in Receive. A
+// multi-part send is a tight copy-here / paste-there loop, and reaching for the mouse on every lap is
+// most of the friction. Deliberately does NOT wrap around once everything is sent: the button is hidden
+// then, and silently re-copying part 1 would undo the user's place.
+document.addEventListener("keydown", e=>{
+  if(e.key !== "Enter" || !(e.ctrlKey || e.metaKey)) return;
+  if($("#send").classList.contains("hidden") || !lastChunks.length) return;
+  // a single-message payload has no "next" — Copy all is the same action, and it gives real feedback
+  const btn = lastChunks.length === 1 ? $("#copyAll") : $("#copyNext");
+  if(btn.classList.contains("hidden")) return;
+  e.preventDefault();
+  btn.click();
 });
 $("#resetSent").addEventListener("click", ()=>{
   sentChunks.clear();
