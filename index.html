@@ -362,6 +362,7 @@
         <p class="note" id="rCaption" translate="no" style="text-align:center"></p>
         <div class="btnrow btnrow--spaced btnrow--centered">
           <button type="button" class="btn teal" id="save" title="Saves the recovered image to your device as a timestamped file">Download received image</button>
+          <button type="button" class="btn" id="recvAnother" title="Clears this image and empties the box, ready for the next one">Receive another</button>
         </div>
       </div>
     </div>
@@ -1928,6 +1929,12 @@ $("#save").addEventListener("click", ()=>{
   flashButton($("#save"), "Saved ✓", "Image saved to your device");
 });
 
+// Receiving a second image meant scrolling back past the whole result to find Clear in the panel above —
+// on a phone that is the full height of the revealed image. The next action belongs next to the last one.
+$("#recvAnother").addEventListener("click", ()=>{
+  resetReceive();   // same teardown as Clear: drops the image, empties the box and password, focuses #inbox
+  $("#inbox").scrollIntoView({behavior:scrollBehavior(), block:"nearest"});
+});
 $("#rpass").addEventListener("input", ()=>{ const n=$("#rNote"); if(n.classList.contains("err")){ n.className="note"; n.textContent=""; } });
 // call doReveal() directly (not #reveal.click()) so the shortcut still surfaces "Missing part N" /
 // "No Carrier message found" in #rNote even while the Reveal button is disabled for an incomplete box
