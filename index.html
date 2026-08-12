@@ -672,7 +672,7 @@ function detectAlpha(img){
     const w = Math.max(1, Math.min(n, img.naturalWidth)), h = Math.max(1, Math.min(n, img.naturalHeight));
     const cv = document.createElement("canvas");
     cv.width = w; cv.height = h;
-    const ctx = cv.getContext("2d", { willReadFrequently: true });
+    const ctx = cv.getContext("2d");   // one read, not many — willReadFrequently would force a slower software canvas for nothing
     ctx.drawImage(img, 0, 0, w, h);
     const d = ctx.getImageData(0, 0, w, h).data;
     for(let i = 3; i < d.length; i += 4) if(d[i] < 255) return true;
@@ -1138,7 +1138,10 @@ document.querySelectorAll(".preset").forEach(b=>{
 });
 // the controls autoFit overwrites when it lands — disabled while it searches so a mid-fit change isn't
 // silently discarded. #autofit itself is handled separately (it also swaps its label and aria-busy).
-const TUNE_CONTROLS = ["#quality", "#maxdim", "#chatLimit", "#startOver"];
+// NOT #startOver: autoFit checks srcImage between every encode and abandons cleanly when it goes null,
+// so Start over is the working cancel for a long fit (42 encodes on a big image is several seconds).
+// Disabling it would take away the only way out.
+const TUNE_CONTROLS = ["#quality", "#maxdim", "#chatLimit"];
 function setTuneDisabled(off){
   TUNE_CONTROLS.forEach(sel => { $(sel).disabled = off; });
   document.querySelectorAll(".preset").forEach(b => { b.disabled = off; });
