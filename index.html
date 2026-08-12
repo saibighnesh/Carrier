@@ -313,6 +313,7 @@
       </div>
       <div class="pwmeter hidden" id="pwMeter" aria-hidden="true" title="Passphrase strength — longer and more varied is stronger"><span></span><span></span><span></span><span></span></div>
       <p class="note pwstrength hidden" id="pwStrength" role="status" aria-live="polite"></p>
+      <p class="note warn hidden" id="passTrunc" role="status"></p>
       <p class="note" id="passHint" translate="no">If set, the receiver needs this exact password. Share it through a different channel than the text itself.</p>
     </div>
 
@@ -354,6 +355,7 @@
         <input type="password" id="rpass" placeholder="Password (leave blank if message is unlocked)" autocomplete="new-password" autocapitalize="none" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore data-form-type="other" aria-label="Decryption password" enterkeyhint="go" maxlength="128">
         <button type="button" class="pwtoggle" data-target="rpass" aria-pressed="false" aria-label="Show password" title="Show or hide the password">Show</button>
       </div>
+      <p class="note warn hidden" id="rpassTrunc" role="status"></p>
       <div class="btnrow btnrow--spaced">
         <button type="button" class="btn teal" id="reveal" disabled aria-label="Reveal image — decrypt the received image" aria-describedby="rNote" aria-keyshortcuts="Control+Enter Meta+Enter" title="Reassembles the pasted chunks and decrypts them (Ctrl/Cmd+Enter)">Reveal image</button>
       </div>
@@ -1169,6 +1171,26 @@ function pwScore(v){
   return Math.max(1, Math.min(4, s));          // any non-empty password is at least Weak
 }
 let lastPwScore = -1;
+const PW_MAX = 128;   // the maxlength on both password fields — effectively part of the wire format
+// maxlength truncates in silence. A pasted 200-character diceware passphrase becomes its first 128 with
+// no message and no visual cue in a field showing dots, so the user records and shares a secret that is
+// not the one that encrypted the payload. It still round-trips inside Carrier — the receive field
+// truncates identically — which is exactly what makes it hard to notice.
+// The limit itself must NOT be raised: a sender on a newer build encrypting with the full string while a
+// receiver on an older build truncates would fail decryption for two people who typed the same
+// passphrase. So say it instead. 128 characters is far past diminishing returns for PBKDF2 input; this
+// is about the user knowing what their secret actually is.
+function pwTruncNote(id, noteId){
+  const inp = $("#"+id), n = $("#"+noteId);
+  if(inp.value.length >= PW_MAX){
+    n.classList.remove("hidden");
+    n.textContent = `Passphrase cut to ${PW_MAX} characters — the same ${PW_MAX} are needed to open it. Anything you typed or pasted past that is not part of the password.`;
+  } else {
+    n.classList.add("hidden"); n.textContent = "";
+  }
+}
+$("#pass").addEventListener("input", ()=>pwTruncNote("pass", "passTrunc"));
+$("#rpass").addEventListener("input", ()=>pwTruncNote("rpass", "rpassTrunc"));
 function updatePwStrength(){
   const v = $("#pass").value;
   const meter = $("#pwMeter"), label = $("#pwStrength");
@@ -1537,7 +1559,7 @@ function resetSend(){
   packKey = null; packB64 = null;
   $("#chunks").innerHTML = "";
   ["tunePanel","lockPanel","outPanel"].forEach(id => $("#"+id).classList.add("hidden"));
-  $("#pass").value = ""; maskPassword("pass"); updatePwStrength();
+  $("#pass").value = ""; maskPassword("pass"); updatePwStrength(); pwTruncNote("pass", "passTrunc");
   ["origOut","sizeOut","charOut","msgOut"].forEach(id => $("#"+id).textContent = "—");
   $("#meterFill").style.width = "0%";
   $("#meterTrack").setAttribute("aria-valuenow","0"); $("#meterTrack").removeAttribute("aria-valuetext");
@@ -1708,7 +1730,7 @@ function resetReceive(){
   clearTimeout(progDebounce);
   reassembleIn = reassembleOut = null;   // don't keep a multi-MB paste (and its payload) referenced after a Clear
   $("#inbox").value=""; updateProgress();
-  $("#rpass").value=""; maskPassword("rpass");
+  $("#rpass").value=""; maskPassword("rpass"); pwTruncNote("rpass", "rpassTrunc");
   $("#inbox").focus();
 }
 $("#pasteInbox").addEventListener("click", async ()=>{
