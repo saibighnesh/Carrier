@@ -1933,8 +1933,16 @@ $("#rpass").addEventListener("input", ()=>{ const n=$("#rNote"); if(n.classList.
 // "No Carrier message found" in #rNote even while the Reveal button is disabled for an incomplete box
 $("#rpass").addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); doReveal(); } });
 document.addEventListener("keydown", e=>{ if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)&&!$("#recv").classList.contains("hidden")){ e.preventDefault(); doReveal(); } });
-$("#inbox").addEventListener("keydown", e=>{
-  if(e.key==="Escape"){ resetReceive(); }
+// Esc clears Receive from anywhere in the panel, matching Send, where Esc starts over from anywhere.
+// It used to be bound to #inbox alone, so pressing it with focus on Reveal, the password, or a button did
+// nothing — the hint line promises "Esc clears the box" without saying "only while typing in it".
+document.addEventListener("keydown", e=>{
+  if(e.key !== "Escape" || $("#recv").classList.contains("hidden")) return;
+  // never hijack Esc from a control that has its own Escape meaning (a SELECT closing its dropdown), and
+  // not mid-reveal, where the panel is about to be repopulated — both mirror the Send-side guards
+  const ae = document.activeElement;
+  if(revealing || (ae && ae.tagName === "SELECT")) return;
+  resetReceive();
 });
 
 /* show/hide password toggles — reveal the passphrase to check for typos before sending/revealing */
