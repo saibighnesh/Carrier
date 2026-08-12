@@ -1525,6 +1525,7 @@ function updateProgress(){
     // an empty box is just the resting state, but text that parses to NO chunks used to leave the
     // progress line blank — the user saw their paste land and then absolutely nothing happen, with only
     // a disabled Reveal button to explain it. Say what's wrong while the text is still on screen.
+    if(!recovered && !$("#recv").classList.contains("hidden")) document.title = "Carrier — receive images";
     if($("#inbox").value.trim()) {
       p.className = "progress warn";
       p.textContent = "No Carrier messages found in that text — each part starts with “PXT/”. Paste the messages exactly as you received them.";
@@ -1548,6 +1549,12 @@ function updateProgress(){
     const pct = Math.round(r.have / r.total * 100);   // how far along the reassembly is, by part count
     p.append("Got ", b(r.have), " of ", b(r.total), ` parts (${pct}%) — still need part${r.missing.length>1?"s":""} ${r.missing.join(", ")}${r.missingTrunc?", …":""}.`);
   }
+  // mirror of the send side: assembling a long payload means hopping between the chat and this tab, and
+  // the tab strip is the only place the count is visible without switching back. Never overwrite the
+  // post-reveal "✓ Image received" title — that outranks a parts count for a payload already decoded.
+  if(!recovered) document.title = r.missing.length === 0
+    ? `✓ all ${r.total} parts — Carrier`
+    : `${r.have}/${r.total} parts — Carrier`;
   if(r.multiSession){
     const warn = Object.assign(document.createElement("span"), {textContent: ` (${r.multiSession} different images detected — using the most complete one)`});
     warn.style.color = "var(--danger)";
