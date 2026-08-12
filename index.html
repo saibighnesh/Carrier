@@ -294,6 +294,7 @@
         <div class="stat" aria-live="polite" aria-atomic="true"><div class="k" title="Number of chat messages needed">Messages</div><div class="v" id="msgOut" translate="no">—</div></div>
       </div>
       <p class="note" id="fitNote" role="status"></p>
+      <p class="note warn hidden" id="alphaNote" role="status"></p>
     </div>
 
     <div class="panel hidden" id="lockPanel" role="group" tabindex="-1" aria-labelledby="lockPanelLabel">
@@ -660,6 +661,24 @@ function encodeCanvas(cv, q){
     }, "image/webp", q);
   });
 }
+// Does the source carry any non-opaque pixel? Sampled once per loaded image on a small scratch canvas:
+// a full-resolution getImageData on a 12 MP photo is tens of megabytes and this only needs a yes/no.
+// Downscaling averages alpha, so a lone transparent pixel in a huge image can be missed — that is the
+// right way to be wrong here, since the warning it drives is advisory and a false alarm is worse than a
+// miss. Blob-URL images are same-origin, so the canvas is never tainted and getImageData can't throw.
+function detectAlpha(img){
+  try{
+    const n = 128;
+    const w = Math.max(1, Math.min(n, img.naturalWidth)), h = Math.max(1, Math.min(n, img.naturalHeight));
+    const cv = document.createElement("canvas");
+    cv.width = w; cv.height = h;
+    const ctx = cv.getContext("2d", { willReadFrequently: true });
+    ctx.drawImage(img, 0, 0, w, h);
+    const d = ctx.getImageData(0, 0, w, h).data;
+    for(let i = 3; i < d.length; i += 4) if(d[i] < 255) return true;
+    return false;
+  }catch{ return false; }   // never let a probe for an advisory warning break the load
+}
 async function compressOnce(maxDim, quality){
   const cv = drawScaled(srcImage, maxDim);
   const blob = await encodeCanvas(cv, quality/100);
@@ -849,6 +868,15 @@ async function refresh(){
       ? `Sending as ${lastChunks.length} parts — lower quality or size to fit in one message.`
       : `Sending as ${lastChunks.length} parts — ${app}'s per-message limit is too small to fit an image in one message.`;
   }
+  // WebP keeps an alpha channel; the JPEG fallback cannot. On a browser without WebP encoding, a
+  // transparent PNG or GIF is silently flattened onto black — the sender sees their own thumbnail with
+  // the same flattening and has no reason to suspect the format, only that "it looks wrong now". Say it.
+  const flattened = srcMime === "image/jpeg" && srcImage._alpha === true;
+  const alphaNote = $("#alphaNote");
+  alphaNote.classList.toggle("hidden", !flattened);
+  alphaNote.textContent = flattened
+    ? "This image has transparent areas, and your browser can only encode JPEG here — the transparency is filled in rather than kept. The recipient sees what the preview shows."
+    : "";
   renderChunks();
   $("#lockPanel").classList.remove("hidden");
   $("#outPanel").classList.remove("hidden");
@@ -1349,6 +1377,7 @@ async function handleFile(file){
     const name = file.name || "pasted image";
     srcImage._name = name;
     srcImage._bytes = file.size;   // remember the original size to show the compression ratio in stats
+    srcImage._alpha = detectAlpha(img);   // drives the transparency-flattening warning if WebP isn't available
     const sizeStr = fmtKB(file.size);
     drop.setAttribute("aria-label","Replace image");
     drop.title = "Drop or click to choose a different image, or paste with Ctrl/Cmd+V";   // match the "Replace image" state
@@ -1393,6 +1422,7 @@ function resetSend(){
   $("#meterTrack").setAttribute("aria-valuenow","0"); $("#meterTrack").removeAttribute("aria-valuetext");
   $("#meter").classList.remove("over","near");
   $("#fitNote").className = "note"; $("#fitNote").textContent = "";
+  $("#alphaNote").classList.add("hidden"); $("#alphaNote").textContent = "";
   $("#thumb").removeAttribute("src"); $("#thumb").alt = "Compressed preview";
   $("#thumb").setAttribute("aria-label", "Open the compressed preview full size in a new tab");   // restore the resting label
   drop.setAttribute("aria-label","Choose an image");
