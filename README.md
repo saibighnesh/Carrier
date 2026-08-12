@@ -25,11 +25,13 @@ Save the single `index.html` file and it works offline — on a plane, on a trai
 - **Smart compression** — auto-resizes and re-encodes (WebP → JPEG fallback) to hit a target size
 - **Auto-fit** — one click finds the best quality/dimension combo to land in a single message
 - **Multi-part chunking** — if the image is still too big, splits into numbered parts (`PXT/id/1/3`, `2/3`, `3/3`) that reassemble in any order
-- **Send-tracking** — a multi-part send marks off each part as it goes out (copied, or saved into a `.txt`), and **Copy next message** hands you the one you haven't sent yet, so you never lose your place mid-send. Progress shows in the tab title too
+- **Send-tracking** — a multi-part send marks off each part as it goes out (copied, or saved into a `.txt`). **Copy next message** hands you the one you haven't sent yet, **Copy remaining** dumps everything still outstanding in one paste, and progress shows in the tab title so you can check it from the chat app. If a setting changes mid-send, Carrier says so — the earlier parts belong to a different version and the recipient can't combine the two
 - **AES-256-GCM encryption** — optional password lock using browser-native Web Crypto (PBKDF2, 250k iterations)
 - **Damage detection** — unlocked messages carry a CRC-32, so a part mangled in transit is reported as damaged instead of showing up as a broken image (encrypted messages get this from GCM's authentication tag)
 - **Fully offline** — no network calls at all; works without internet after first load
-- **Accessible** — keyboard navigable, screen reader announcements for chunk progress
+- **Reassembly progress** — the receive side counts parts as they land (`3/7 parts` in the tab title), names exactly what's missing, and **Copy what's missing** writes the sender a ready-to-send list
+- **Accessible** — keyboard navigable throughout, controls named by their visible labels, atomic screen-reader announcements for both progress lines, and `Esc` to start over or clear from anywhere in the panel
+- **Degrades honestly** — where the browser blocks a capability (clipboard, pop-ups, Web Crypto on a non-secure page) Carrier names it and points at the way through, instead of failing mutely or blaming the image
 
 ---
 
@@ -40,13 +42,13 @@ Save the single `index.html` file and it works offline — on a plane, on a trai
 2. Drop or click to choose an image (JPG, PNG, WebP, GIF)
 3. Adjust **Quality** and **Max size**, or click **⚡ Auto-fit to 1 message**
 4. Optionally set a password under **Lock it**
-5. Copy the text and paste into your chat — if it split into parts, **Copy next message** walks you through them one at a time and marks off what you've already sent
+5. Copy the text and paste into your chat — if it split into parts, **Copy next message** walks you through them one at a time and marks off what you've already sent (`Ctrl/Cmd+Enter` does the same from the keyboard)
 
 ### Receive
 1. Switch to the **← Receive** tab
 2. Paste the Carrier message(s) — any order, all parts in one box
-3. Enter the password if it was locked
-4. Click **Reveal image** → download
+3. Enter the password if it was locked — Carrier puts the caret there for you when a locked message completes
+4. Click **Reveal image** → **Download received image**, or **Receive another** to go straight into the next one
 
 ---
 
@@ -105,6 +107,8 @@ The CRC-32 is **appended**, not prepended, so an older Carrier build reads `flag
 - **Password channel** — send the password through a *different* channel than the Carrier text, otherwise the lock adds nothing
 - **Message limit** — pick your chat app from the **Chat app** dropdown (WhatsApp 60,000 · Telegram 4,096 · Slack 4,000 · Discord 2,000 · SMS 160); the choice is remembered and drives both the fit meter and the chunk size
 - **Integrity, not authenticity** — the CRC-32 on unlocked messages detects accidental damage. It is not a signature: anyone who can rewrite the text can recompute it. Use a password if you need to know the bytes came from the sender
+- **Passphrase length** — both password fields cap at 128 characters and Carrier tells you when you hit it. The cap is deliberately fixed: raising it would mean a newer sender and an older receiver deriving different keys from the same passphrase
+- **Secure context** — password locking needs `crypto.subtle`, so open the file directly or serve it over `https://`. On a plain `http://` page the password fields are disabled and say why; unencrypted send and receive still work
 - **Scope** — this is convenience privacy for everyday use, not a substitute for audited secure-messaging tools like Signal
 
 ---
