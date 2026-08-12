@@ -153,6 +153,8 @@
   .chunks{display:flex;flex-direction:column;gap:10px;margin-top:6px}
   .chunk{background:var(--bg);border:1px solid var(--line);border-radius:8px;overflow:hidden}
   .chunk:focus-within{border-color:var(--send)}
+  /* output built at settings that are no longer on screen — dimmed, but still fully usable */
+  #outPanel.stale .chunks,#outPanel.stale .btnrow{opacity:.6}
   /* a part that has gone out is dimmed and marked so a long send can be worked top-to-bottom without
      losing the place; the checkmark carries the state for anyone who can't see the opacity/colour shift */
   .chunk.sent{border-color:var(--ok)}
@@ -317,6 +319,7 @@
         <button type="button" class="btn hidden" id="copyRest" title="Copies every part you haven't sent yet, in one block">Copy remaining</button>
         <button type="button" class="btn hidden" id="resetSent" title="Clears the sent marks and starts the send over from part 1">Reset marks</button>
       </div>
+      <p class="note warn hidden" id="staleNote" role="status" style="margin:0 2px 10px"></p>
       <p class="note hidden" id="sendProg" role="status" aria-live="polite" style="margin:0 2px 10px"></p>
       <p class="note kbdhint" id="sendKbdHint" aria-hidden="true" style="margin-top:0"><kbd>Ctrl/Cmd</kbd>+<kbd>Enter</kbd> copies the next message</p>
       <div class="chunks" id="chunks" role="list" translate="no"></div>
@@ -885,6 +888,7 @@ async function refresh(){
   alphaNote.textContent = flattened
     ? "This image has transparent areas, and your browser can only encode JPEG here — the transparency is filled in rather than kept. The recipient sees what the preview shows."
     : "";
+  setOutputStale(false);   // this pass produced the chunks below — they match what's on screen again
   renderChunks();
   $("#lockPanel").classList.remove("hidden");
   $("#outPanel").classList.remove("hidden");
@@ -899,11 +903,27 @@ async function refresh(){
       const note = $("#fitNote");
       note.className = "note err";
       note.textContent = "Couldn't compress that image: " + (err instanceof Error ? err.message : String(err));
+      // the stats, meter, count and chunk cards below all still describe the LAST SUCCESSFUL pass, so the
+      // panel now shows a red error above a complete, copyable payload built at settings the user is no
+      // longer looking at. Don't tear the chunks down — the user may be part-way through sending them —
+      // but stop presenting them as current.
+      setOutputStale(true);
     }
   } finally {
     refreshing = false;
     if(pendingRefresh){ pendingRefresh = false; queueRefresh(); }
   }
+}
+// mark the output panel as describing an older compression than the controls show. Visual dimming plus a
+// stated reason — dimming alone would read as "disabled", which these messages are not: they are valid,
+// copyable, and still the user's best payload until a re-encode succeeds.
+function setOutputStale(stale){
+  $("#outPanel").classList.toggle("stale", stale);
+  const n = $("#staleNote");
+  n.classList.toggle("hidden", !stale);
+  n.textContent = stale
+    ? "These messages are from the last compression that worked — not the settings above. Change a setting to try again."
+    : "";
 }
 // build one chunk card element for message i (data lazily set as textContent, not innerHTML)
 function makeChunkCard(c, i){
@@ -1445,6 +1465,7 @@ function resetSend(){
   $("#meter").classList.remove("over","near");
   $("#fitNote").className = "note"; $("#fitNote").textContent = "";
   $("#alphaNote").classList.add("hidden"); $("#alphaNote").textContent = "";
+  setOutputStale(false);
   $("#thumb").removeAttribute("src"); $("#thumb").alt = "Compressed preview";
   $("#thumb").setAttribute("aria-label", "Open the compressed preview full size in a new tab");   // restore the resting label
   drop.setAttribute("aria-label","Choose an image");
