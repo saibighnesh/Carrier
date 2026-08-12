@@ -1340,6 +1340,7 @@ async function writeToClipboard(text){
   document.body.appendChild(ta);
   const prev = document.activeElement;
   ta.select();
+  ta.setSelectionRange(0, text.length);   // iOS Safari ignores select() on a readonly field; this doesn't
   let ok = false;
   try { ok = document.execCommand("copy"); } catch { ok = false; }
   document.body.removeChild(ta);
@@ -1556,6 +1557,7 @@ function updateProgress(){
     p.className = "progress warn";
     p.textContent = `That's over ${TXT_MAX/1048576} MB of text — too big to be a Carrier message. Clear the box and paste just the Carrier parts.`;
     $("#reveal").disabled = true;
+    $("#reveal").title = "Paste a complete Carrier message first";   // don't leave the previous state's hint on a now-disabled button
     $("#copyMissing").classList.add("hidden");
     missingSnapshot = null;
     return;
