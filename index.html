@@ -1517,6 +1517,7 @@ function updateProgress(){
   const p = $("#prog");
   p.textContent = ""; p.className = "progress";
   const ready = !!(r && r.missing.length === 0);
+  if(!ready) lockedPrompted = false;   // re-arm: an incomplete box that completes again is a fresh prompt
   missingSnapshot = (r && r.missing.length) ? r : null;
   $("#copyMissing").classList.toggle("hidden", !missingSnapshot);
   $("#reveal").disabled = !ready;   // enable Reveal only once a complete message is present
@@ -1547,7 +1548,19 @@ function updateProgress(){
     if(headerFlags(r.s) & FLAG_ENCRYPTED){
       p.append(" 🔒 Locked — enter the password below, then Reveal.");
       $("#reveal").title = "Enter the password, then decrypt & reveal (Ctrl/Cmd+Enter)";   // refine the button hint for a locked message
-    }
+      // an unlocked message reveals itself; a locked one stops dead until the password is typed, and the
+      // field is below the fold on a phone. Put the caret there — but only on the transition into
+      // "complete and locked", so it can't re-steal focus on every later keystroke, and only from an
+      // idle focus or the box the user just finished pasting into. Never from a field they're typing in.
+      if(!lockedPrompted){
+        lockedPrompted = true;
+        const ae = document.activeElement;
+        if(ae === document.body || ae === $("#inbox") || ae === $("#pasteInbox") || ae === $("#loadTxt")){
+          $("#rpass").focus();
+          $("#rpass").scrollIntoView({behavior:scrollBehavior(), block:"nearest"});
+        }
+      }
+    } else lockedPrompted = false;
   } else {
     const pct = Math.round(r.have / r.total * 100);   // how far along the reassembly is, by part count
     p.append("Got ", b(r.have), " of ", b(r.total), ` parts (${pct}%) — still need part${r.missing.length>1?"s":""} ${r.missing.join(", ")}${r.missingTrunc?", …":""}.`);
@@ -1595,6 +1608,7 @@ $("#inbox").addEventListener("blur", ()=>{ const v=$("#inbox").value; const t=v.
 $("#inbox").addEventListener("paste", ()=>{ setTimeout(()=>{ clearTimeout(progDebounce); updateProgress(); maybeAutoReveal(); }, 0); });
 
 let recovered = null, revealing = false;
+let lockedPrompted = false;   // have we already sent the caret to the password for THIS completed message?
 const SAVE_TITLE_DEFAULT = $("#save").title;   // restored on clear; made specific (size · type) once an image is revealed
 // tear down any revealed image and clear the reveal note (does NOT touch the inbox/password)
 function clearReveal(){
@@ -1610,6 +1624,7 @@ function clearReveal(){
 // full reset of the receive panel: drop any revealed image, empty the inbox + password, hide the result
 function resetReceive(){
   clearReveal();
+  lockedPrompted = false;
   clearTimeout(progDebounce);
   reassembleIn = reassembleOut = null;   // don't keep a multi-MB paste (and its payload) referenced after a Clear
   $("#inbox").value=""; updateProgress();
