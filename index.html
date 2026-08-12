@@ -1552,7 +1552,10 @@ function updateProgress(){
       // field is below the fold on a phone. Put the caret there — but only on the transition into
       // "complete and locked", so it can't re-steal focus on every later keystroke, and only from an
       // idle focus or the box the user just finished pasting into. Never from a field they're typing in.
-      if(!lockedPrompted){
+      // not while the box holds several sessions: "complete" then means a stale leftover won the pick while
+      // the user is very likely still pasting the image they actually want — the exact moment not to grab
+      // the caret out of the box. maybeAutoReveal declines on multiSession for the same reason.
+      if(!lockedPrompted && !r.multiSession){
         lockedPrompted = true;
         const ae = document.activeElement;
         if(ae === document.body || ae === $("#inbox") || ae === $("#pasteInbox") || ae === $("#loadTxt")){
@@ -1568,7 +1571,7 @@ function updateProgress(){
   // mirror of the send side: assembling a long payload means hopping between the chat and this tab, and
   // the tab strip is the only place the count is visible without switching back. Never overwrite the
   // post-reveal "✓ Image received" title — that outranks a parts count for a payload already decoded.
-  if(!recovered) document.title = r.missing.length === 0
+  if(!recovered && !$("#recv").classList.contains("hidden")) document.title = r.missing.length === 0
     ? `✓ all ${r.total} parts — Carrier`
     : `${r.have}/${r.total} parts — Carrier`;
   if(r.multiSession){
