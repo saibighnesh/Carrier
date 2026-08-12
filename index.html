@@ -1945,10 +1945,13 @@ document.addEventListener("keydown", e=>{ if(e.key==="Enter"&&(e.ctrlKey||e.meta
 // nothing — the hint line promises "Esc clears the box" without saying "only while typing in it".
 document.addEventListener("keydown", e=>{
   if(e.key !== "Escape" || $("#recv").classList.contains("hidden")) return;
-  // never hijack Esc from a control that has its own Escape meaning (a SELECT closing its dropdown), and
-  // not mid-reveal, where the panel is about to be repopulated — both mirror the Send-side guards
+  // never hijack Esc from a control that has its own Escape meaning, and not mid-reveal, where the panel
+  // is about to be repopulated. INPUT is excluded for the same reason Send excludes it: Esc is the reflex
+  // for dismissing a password manager's autofill dropdown, and in #rpass that reflex would wipe a large
+  // paste along with the password. TEXTAREA is deliberately NOT excluded — Esc in the box is the original
+  // behaviour and the one the hint line advertises.
   const ae = document.activeElement;
-  if(revealing || (ae && ae.tagName === "SELECT")) return;
+  if(revealing || (ae && (ae.tagName === "INPUT" || ae.tagName === "SELECT"))) return;
   resetReceive();
 });
 
