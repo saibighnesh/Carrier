@@ -250,12 +250,13 @@
         <div class="controls">
           <div class="row">
             <label for="quality">Quality</label>
-            <input type="range" id="quality" min="20" max="92" value="70" step="1" aria-label="Image quality" autocomplete="off" title="Higher quality = sharper image but more text to send">
+            <input type="range" id="quality" min="20" max="92" value="70" step="1" autocomplete="off" aria-describedby="qualityHint" title="Higher quality = sharper image but more text to send">
+            <span id="qualityHint" class="sr-only">Higher quality is sharper but sends more text.</span>
             <output id="qval" for="quality" aria-hidden="true" translate="no" title="Current quality — higher is sharper but sends more text">70%</output>
           </div>
           <div class="row">
             <label for="maxdim">Max size</label>
-            <select id="maxdim" aria-label="Maximum image dimension" autocomplete="off" title="Caps the longest edge in pixels — smaller means less text to send">
+            <select id="maxdim" autocomplete="off" aria-describedby="maxdimHint" title="Caps the longest edge in pixels — smaller means less text to send">
               <option value="1280">1280 px</option>
               <option value="1024">1024 px</option>
               <option value="768" selected>768 px</option>
@@ -263,16 +264,18 @@
               <option value="384">384 px</option>
               <option value="256">256 px</option>
             </select>
+            <span id="maxdimHint" class="sr-only">Caps the longest edge in pixels. Smaller means less text to send.</span>
           </div>
           <div class="row">
             <label for="chatLimit">Chat app</label>
-            <select id="chatLimit" aria-label="Target chat app message limit" autocomplete="off" title="Sets the per-message character limit for your chat app — smaller limits split into more parts">
+            <select id="chatLimit" autocomplete="off" aria-describedby="chatLimitHint" title="Sets the per-message character limit for your chat app — smaller limits split into more parts">
               <option value="60000">WhatsApp (60k)</option>
               <option value="4096">Telegram (4k)</option>
               <option value="4000">Slack (4k)</option>
               <option value="2000">Discord (2k)</option>
               <option value="160">SMS (160)</option>
             </select>
+            <span id="chatLimitHint" class="sr-only">Sets the per-message character limit for your chat app. Smaller limits split into more parts.</span>
           </div>
           <div class="btnrow" role="group" aria-label="Quality presets">
             <button type="button" class="btn preset" data-q="45" data-d="512" aria-pressed="false" aria-label="Small preset — 512 pixels, quality 45, fewest messages" title="Small — 512 px, quality 45 · fewest messages">Small</button>
