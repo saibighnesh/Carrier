@@ -236,7 +236,10 @@
         <strong>Drop an image here</strong>, click to choose, or paste with <kbd>Ctrl/Cmd+V</kbd>
         <small>JPG · PNG · WebP · GIF · AVIF (modern browsers) — gets compressed to fit the text pipe</small>
       </div>
-      <input type="file" id="file" accept="image/*" class="hidden" aria-label="Choose an image file">
+      <!-- extensions listed alongside image/*: accept filters the dialog by the SAME MIME mapping that
+           produces an empty File.type, so a file the OS can't map was greyed out in the picker and
+           handleFile's extension fallback never got to run. Extensions in accept match by name. -->
+      <input type="file" id="file" accept="image/*,.jpg,.jpeg,.png,.webp,.gif,.avif,.bmp,.heic,.heif" class="hidden" aria-label="Choose an image file">
       <p class="note err hidden" id="dropErr" role="alert"></p>
     </div>
 
