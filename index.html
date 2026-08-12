@@ -250,12 +250,13 @@
         <div class="controls">
           <div class="row">
             <label for="quality">Quality</label>
-            <input type="range" id="quality" min="20" max="92" value="70" step="1" aria-label="Image quality" autocomplete="off" title="Higher quality = sharper image but more text to send">
+            <input type="range" id="quality" min="20" max="92" value="70" step="1" autocomplete="off" aria-describedby="qualityHint" title="Higher quality = sharper image but more text to send">
+            <span id="qualityHint" class="sr-only">Higher quality is sharper but sends more text.</span>
             <output id="qval" for="quality" aria-hidden="true" translate="no" title="Current quality — higher is sharper but sends more text">70%</output>
           </div>
           <div class="row">
             <label for="maxdim">Max size</label>
-            <select id="maxdim" aria-label="Maximum image dimension" autocomplete="off" title="Caps the longest edge in pixels — smaller means less text to send">
+            <select id="maxdim" autocomplete="off" aria-describedby="maxdimHint" title="Caps the longest edge in pixels — smaller means less text to send">
               <option value="1280">1280 px</option>
               <option value="1024">1024 px</option>
               <option value="768" selected>768 px</option>
@@ -263,16 +264,18 @@
               <option value="384">384 px</option>
               <option value="256">256 px</option>
             </select>
+            <span id="maxdimHint" class="sr-only">Caps the longest edge in pixels. Smaller means less text to send.</span>
           </div>
           <div class="row">
             <label for="chatLimit">Chat app</label>
-            <select id="chatLimit" aria-label="Target chat app message limit" autocomplete="off" title="Sets the per-message character limit for your chat app — smaller limits split into more parts">
+            <select id="chatLimit" autocomplete="off" aria-describedby="chatLimitHint" title="Sets the per-message character limit for your chat app — smaller limits split into more parts">
               <option value="60000">WhatsApp (60k)</option>
               <option value="4096">Telegram (4k)</option>
               <option value="4000">Slack (4k)</option>
               <option value="2000">Discord (2k)</option>
               <option value="160">SMS (160)</option>
             </select>
+            <span id="chatLimitHint" class="sr-only">Sets the per-message character limit for your chat app. Smaller limits split into more parts.</span>
           </div>
           <div class="btnrow" role="group" aria-label="Quality presets">
             <button type="button" class="btn preset" data-q="45" data-d="512" aria-pressed="false" aria-label="Small preset — 512 pixels, quality 45, fewest messages" title="Small — 512 px, quality 45 · fewest messages">Small</button>
@@ -310,6 +313,7 @@
       </div>
       <div class="pwmeter hidden" id="pwMeter" aria-hidden="true" title="Passphrase strength — longer and more varied is stronger"><span></span><span></span><span></span><span></span></div>
       <p class="note pwstrength hidden" id="pwStrength" role="status" aria-live="polite"></p>
+      <p class="note warn hidden" id="passTrunc" role="status"></p>
       <p class="note" id="passHint" translate="no">If set, the receiver needs this exact password. Share it through a different channel than the text itself.</p>
     </div>
 
@@ -351,6 +355,7 @@
         <input type="password" id="rpass" placeholder="Password (leave blank if message is unlocked)" autocomplete="new-password" autocapitalize="none" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore data-form-type="other" aria-label="Decryption password" enterkeyhint="go" maxlength="128">
         <button type="button" class="pwtoggle" data-target="rpass" aria-pressed="false" aria-label="Show password" title="Show or hide the password">Show</button>
       </div>
+      <p class="note warn hidden" id="rpassTrunc" role="status"></p>
       <div class="btnrow btnrow--spaced">
         <button type="button" class="btn teal" id="reveal" disabled aria-label="Reveal image — decrypt the received image" aria-describedby="rNote" aria-keyshortcuts="Control+Enter Meta+Enter" title="Reassembles the pasted chunks and decrypts them (Ctrl/Cmd+Enter)">Reveal image</button>
       </div>
@@ -1166,6 +1171,29 @@ function pwScore(v){
   return Math.max(1, Math.min(4, s));          // any non-empty password is at least Weak
 }
 let lastPwScore = -1;
+const PW_MAX = 128;   // the maxlength on both password fields — effectively part of the wire format
+// maxlength truncates in silence. A pasted 200-character diceware passphrase becomes its first 128 with
+// no message and no visual cue in a field showing dots, so the user records and shares a secret that is
+// not the one that encrypted the payload. It still round-trips inside Carrier — the receive field
+// truncates identically — which is exactly what makes it hard to notice.
+// The limit itself must NOT be raised: a sender on a newer build encrypting with the full string while a
+// receiver on an older build truncates would fail decryption for two people who typed the same
+// passphrase. So say it instead. 128 characters is far past diminishing returns for PBKDF2 input; this
+// is about the user knowing what their secret actually is.
+function pwTruncNote(id, noteId){
+  const inp = $("#"+id), n = $("#"+noteId);
+  if(inp.value.length >= PW_MAX){
+    n.classList.remove("hidden");
+    // worded to be true whether the user typed exactly PW_MAX or pasted more and lost the rest: maxlength
+    // drops the excess before it ever reaches value, so from here the two are indistinguishable, and
+    // asserting "your passphrase was cut" to someone who typed exactly 128 would be a lie.
+    n.textContent = `This field holds ${PW_MAX} characters, and it's full. If you pasted a longer passphrase, only these first ${PW_MAX} are in use — and only they will open the message.`;
+  } else {
+    n.classList.add("hidden"); n.textContent = "";
+  }
+}
+$("#pass").addEventListener("input", ()=>pwTruncNote("pass", "passTrunc"));
+$("#rpass").addEventListener("input", ()=>pwTruncNote("rpass", "rpassTrunc"));
 function updatePwStrength(){
   const v = $("#pass").value;
   const meter = $("#pwMeter"), label = $("#pwStrength");
@@ -1179,6 +1207,26 @@ function updatePwStrength(){
   label.style.color = s <= 1 ? "var(--danger)" : s >= 4 ? "var(--ok)" : "var(--send)";
 }
 $("#pass").addEventListener("input", updatePwStrength);
+// crypto.subtle is undefined in a non-secure context — Carrier over plain http:// on a LAN, the same
+// context that takes out the clipboard. The password field stayed inviting, and typing in it threw a
+// TypeError inside pack() that surfaced through refresh()'s catch as "Couldn't compress that image:
+// Cannot read properties of undefined (reading 'importKey')". Compression was fine; encryption was
+// impossible; nothing in that message said so, and it reads as "this photo is broken".
+// Disable both fields rather than leave a control that can only fail, and say why. Unencrypted send and
+// receive are untouched and keep working.
+if(!(window.crypto && crypto.subtle)){
+  const why = "Password locking needs a secure page — open this file directly, or serve it over https://. Sending and receiving without a password still work.";
+  [["pass","passHint"], ["rpass", null]].forEach(([id, hintId])=>{
+    const inp = $("#"+id);
+    inp.disabled = true;
+    inp.placeholder = "Password unavailable on this page";
+    const tog = document.querySelector(`.pwtoggle[data-target="${id}"]`);
+    if(tog) tog.disabled = true;
+    if(hintId){ const h = $("#"+hintId); h.className = "note err"; h.textContent = why; }
+  });
+  // the receive side has no standing hint element, so put it where a locked message would send the user
+  const rn = $("#rNote"); rn.className = "note err"; rn.textContent = why;
+}
 // one-tap quality presets: set quality + max size together, persist, and recompress
 function applyPreset(q, d){
   setQuality(q);
@@ -1514,7 +1562,7 @@ function resetSend(){
   packKey = null; packB64 = null;
   $("#chunks").innerHTML = "";
   ["tunePanel","lockPanel","outPanel"].forEach(id => $("#"+id).classList.add("hidden"));
-  $("#pass").value = ""; maskPassword("pass"); updatePwStrength();
+  $("#pass").value = ""; maskPassword("pass"); updatePwStrength(); pwTruncNote("pass", "passTrunc");
   ["origOut","sizeOut","charOut","msgOut"].forEach(id => $("#"+id).textContent = "—");
   $("#meterFill").style.width = "0%";
   $("#meterTrack").setAttribute("aria-valuenow","0"); $("#meterTrack").removeAttribute("aria-valuetext");
@@ -1685,7 +1733,7 @@ function resetReceive(){
   clearTimeout(progDebounce);
   reassembleIn = reassembleOut = null;   // don't keep a multi-MB paste (and its payload) referenced after a Clear
   $("#inbox").value=""; updateProgress();
-  $("#rpass").value=""; maskPassword("rpass");
+  $("#rpass").value=""; maskPassword("rpass"); pwTruncNote("rpass", "rpassTrunc");
   $("#inbox").focus();
 }
 $("#pasteInbox").addEventListener("click", async ()=>{
