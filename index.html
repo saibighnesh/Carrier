@@ -1184,7 +1184,10 @@ function pwTruncNote(id, noteId){
   const inp = $("#"+id), n = $("#"+noteId);
   if(inp.value.length >= PW_MAX){
     n.classList.remove("hidden");
-    n.textContent = `Passphrase cut to ${PW_MAX} characters — the same ${PW_MAX} are needed to open it. Anything you typed or pasted past that is not part of the password.`;
+    // worded to be true whether the user typed exactly PW_MAX or pasted more and lost the rest: maxlength
+    // drops the excess before it ever reaches value, so from here the two are indistinguishable, and
+    // asserting "your passphrase was cut" to someone who typed exactly 128 would be a lie.
+    n.textContent = `This field holds ${PW_MAX} characters, and it's full. If you pasted a longer passphrase, only these first ${PW_MAX} are in use — and only they will open the message.`;
   } else {
     n.classList.add("hidden"); n.textContent = "";
   }
