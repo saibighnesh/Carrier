@@ -324,7 +324,7 @@
       </div>
       <p class="note err hidden" id="copyNote" role="status" style="margin:0 2px 10px"></p>
       <p class="note warn hidden" id="staleNote" role="status" style="margin:0 2px 10px"></p>
-      <p class="note hidden" id="sendProg" role="status" aria-live="polite" style="margin:0 2px 10px"></p>
+      <p class="note hidden" id="sendProg" role="status" aria-live="polite" aria-atomic="true" style="margin:0 2px 10px"></p>
       <p class="note kbdhint" id="sendKbdHint" aria-hidden="true" style="margin-top:0"><kbd>Ctrl/Cmd</kbd>+<kbd>Enter</kbd> copies the next message</p>
       <div class="chunks" id="chunks" role="list" translate="no"></div>
       <p class="note warn hidden" id="chunksMore" role="note" style="margin:8px 2px 0"></p>
@@ -342,7 +342,7 @@
         <button type="button" class="btn" id="clearInbox" title="Empties the box and clears any revealed image">Clear</button>
       </div>
       <input type="file" id="txtFile" accept=".txt,text/plain" class="hidden" aria-label="Load a Carrier .txt file">
-      <p class="progress" id="prog" role="status"></p>
+      <p class="progress" id="prog" role="status" aria-atomic="true"></p>
       <button type="button" class="btn hidden" id="copyMissing" style="margin-top:10px" title="Copies a short message naming the parts you're still missing, ready to send back to whoever sent the image">Copy what's missing</button>
     </div>
     <div class="panel" role="group" aria-labelledby="recvPanel2Label">
