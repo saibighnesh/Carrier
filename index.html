@@ -1513,7 +1513,21 @@ document.addEventListener("keydown", e=>{
 
 /* ---------- RECEIVE ui ---------- */
 function updateProgress(){
-  const r = reassemble($("#inbox").value);
+  const raw = $("#inbox").value;
+  // refuse before reassemble() touches it: a regex scan plus a match array per candidate chunk over tens
+  // of MB is seconds of frozen main thread, and every later edit is a fresh cache miss and another pass.
+  // Refusing rather than truncating is deliberate — a truncated payload looks exactly like a legitimately
+  // incomplete send, so the user would chase missing parts that were never missing.
+  if(raw.length > TXT_MAX){
+    const p = $("#prog");
+    p.className = "progress warn";
+    p.textContent = `That's over ${TXT_MAX/1048576} MB of text — too big to be a Carrier message. Clear the box and paste just the Carrier parts.`;
+    $("#reveal").disabled = true;
+    $("#copyMissing").classList.add("hidden");
+    missingSnapshot = null;
+    return;
+  }
+  const r = reassemble(raw);
   const p = $("#prog");
   p.textContent = ""; p.className = "progress";
   const ready = !!(r && r.missing.length === 0);
@@ -1592,6 +1606,7 @@ function headerFlags(s){
 // a locked message (flags bit 0 set) still needs its password and an explicit Reveal
 function maybeAutoReveal(){
   if(revealing) return;
+  if($("#inbox").value.length > TXT_MAX) return;   // updateProgress has already refused it — don't scan it here either
   const r = reassemble($("#inbox").value);
   if(!r || r.missing.length) return;
   // never auto-reveal when the box holds more than one session: "most complete" could silently pick a
@@ -1610,6 +1625,9 @@ $("#inbox").addEventListener("blur", ()=>{ const v=$("#inbox").value; const t=v.
 // manual Ctrl/Cmd+V into the box: after the paste settles, refresh progress and auto-reveal if complete+unlocked
 $("#inbox").addEventListener("paste", ()=>{ setTimeout(()=>{ clearTimeout(progDebounce); updateProgress(); maybeAutoReveal(); }, 0); });
 
+// the biggest thing that can plausibly be a Carrier message. Applied to text however it arrives — a
+// loaded .txt, the clipboard button, or a manual paste — not just where the size was cheapest to check.
+const TXT_MAX = 8 * 1024 * 1024;
 let recovered = null, revealing = false;
 let lockedPrompted = false;   // have we already sent the caret to the password for THIS completed message?
 const SAVE_TITLE_DEFAULT = $("#save").title;   // restored on clear; made specific (size · type) once an image is revealed
@@ -1637,6 +1655,12 @@ function resetReceive(){
 $("#pasteInbox").addEventListener("click", async ()=>{
   try{
     const text = (await navigator.clipboard.readText()).trim();
+    if(text.length > TXT_MAX){
+      flashButton($("#pasteInbox"), "Too big", `Clipboard holds more than ${TXT_MAX/1048576} MB — too big to be a Carrier message`);
+      $("#rNote").className = "note err";
+      $("#rNote").textContent = "That clipboard content is too big to be a Carrier message (over 8 MB). Nothing was pasted.";
+      return;
+    }
     if(!text){
       flashButton($("#pasteInbox"), "Clipboard empty", "Clipboard is empty");
     } else {
@@ -1674,7 +1698,6 @@ $("#clearInbox").addEventListener("click", resetReceive);
 
 // load a saved Carrier .txt file into the inbox (via button or drag-drop onto the textarea)
 const txtFile = $("#txtFile");
-const TXT_MAX = 8 * 1024 * 1024;   // a Carrier payload is a few MB of base64 at most
 function loadTextFile(file){
   if(!file) return;
   const rn = $("#rNote");
