@@ -732,6 +732,8 @@ const copyAllLabel = () => lastChunks.length === 1 ? "Copy message" : "Copy all 
 const sentChunks = new Set();
 // set when a re-pack discarded marks the user had earned — see renderChunks()
 let staleSend = false;
+// last pack() result and the inputs that produced it, so a no-op refresh doesn't mint a new session id
+let packKey = null, packB64 = null;
 const nextUnsentIndex = () => lastChunks.findIndex(c => !sentChunks.has(c));
 // compose the Send-mode tab title. Pasting a long payload means living in the chat app, not here, so the
 // tab strip is the only place a user can see how far along the send is without switching back. Called
@@ -794,7 +796,7 @@ function paintSent(){
   // the stale warning outranks the progress line: it is about the parts already gone, not the ones left
   if(staleSend){
     prog.className = "note err";
-    prog.textContent = "Settings changed, so these are new messages — anything you already sent belongs to the old version and the recipient can't combine the two. Send again from part 1.";
+    prog.textContent = "These are new messages — the image or its settings changed, so anything you already sent belongs to the old version and the recipient can't combine the two. Send again from part 1.";
   }
   prog.classList.toggle("hidden", !staleSend && (!multi || sent === 0));
   $("#chunks").querySelectorAll(".chunk").forEach(el=>{
@@ -832,9 +834,23 @@ async function refresh(){
   // pack with current password to get true size — use the raw value (no trim): a password is an
   // exact secret, and trimming let an all-whitespace entry collapse to "" and ship UNENCRYPTED
   const pw = $("#pass").value;
-  const b64 = await pack(img, srcMime, pw);
-  if(!srcImage) return;   // Start over ran during packing — don't repopulate the cleared UI
-  lastChunks = chunkify(b64);
+  // Reuse the previous pack when nothing that feeds it changed. refresh() runs on a mode switch and on a
+  // bfcache restore, not only on a real edit, and every pack re-chunks under a NEW session id — with a
+  // password it also re-encrypts under a new IV, so even the bytes differ. Without this cache, tabbing to
+  // Receive and back silently invalidated every part already pasted into the chat, and (since #180) put a
+  // "settings changed" warning on screen when the user had changed nothing.
+  // Keyed on everything pack() consumes: the source (loadToken changes on a new file or Start over), the
+  // two encode settings that determine the bytes, and the password.
+  const packKeyNow = `${loadToken}|${d}|${q}|${pw}`;
+  let b64;
+  if(packKey === packKeyNow && packB64 !== null){
+    b64 = packB64;
+  } else {
+    b64 = await pack(img, srcMime, pw);
+    if(!srcImage) return;   // Start over ran during packing — don't repopulate the cleared UI
+    packKey = packKeyNow; packB64 = b64;
+    lastChunks = chunkify(b64);   // only a genuinely new payload gets a new session id
+  }
   // stats
   const origBytes = srcImage._bytes || 0;
   // re-encoding an already-optimized small source to WebP can end up larger — don't print a
@@ -1459,6 +1475,7 @@ function resetSend(){
   lastPreviewBytes = null; keyCache = null;   // drop the cached derived key when the image is cleared
   srcImage = null; lastChunks = [];
   sentChunks.clear(); staleSend = false; paintSent();   // the checklist belongs to the payload being cleared
+  packKey = null; packB64 = null;
   $("#chunks").innerHTML = "";
   ["tunePanel","lockPanel","outPanel"].forEach(id => $("#"+id).classList.add("hidden"));
   $("#pass").value = ""; maskPassword("pass"); updatePwStrength();
