@@ -1182,6 +1182,26 @@ function updatePwStrength(){
   label.style.color = s <= 1 ? "var(--danger)" : s >= 4 ? "var(--ok)" : "var(--send)";
 }
 $("#pass").addEventListener("input", updatePwStrength);
+// crypto.subtle is undefined in a non-secure context — Carrier over plain http:// on a LAN, the same
+// context that takes out the clipboard. The password field stayed inviting, and typing in it threw a
+// TypeError inside pack() that surfaced through refresh()'s catch as "Couldn't compress that image:
+// Cannot read properties of undefined (reading 'importKey')". Compression was fine; encryption was
+// impossible; nothing in that message said so, and it reads as "this photo is broken".
+// Disable both fields rather than leave a control that can only fail, and say why. Unencrypted send and
+// receive are untouched and keep working.
+if(!(window.crypto && crypto.subtle)){
+  const why = "Password locking needs a secure page — open this file directly, or serve it over https://. Sending and receiving without a password still work.";
+  [["pass","passHint"], ["rpass", null]].forEach(([id, hintId])=>{
+    const inp = $("#"+id);
+    inp.disabled = true;
+    inp.placeholder = "Password unavailable on this page";
+    const tog = document.querySelector(`.pwtoggle[data-target="${id}"]`);
+    if(tog) tog.disabled = true;
+    if(hintId){ const h = $("#"+hintId); h.className = "note err"; h.textContent = why; }
+  });
+  // the receive side has no standing hint element, so put it where a locked message would send the user
+  const rn = $("#rNote"); rn.className = "note err"; rn.textContent = why;
+}
 // one-tap quality presets: set quality + max size together, persist, and recompress
 function applyPreset(q, d){
   setQuality(q);
