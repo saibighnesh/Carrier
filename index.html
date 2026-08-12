@@ -1879,9 +1879,21 @@ $("#reveal").addEventListener("click", doReveal);
 // click the revealed image to open it full size in a new tab (the on-page view is capped at 80vh)
 // open a zoomable image in a new tab, reachable by both mouse and keyboard (Enter/Space) since these
 // are role=button; a plain <img> click handler alone is unreachable for keyboard/AT users (WCAG 2.1.1)
-function bindZoom(imgId, getUrl){
+function bindZoom(imgId, getUrl, noteId){
   const el = $("#"+imgId);
-  const open = ()=>{ const u = getUrl(); if(u) window.open(u, "_blank", "noopener"); };
+  const open = ()=>{
+    const u = getUrl();
+    if(!u) return;
+    // window.open returns null when the popup is blocked. Unchecked, the button looked interactive,
+    // announced itself as a button, and did nothing at all — so the user pressed it again and concluded
+    // the image was broken. It also stranded the blob just minted for the tab, holding it the full 60 s.
+    const w = window.open(u, "_blank", "noopener");
+    if(w) return;
+    URL.revokeObjectURL(u);   // no tab took ownership — reclaim it now rather than on the timer
+    const n = $("#"+noteId);
+    n.className = "note err";
+    n.textContent = "Your browser blocked the new tab. Allow pop-ups for this page to view the image full size — or use Download / Save as .txt instead.";
+  };
   el.addEventListener("click", open);
   el.addEventListener("keydown", e=>{ if(e.key === "Enter" || e.key === " "){ e.preventDefault(); open(); } });
 }
@@ -1894,7 +1906,7 @@ bindZoom("rimg", ()=>{
   const u = URL.createObjectURL(new Blob([recovered.bytes], {type:recovered.mime}));
   setTimeout(()=>URL.revokeObjectURL(u), 60000);
   return u;
-});
+}, "rNote");
 // click the compressed preview to inspect it full size — the thumbnail is only 160px
 // the thumbnail's own blob URL (#thumb.src) is revoked on the next refresh, which would blank a tab
 // opened from it — so mint a fresh, independently-owned URL for the zoom and reclaim it after a minute
@@ -1903,7 +1915,7 @@ bindZoom("thumb", ()=>{
   const u = URL.createObjectURL(new Blob([lastPreviewBytes], {type:lastPreviewMime}));
   setTimeout(()=>URL.revokeObjectURL(u), 60000);
   return u;
-});
+}, "fitNote");
 $("#save").addEventListener("click", ()=>{
   if(!recovered) return;
   const ts = localStamp();   // local YYYY-MM-DD-HH-MM-SS, so the saved image sorts by the user's own clock
