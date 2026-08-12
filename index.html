@@ -322,6 +322,7 @@
         <button type="button" class="btn hidden" id="copyRest" title="Copies every part you haven't sent yet, in one block">Copy remaining</button>
         <button type="button" class="btn hidden" id="resetSent" title="Clears the sent marks and starts the send over from part 1">Reset marks</button>
       </div>
+      <p class="note err hidden" id="copyNote" role="status" style="margin:0 2px 10px"></p>
       <p class="note warn hidden" id="staleNote" role="status" style="margin:0 2px 10px"></p>
       <p class="note hidden" id="sendProg" role="status" aria-live="polite" style="margin:0 2px 10px"></p>
       <p class="note kbdhint" id="sendKbdHint" aria-hidden="true" style="margin-top:0"><kbd>Ctrl/Cmd</kbd>+<kbd>Enter</kbd> copies the next message</p>
@@ -1018,7 +1019,7 @@ function renderChunks(){
       const origLabel = b.dataset.origLabel;
       clearTimeout(copyoneTimers.get(b));
       try{
-        await navigator.clipboard.writeText(lastChunks[+b.dataset.i]);
+        await writeToClipboard(lastChunks[+b.dataset.i]);
         b.textContent = "Copied"; b.setAttribute("aria-label","Copied");
         markSent(+b.dataset.i);
       }catch{
@@ -1253,7 +1254,7 @@ $("#copyAll").addEventListener("click", async ()=>{
   copyAllBusy = true;   // suppress renderChunks() label overwrite during the feedback window
   const restore = ()=>{ copyAllBusy = false; b.textContent = copyAllLabel(); b.removeAttribute("aria-label"); };
   try{
-    await navigator.clipboard.writeText(lastChunks.join("\n\n"));
+    await writeToClipboard(lastChunks.join("\n\n"));
     for(const c of lastChunks) sentChunks.add(c);   // the whole payload is on the clipboard — mark it all
     staleSend = false;
     paintSent();
@@ -1274,7 +1275,7 @@ $("#copyNext").addEventListener("click", async ()=>{
   if(i < 0) return;
   const btn = $("#copyNext");
   try{
-    await navigator.clipboard.writeText(lastChunks[i]);
+    await writeToClipboard(lastChunks[i]);
     markSent(i);   // repaints, and advances the button to the following part
     // only the first CHUNK_RENDER_CAP parts have a card; beyond that there's nothing to scroll to
     const card = $("#chunks").querySelector(`.data[data-i="${i}"]`);
@@ -1305,7 +1306,7 @@ $("#copyRest").addEventListener("click", async ()=>{
   if(!rest.length) return;
   const btn = $("#copyRest");
   try{
-    await navigator.clipboard.writeText(rest.join("\n\n"));
+    await writeToClipboard(rest.join("\n\n"));
     for(const c of rest) sentChunks.add(c);
     staleSend = false;
     paintSent();   // hides this button — every part is sent now
@@ -1320,6 +1321,38 @@ $("#resetSent").addEventListener("click", ()=>{
   paintSent();
   $("#copyNext").focus();   // the reset button hides itself — don't drop focus to <body>
 });
+// Every copy path assumed navigator.clipboard.writeText exists. In a non-secure context — Carrier served
+// over plain http:// on a LAN, a normal way to use a single offline file — navigator.clipboard is
+// undefined, so all six copy buttons failed with a bare "Failed" and no hint that the messages are right
+// there, selectable, with .data set to user-select:all.
+// Fall back to the legacy execCommand path, which still works in an insecure context, so the buttons keep
+// working wherever they can. writeToClipboard rejects only when BOTH routes are unavailable, leaving the
+// existing catch blocks as the last resort.
+const canCopy = () => !!(navigator.clipboard && navigator.clipboard.writeText) || document.queryCommandSupported?.("copy");
+async function writeToClipboard(text){
+  if(navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text);
+  // off-screen textarea + execCommand: deprecated, but the only write path an insecure context has
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.setAttribute("readonly", "");
+  ta.setAttribute("aria-hidden", "true");
+  ta.style.cssText = "position:fixed;top:-9999px;left:-9999px;opacity:0";
+  document.body.appendChild(ta);
+  const prev = document.activeElement;
+  ta.select();
+  let ok = false;
+  try { ok = document.execCommand("copy"); } catch { ok = false; }
+  document.body.removeChild(ta);
+  if(prev && prev.focus) prev.focus();   // execCommand needs a selection, so it moves focus — put it back
+  if(!ok) throw new Error("Clipboard unavailable");
+}
+// say it once, where the output lives, rather than leaving six buttons to fail one at a time. The buttons
+// stay: they're the whole point of step 4, and hiding them would leave the step looking broken.
+if(!canCopy()){
+  const n = $("#copyNote");
+  n.classList.remove("hidden");
+  n.textContent = "Copying isn't available here — this page needs to be opened over https:// or from a file. You can still select a message below and copy it by hand, or use Save as .txt.";
+}
 // trigger a browser download for an object URL (does not revoke — caller owns the URL lifecycle)
 function downloadURL(url, filename){
   const a = document.createElement("a");
@@ -1688,7 +1721,7 @@ $("#copyMissing").addEventListener("click", async ()=>{
     ? `Carrier: I'm missing more than ${missing.length} of the ${total} parts — starting with ${missing.join(", ")}. Easiest is to send the whole set again.`
     : `Carrier: I'm still missing part${missing.length>1?"s":""} ${missing.join(", ")} of ${total}. Could you resend ${missing.length>1?"those":"that one"}?`;
   try{
-    await navigator.clipboard.writeText(msg);
+    await writeToClipboard(msg);
     flashButton($("#copyMissing"), "Copied ✓", "Copied the list of missing parts");
   }catch{
     flashButton($("#copyMissing"), "Copy failed", "Copy failed — clipboard access denied");
