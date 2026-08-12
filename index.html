@@ -724,6 +724,8 @@ const copyAllLabel = () => lastChunks.length === 1 ? "Copy message" : "Copy all 
 // it wasn't made against, while an identical re-render (mode switch, bfcache restore, a no-op refresh)
 // keeps the user's place in a long send. Pruned to the live chunk list on every render.
 const sentChunks = new Set();
+// set when a re-pack discarded marks the user had earned — see renderChunks()
+let staleSend = false;
 const nextUnsentIndex = () => lastChunks.findIndex(c => !sentChunks.has(c));
 // compose the Send-mode tab title. Pasting a long payload means living in the chat app, not here, so the
 // tab strip is the only place a user can see how far along the send is without switching back. Called
@@ -783,7 +785,12 @@ function paintSent(){
     restBtn.setAttribute("aria-label", `Copy the ${left} message${left!==1?"s":""} not yet sent, as one block`);
   }
   resetBtn.classList.toggle("hidden", !multi || sent === 0);
-  prog.classList.toggle("hidden", !multi || sent === 0);
+  // the stale warning outranks the progress line: it is about the parts already gone, not the ones left
+  if(staleSend){
+    prog.className = "note err";
+    prog.textContent = "Settings changed, so these are new messages — anything you already sent belongs to the old version and the recipient can't combine the two. Send again from part 1.";
+  }
+  prog.classList.toggle("hidden", !staleSend && (!multi || sent === 0));
   $("#chunks").querySelectorAll(".chunk").forEach(el=>{
     const i = +el.querySelector(".data").dataset.i;
     const isSent = multi && sentChunks.has(lastChunks[i]);
@@ -798,6 +805,7 @@ function paintSent(){
 function markSent(i){
   const c = lastChunks[i];
   if(c == null || sentChunks.has(c)) return;
+  staleSend = false;   // the user has started sending THIS payload — the warning has done its job
   sentChunks.add(c);
   paintSent();
 }
@@ -917,10 +925,17 @@ function renderChunks(){
   const box = $("#chunks"); box.innerHTML = "";
   // drop marks whose chunk text is no longer in the payload — a re-pack at a new quality/password
   // produces entirely different strings, so this clears the whole set in exactly the cases it should
+  let dropped = 0;
   if(sentChunks.size){
     const live = new Set(lastChunks);
-    for(const c of sentChunks) if(!live.has(c)) sentChunks.delete(c);
+    for(const c of sentChunks) if(!live.has(c)){ sentChunks.delete(c); dropped++; }
   }
+  // Dropping marks means this payload is not the one those parts came from: chunkify() mints a new
+  // session id on every pack, so anything already pasted into the chat belongs to a session the receiver
+  // will treat as a DIFFERENT image. The tracker resetting reads as "the tracker reset", not as "the four
+  // messages you already sent are now dead" — and the sender's next move is to carry on from part 5 and
+  // ship an unassemblable set. Say it plainly, and only when marks were actually discarded.
+  staleSend = dropped > 0;
   if(!copyAllBusy){
     $("#copyAll").textContent = copyAllLabel();   // don't clobber active copy feedback
     // keep the tooltip honest: a single-message payload isn't "all chunks separated by a blank line"
@@ -1200,6 +1215,7 @@ $("#copyAll").addEventListener("click", async ()=>{
   try{
     await navigator.clipboard.writeText(lastChunks.join("\n\n"));
     for(const c of lastChunks) sentChunks.add(c);   // the whole payload is on the clipboard — mark it all
+    staleSend = false;
     paintSent();
     b.textContent = lastChunks.length === 1 ? "Copied ✓" : "Copied all ✓";
     b.setAttribute("aria-label", lastChunks.length === 1 ? "Copied the message" : `Copied all ${lastChunks.length} messages`);
@@ -1251,6 +1267,7 @@ $("#copyRest").addEventListener("click", async ()=>{
   try{
     await navigator.clipboard.writeText(rest.join("\n\n"));
     for(const c of rest) sentChunks.add(c);
+    staleSend = false;
     paintSent();   // hides this button — every part is sent now
     flashButton(btn, `Copied ${rest.length} ✓`, `Copied the ${rest.length} remaining message${rest.length!==1?"s":""}`);
   }catch{
@@ -1259,6 +1276,7 @@ $("#copyRest").addEventListener("click", async ()=>{
 });
 $("#resetSent").addEventListener("click", ()=>{
   sentChunks.clear();
+  staleSend = false;   // an explicit reset is the user acknowledging the restart
   paintSent();
   $("#copyNext").focus();   // the reset button hides itself — don't drop focus to <body>
 });
@@ -1314,6 +1332,7 @@ $("#saveTxt").addEventListener("click", ()=>{
   // does — just down a different pipe. Leaving the tracker at "0 of 7" after a save would have the
   // checklist contradict what the user just did, and Copy next would offer part 1 again.
   for(const c of lastChunks) sentChunks.add(c);
+  staleSend = false;
   paintSent();
   flashButton($("#saveTxt"), "Saved ✓", `Saved ${lastChunks.length} message${lastChunks.length!==1?"s":""} as a text file`);
 });
@@ -1416,7 +1435,7 @@ function resetSend(){
   if(srcImage && srcImage._objUrl) URL.revokeObjectURL(srcImage._objUrl);   // free the source file's object URL
   lastPreviewBytes = null; keyCache = null;   // drop the cached derived key when the image is cleared
   srcImage = null; lastChunks = [];
-  sentChunks.clear(); paintSent();   // the copy-checklist belongs to the payload being cleared
+  sentChunks.clear(); staleSend = false; paintSent();   // the checklist belongs to the payload being cleared
   $("#chunks").innerHTML = "";
   ["tunePanel","lockPanel","outPanel"].forEach(id => $("#"+id).classList.add("hidden"));
   $("#pass").value = ""; maskPassword("pass"); updatePwStrength();
