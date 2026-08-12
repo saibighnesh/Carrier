@@ -294,6 +294,7 @@
         <div class="stat" aria-live="polite" aria-atomic="true"><div class="k" title="Number of chat messages needed">Messages</div><div class="v" id="msgOut" translate="no">—</div></div>
       </div>
       <p class="note" id="fitNote" role="status"></p>
+      <p class="note warn hidden" id="alphaNote" role="status"></p>
     </div>
 
     <div class="panel hidden" id="lockPanel" role="group" tabindex="-1" aria-labelledby="lockPanelLabel">
@@ -313,6 +314,7 @@
         <button type="button" class="btn amber" id="copyAll" aria-keyshortcuts="Control+Enter Meta+Enter" title="Copies all chunks separated by a blank line — paste the whole block into your chat">Copy all messages</button>
         <button type="button" class="btn hidden" id="copyNext" aria-keyshortcuts="Control+Enter Meta+Enter" title="Copies the next message you haven't copied yet and marks it off (Ctrl/Cmd+Enter)">Copy next message</button>
         <button type="button" class="btn" id="saveTxt" aria-label="Save all messages as a text file" title="Downloads all messages as a .txt file — send it as an attachment or keep it as a backup">Save as .txt</button>
+        <button type="button" class="btn hidden" id="copyRest" title="Copies every part you haven't sent yet, in one block">Copy remaining</button>
         <button type="button" class="btn hidden" id="resetSent" title="Clears the sent marks and starts the send over from part 1">Reset marks</button>
       </div>
       <p class="note hidden" id="sendProg" role="status" aria-live="polite" style="margin:0 2px 10px"></p>
@@ -659,6 +661,24 @@ function encodeCanvas(cv, q){
     }, "image/webp", q);
   });
 }
+// Does the source carry any non-opaque pixel? Sampled once per loaded image on a small scratch canvas:
+// a full-resolution getImageData on a 12 MP photo is tens of megabytes and this only needs a yes/no.
+// Downscaling averages alpha, so a lone transparent pixel in a huge image can be missed — that is the
+// right way to be wrong here, since the warning it drives is advisory and a false alarm is worse than a
+// miss. Blob-URL images are same-origin, so the canvas is never tainted and getImageData can't throw.
+function detectAlpha(img){
+  try{
+    const n = 128;
+    const w = Math.max(1, Math.min(n, img.naturalWidth)), h = Math.max(1, Math.min(n, img.naturalHeight));
+    const cv = document.createElement("canvas");
+    cv.width = w; cv.height = h;
+    const ctx = cv.getContext("2d");   // one read, not many — willReadFrequently would force a slower software canvas for nothing
+    ctx.drawImage(img, 0, 0, w, h);
+    const d = ctx.getImageData(0, 0, w, h).data;
+    for(let i = 3; i < d.length; i += 4) if(d[i] < 255) return true;
+    return false;
+  }catch{ return false; }   // never let a probe for an advisory warning break the load
+}
 async function compressOnce(maxDim, quality){
   const cv = drawScaled(srcImage, maxDim);
   const blob = await encodeCanvas(cv, quality/100);
@@ -754,6 +774,14 @@ function paintSent(){
     ? "<kbd>Ctrl/Cmd</kbd>+<kbd>Enter</kbd> copies the next message"
     : "<kbd>Ctrl/Cmd</kbd>+<kbd>Enter</kbd> copies the message";
   nextBtn.classList.toggle("hidden", !multi || next < 0);
+  // only worth offering part-way through: at 0 sent it duplicates Copy all, at fully sent there is nothing left
+  const restBtn = $("#copyRest");
+  restBtn.classList.toggle("hidden", !multi || sent === 0 || next < 0);
+  if(multi && sent > 0 && next >= 0){
+    const left = total - sent;
+    restBtn.textContent = `Copy remaining ${left}`;
+    restBtn.setAttribute("aria-label", `Copy the ${left} message${left!==1?"s":""} not yet sent, as one block`);
+  }
   resetBtn.classList.toggle("hidden", !multi || sent === 0);
   prog.classList.toggle("hidden", !multi || sent === 0);
   $("#chunks").querySelectorAll(".chunk").forEach(el=>{
@@ -840,6 +868,15 @@ async function refresh(){
       ? `Sending as ${lastChunks.length} parts — lower quality or size to fit in one message.`
       : `Sending as ${lastChunks.length} parts — ${app}'s per-message limit is too small to fit an image in one message.`;
   }
+  // WebP keeps an alpha channel; the JPEG fallback cannot. On a browser without WebP encoding, a
+  // transparent PNG or GIF is silently flattened onto black — the sender sees their own thumbnail with
+  // the same flattening and has no reason to suspect the format, only that "it looks wrong now". Say it.
+  const flattened = srcMime === "image/jpeg" && srcImage._alpha === true;
+  const alphaNote = $("#alphaNote");
+  alphaNote.classList.toggle("hidden", !flattened);
+  alphaNote.textContent = flattened
+    ? "This image has transparent areas, and your browser can only encode JPEG here — the transparency is filled in rather than kept. The recipient sees what the preview shows."
+    : "";
   renderChunks();
   $("#lockPanel").classList.remove("hidden");
   $("#outPanel").classList.remove("hidden");
@@ -1099,6 +1136,16 @@ function applyPreset(q, d){
 document.querySelectorAll(".preset").forEach(b=>{
   b.addEventListener("click", ()=>{ if(srcImage) applyPreset(+b.dataset.q, +b.dataset.d); });
 });
+// the controls autoFit overwrites when it lands — disabled while it searches so a mid-fit change isn't
+// silently discarded. #autofit itself is handled separately (it also swaps its label and aria-busy).
+// NOT #startOver: autoFit checks srcImage between every encode and abandons cleanly when it goes null,
+// so Start over is the working cancel for a long fit (42 encodes on a big image is several seconds).
+// Disabling it would take away the only way out.
+const TUNE_CONTROLS = ["#quality", "#maxdim", "#chatLimit"];
+function setTuneDisabled(off){
+  TUNE_CONTROLS.forEach(sel => { $(sel).disabled = off; });
+  document.querySelectorAll(".preset").forEach(b => { b.disabled = off; });
+}
 $("#autofit").addEventListener("click", async ()=>{
   if(!srcImage) return;
   const btn = $("#autofit");
@@ -1106,6 +1153,12 @@ $("#autofit").addEventListener("click", async ()=>{
   btn.textContent = "Fitting…";
   btn.setAttribute("aria-busy","true");
   const fitNote = $("#fitNote");
+  // freeze the tuning controls for the duration. autoFit ends by writing its own quality/max-size and
+  // clearing the pending debounce, so a change made mid-fit was silently thrown away — the user watched
+  // the slider they had just moved snap to a different number with no explanation. Disabling says so.
+  // The password field stays live on purpose: autoFit reads it inside its budget on every iteration
+  // precisely so a password typed mid-fit is accounted for.
+  setTuneDisabled(true);
   try{
     const best = await autoFit();
     if(!best || !srcImage) return;   // Start over ran during the fit — autoFit abandoned; don't touch the (now hidden) panel
@@ -1128,6 +1181,7 @@ $("#autofit").addEventListener("click", async ()=>{
     fitNote.className = "note err";
     fitNote.textContent = "Auto-fit failed: " + (err instanceof Error ? err.message : String(err));
   } finally {
+    setTuneDisabled(false);
     btn.disabled = false;
     btn.innerHTML = autofitOrigHtml || '<span aria-hidden="true">⚡ </span>Auto-fit to 1 message';
     btn.removeAttribute("aria-busy");
@@ -1186,6 +1240,22 @@ document.addEventListener("keydown", e=>{
   if(btn.classList.contains("hidden")) return;
   e.preventDefault();
   btn.click();
+});
+// Copy-next is for working through a chat one paste at a time; this is for the other half of the job —
+// you sent three parts before losing the thread, and now want the rest in a single paste without
+// re-sending what already landed. Skips the sent ones rather than restarting from part 1.
+$("#copyRest").addEventListener("click", async ()=>{
+  const rest = lastChunks.filter(c => !sentChunks.has(c));
+  if(!rest.length) return;
+  const btn = $("#copyRest");
+  try{
+    await navigator.clipboard.writeText(rest.join("\n\n"));
+    for(const c of rest) sentChunks.add(c);
+    paintSent();   // hides this button — every part is sent now
+    flashButton(btn, `Copied ${rest.length} ✓`, `Copied the ${rest.length} remaining message${rest.length!==1?"s":""}`);
+  }catch{
+    flashButton(btn, "Copy failed", "Copy failed — clipboard access denied");
+  }
 });
 $("#resetSent").addEventListener("click", ()=>{
   sentChunks.clear();
@@ -1310,6 +1380,7 @@ async function handleFile(file){
     const name = file.name || "pasted image";
     srcImage._name = name;
     srcImage._bytes = file.size;   // remember the original size to show the compression ratio in stats
+    srcImage._alpha = detectAlpha(img);   // drives the transparency-flattening warning if WebP isn't available
     const sizeStr = fmtKB(file.size);
     drop.setAttribute("aria-label","Replace image");
     drop.title = "Drop or click to choose a different image, or paste with Ctrl/Cmd+V";   // match the "Replace image" state
@@ -1354,6 +1425,7 @@ function resetSend(){
   $("#meterTrack").setAttribute("aria-valuenow","0"); $("#meterTrack").removeAttribute("aria-valuetext");
   $("#meter").classList.remove("over","near");
   $("#fitNote").className = "note"; $("#fitNote").textContent = "";
+  $("#alphaNote").classList.add("hidden"); $("#alphaNote").textContent = "";
   $("#thumb").removeAttribute("src"); $("#thumb").alt = "Compressed preview";
   $("#thumb").setAttribute("aria-label", "Open the compressed preview full size in a new tab");   // restore the resting label
   drop.setAttribute("aria-label","Choose an image");
