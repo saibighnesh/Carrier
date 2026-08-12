@@ -1099,6 +1099,13 @@ function applyPreset(q, d){
 document.querySelectorAll(".preset").forEach(b=>{
   b.addEventListener("click", ()=>{ if(srcImage) applyPreset(+b.dataset.q, +b.dataset.d); });
 });
+// the controls autoFit overwrites when it lands — disabled while it searches so a mid-fit change isn't
+// silently discarded. #autofit itself is handled separately (it also swaps its label and aria-busy).
+const TUNE_CONTROLS = ["#quality", "#maxdim", "#chatLimit", "#startOver"];
+function setTuneDisabled(off){
+  TUNE_CONTROLS.forEach(sel => { $(sel).disabled = off; });
+  document.querySelectorAll(".preset").forEach(b => { b.disabled = off; });
+}
 $("#autofit").addEventListener("click", async ()=>{
   if(!srcImage) return;
   const btn = $("#autofit");
@@ -1106,6 +1113,12 @@ $("#autofit").addEventListener("click", async ()=>{
   btn.textContent = "Fitting…";
   btn.setAttribute("aria-busy","true");
   const fitNote = $("#fitNote");
+  // freeze the tuning controls for the duration. autoFit ends by writing its own quality/max-size and
+  // clearing the pending debounce, so a change made mid-fit was silently thrown away — the user watched
+  // the slider they had just moved snap to a different number with no explanation. Disabling says so.
+  // The password field stays live on purpose: autoFit reads it inside its budget on every iteration
+  // precisely so a password typed mid-fit is accounted for.
+  setTuneDisabled(true);
   try{
     const best = await autoFit();
     if(!best || !srcImage) return;   // Start over ran during the fit — autoFit abandoned; don't touch the (now hidden) panel
@@ -1128,6 +1141,7 @@ $("#autofit").addEventListener("click", async ()=>{
     fitNote.className = "note err";
     fitNote.textContent = "Auto-fit failed: " + (err instanceof Error ? err.message : String(err));
   } finally {
+    setTuneDisabled(false);
     btn.disabled = false;
     btn.innerHTML = autofitOrigHtml || '<span aria-hidden="true">⚡ </span>Auto-fit to 1 message';
     btn.removeAttribute("aria-busy");
