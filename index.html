@@ -313,6 +313,7 @@
         <button type="button" class="btn amber" id="copyAll" aria-keyshortcuts="Control+Enter Meta+Enter" title="Copies all chunks separated by a blank line — paste the whole block into your chat">Copy all messages</button>
         <button type="button" class="btn hidden" id="copyNext" aria-keyshortcuts="Control+Enter Meta+Enter" title="Copies the next message you haven't copied yet and marks it off (Ctrl/Cmd+Enter)">Copy next message</button>
         <button type="button" class="btn" id="saveTxt" aria-label="Save all messages as a text file" title="Downloads all messages as a .txt file — send it as an attachment or keep it as a backup">Save as .txt</button>
+        <button type="button" class="btn hidden" id="copyRest" title="Copies every part you haven't sent yet, in one block">Copy remaining</button>
         <button type="button" class="btn hidden" id="resetSent" title="Clears the sent marks and starts the send over from part 1">Reset marks</button>
       </div>
       <p class="note hidden" id="sendProg" role="status" aria-live="polite" style="margin:0 2px 10px"></p>
@@ -754,6 +755,14 @@ function paintSent(){
     ? "<kbd>Ctrl/Cmd</kbd>+<kbd>Enter</kbd> copies the next message"
     : "<kbd>Ctrl/Cmd</kbd>+<kbd>Enter</kbd> copies the message";
   nextBtn.classList.toggle("hidden", !multi || next < 0);
+  // only worth offering part-way through: at 0 sent it duplicates Copy all, at fully sent there is nothing left
+  const restBtn = $("#copyRest");
+  restBtn.classList.toggle("hidden", !multi || sent === 0 || next < 0);
+  if(multi && sent > 0 && next >= 0){
+    const left = total - sent;
+    restBtn.textContent = `Copy remaining ${left}`;
+    restBtn.setAttribute("aria-label", `Copy the ${left} message${left!==1?"s":""} not yet sent, as one block`);
+  }
   resetBtn.classList.toggle("hidden", !multi || sent === 0);
   prog.classList.toggle("hidden", !multi || sent === 0);
   $("#chunks").querySelectorAll(".chunk").forEach(el=>{
@@ -1200,6 +1209,22 @@ document.addEventListener("keydown", e=>{
   if(btn.classList.contains("hidden")) return;
   e.preventDefault();
   btn.click();
+});
+// Copy-next is for working through a chat one paste at a time; this is for the other half of the job —
+// you sent three parts before losing the thread, and now want the rest in a single paste without
+// re-sending what already landed. Skips the sent ones rather than restarting from part 1.
+$("#copyRest").addEventListener("click", async ()=>{
+  const rest = lastChunks.filter(c => !sentChunks.has(c));
+  if(!rest.length) return;
+  const btn = $("#copyRest");
+  try{
+    await navigator.clipboard.writeText(rest.join("\n\n"));
+    for(const c of rest) sentChunks.add(c);
+    paintSent();   // hides this button — every part is sent now
+    flashButton(btn, `Copied ${rest.length} ✓`, `Copied the ${rest.length} remaining message${rest.length!==1?"s":""}`);
+  }catch{
+    flashButton(btn, "Copy failed", "Copy failed — clipboard access denied");
+  }
 });
 $("#resetSent").addEventListener("click", ()=>{
   sentChunks.clear();
