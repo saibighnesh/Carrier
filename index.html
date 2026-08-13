@@ -784,8 +784,14 @@ function paintSent(){
       nextBtn.setAttribute("aria-label", `Copy message ${next+1} of ${total} — the next one not yet copied`);
       nextBtn.title = `Copies message ${next+1} of ${total} and marks it off`;
     }
+    // "That's all of them" rather than a bare state line: on the final part paintSent() hides the button
+    // the click was on, so flashButton writes its "Copied 15 ✓" into a node that is already display:none
+    // and the one action that completes the send is the only one that appears to do nothing. The ordering
+    // can't be reversed — flashButton captures the resting label, and relabelling across a live flash is
+    // the stale-label bug from #174 — so the acknowledgement belongs here, in the live region that is
+    // already announcing the count.
     prog.textContent = sent >= total
-      ? `All ${total} parts sent. ✓`
+      ? `That's all ${total} parts sent. ✓ Nothing left to copy.`
       : `Sent ${sent} of ${total} parts — next up: part ${next+1}.`;
     prog.className = sent >= total ? "note ok" : "note";   // set BEFORE the hidden toggle — className assignment wipes it
   }
