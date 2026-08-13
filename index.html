@@ -912,7 +912,8 @@ function reassembleParse(text){
       else { missingTrunc = true; break; }
     }
   }
-  return { s, total, have, missing, missingTrunc, repaired, multiSession: sessions.length > 1 ? sessions.length : 0 };
+  return { s, total, have, missing, missingTrunc, repaired, hadParity: parityRaw.length > 0,
+           multiSession: sessions.length > 1 ? sessions.length : 0 };
 }
 // Fill holes in `map` (1-based part index -> payload text) from the parity parts. Mutates map; returns how
 // many parts were rebuilt. Every step is guarded: recovery is a best-effort bonus, and a malformed or
@@ -2342,6 +2343,11 @@ async function doReveal(){
     // reassemble picked — and "most complete" can be a stale leftover, not the image the user is
     // assembling. Don't claim a plain "Received ✓" in that case; say the box held several images and this
     // was the most complete, so a wrong pick isn't silent.
+    // Close the loop: a successful reveal is the one moment we know both how many parts were sent and how
+    // many failed to arrive, so it is the only honest place to learn the loss rate from. Recorded once per
+    // reveal, and only for a send that carried recovery — without parity a user chases missing parts by
+    // hand and reveals at zero, which would teach the model that this pipe never loses anything.
+    if(now.repaired > 0 || now.hadParity) recordLoss(now.repaired || 0, now.total);
     if(now.multiSession){
       note.className="note warn";
       note.textContent = `Showed the most complete of ${now.multiSession} images in the box. If this isn't the one you meant, Clear and paste just that image.`;
