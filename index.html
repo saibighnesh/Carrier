@@ -231,10 +231,10 @@
   <section id="send" role="tabpanel" aria-labelledby="tab-send">
     <div class="panel" role="group" aria-labelledby="dropPanelLabel">
       <span class="lbl" id="dropPanelLabel">1 · Pick an image</span>
-      <span id="dropHint" class="sr-only">Accepts JPG, PNG, WebP, GIF, and AVIF images.</span>
+      <span id="dropHint" class="sr-only">Accepts JPG, PNG, WebP, GIF and AVIF. BMP, HEIC and HEIF can be chosen but only open if your browser can decode them.</span>
       <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose an image" aria-describedby="dropHint" aria-keyshortcuts="Control+V Meta+V" title="Drop an image here, click to browse, or paste with Ctrl/Cmd+V">
         <strong>Drop an image here</strong>, click to choose, or paste with <kbd>Ctrl/Cmd+V</kbd>
-        <small>JPG · PNG · WebP · GIF · AVIF (modern browsers) — gets compressed to fit the text pipe</small>
+        <small>JPG · PNG · WebP · GIF · AVIF — plus BMP/HEIC if your browser reads them — gets compressed to fit the text pipe</small>
       </div>
       <!-- extensions listed alongside image/*: accept filters the dialog by the SAME MIME mapping that
            produces an empty File.type, so a file the OS can't map was greyed out in the picker and
@@ -1617,7 +1617,15 @@ function updateProgress(){
   const ready = !!(r && r.missing.length === 0);
   if(!ready) lockedPrompted = false;   // re-arm: an incomplete box that completes again is a fresh prompt
   missingSnapshot = (r && r.missing.length) ? r : null;
-  $("#copyMissing").classList.toggle("hidden", !missingSnapshot);
+  const cm = $("#copyMissing");
+  cm.classList.toggle("hidden", !missingSnapshot);
+  if(missingSnapshot){
+    // say how many before the click, not after: "ask for 2" and "ask for 140" are different decisions —
+    // at 140 the sensible move is usually to ask for the whole set again rather than a list
+    const n = missingSnapshot.total - missingSnapshot.have;
+    cm.textContent = `Copy what's missing (${n})`;
+    cm.setAttribute("aria-label", `Copy a message naming the ${n} part${n!==1?"s":""} still missing`);
+  }
   $("#reveal").disabled = !ready;   // enable Reveal only once a complete message is present
   // explain the disabled state on hover instead of a dead greyed-out button with a stale tooltip
   $("#reveal").title = ready
@@ -1664,7 +1672,12 @@ function updateProgress(){
     } else lockedPrompted = false;
   } else {
     const pct = Math.round(r.have / r.total * 100);   // how far along the reassembly is, by part count
-    p.append("Got ", b(r.have), " of ", b(r.total), ` parts (${pct}%) — still need part${r.missing.length>1?"s":""} ${r.missing.join(", ")}${r.missingTrunc?", …":""}.`);
+    // project the finished size from what has landed. A receiver watching a long send has no idea whether
+    // they are waiting on 40 KB or 4 MB, and the size only appeared once the set was already complete —
+    // by which point it answers nothing. Base64 decodes to 3/4 its length, and the parts are near-uniform,
+    // so have/total scales the assembled bytes to a usable estimate.
+    const approxFull = fmtKB(Math.floor((r.s.length * 3 / 4) * (r.total / r.have)));
+    p.append("Got ", b(r.have), " of ", b(r.total), ` parts (${pct}%, ~${approxFull} in all) — still need part${r.missing.length>1?"s":""} ${formatParts(r.missing)}${r.missingTrunc?", …":""}.`);
   }
   // mirror of the send side: assembling a long payload means hopping between the chat and this tab, and
   // the tab strip is the only place the count is visible without switching back. Never overwrite the
@@ -1679,6 +1692,20 @@ function updateProgress(){
   }
 }
 // peek the header flags byte without decrypting: null = not a valid Carrier header, else the flags byte
+// Collapse consecutive indices into ranges: [6,7,8,…,19] renders as "6-19", not fourteen numbers.
+// A gap-heavy set is what the list format is good at; a long unbroken run is what it is terrible at, and
+// a run is the common case — you paste the first few parts of a long send and everything after is missing.
+// Runs of three or more collapse; a pair stays "6, 7", which is shorter than "6-7" is clearer.
+function formatParts(nums){
+  const out = [];
+  for(let i = 0; i < nums.length; ){
+    let j = i;
+    while(j + 1 < nums.length && nums[j + 1] === nums[j] + 1) j++;
+    if(j - i >= 2){ out.push(`${nums[i]}\u2013${nums[j]}`); i = j + 1; }
+    else out.push(String(nums[i++]));
+  }
+  return out.join(", ");
+}
 function headerFlags(s){
   try{
     const h = b64ToBytes(s.slice(0,8));   // first 8 base64 chars → 6 bytes, enough for MAGIC(4)+flags(1)
@@ -1769,8 +1796,8 @@ $("#copyMissing").addEventListener("click", async ()=>{
   if(!missingSnapshot || !missingSnapshot.missing.length) return;
   const { missing, total, missingTrunc } = missingSnapshot;
   const msg = missingTrunc
-    ? `Carrier: I'm missing more than ${missing.length} of the ${total} parts — starting with ${missing.join(", ")}. Easiest is to send the whole set again.`
-    : `Carrier: I'm still missing part${missing.length>1?"s":""} ${missing.join(", ")} of ${total}. Could you resend ${missing.length>1?"those":"that one"}?`;
+    ? `Carrier: I'm missing more than ${missing.length} of the ${total} parts — starting with ${formatParts(missing)}. Easiest is to send the whole set again.`
+    : `Carrier: I'm still missing part${missing.length>1?"s":""} ${formatParts(missing)} of ${total}. Could you resend ${missing.length>1?"those":"that one"}?`;
   try{
     await writeToClipboard(msg);
     flashButton($("#copyMissing"), "Copied ✓", "Copied the list of missing parts");
@@ -1829,7 +1856,7 @@ async function doReveal(){
     const r = reassemble($("#inbox").value);
     if(!r){ note.className="note err"; note.textContent="No Carrier message found in the box above."; return; }
     if(r.missing.length){ note.className="note err";
-      note.textContent = `Missing part${r.missing.length>1?"s":""} ${r.missing.join(", ")}${r.missingTrunc?", …":""} — paste the remaining message(s) first.`; return; }
+      note.textContent = `Missing part${r.missing.length>1?"s":""} ${formatParts(r.missing)}${r.missingTrunc?", …":""} — paste the remaining message(s) first.`; return; }
     const snapshot = r.s;   // the exact payload we're about to decrypt
     const { mime, img, verified } = await unpack(r.s, $("#rpass").value);   // raw value — must match the sender's exactly, whitespace included
     // a locked reveal awaits 250k-round PBKDF2 (~1-2 s on a phone). If the user edited the inbox or left
