@@ -28,6 +28,7 @@ Save the single `index.html` file and it works offline — on a plane, on a trai
 - **Send-tracking** — a multi-part send marks off each part as it goes out (copied, or saved into a `.txt`). **Copy next message** hands you the one you haven't sent yet, **Copy remaining** dumps everything still outstanding in one paste, and progress shows in the tab title so you can check it from the chat app. If a setting changes mid-send, Carrier says so — the earlier parts belong to a different version and the recipient can't combine the two
 - **AES-256-GCM encryption** — optional password lock using browser-native Web Crypto (PBKDF2, 250k iterations)
 - **Damage detection** — unlocked messages carry a CRC-32, so a part mangled in transit is reported as damaged instead of showing up as a broken image (encrypted messages get this from GCM's authentication tag)
+- **Loss recovery (Reed-Solomon)** — optionally add parity parts so the recipient can *rebuild* parts that never arrived, instead of asking you to resend them. Off by default; Light adds ~10%, Strong ~25%
 - **Fully offline** — no network calls at all; works without internet after first load
 - **Reassembly progress** — the receive side counts parts as they land (`3/7 parts` in the tab title), names exactly what's missing, and **Copy what's missing** writes the sender a ready-to-send list
 - **Accessible** — keyboard navigable throughout, controls named by their visible labels, atomic screen-reader announcements for both progress lines, and `Esc` to start over or clear from anywhere in the panel
@@ -40,7 +41,7 @@ Save the single `index.html` file and it works offline — on a plane, on a trai
 ### Send
 1. Open `index.html` in any modern browser
 2. Drop or click to choose an image (JPG, PNG, WebP, GIF)
-3. Adjust **Quality** and **Max size**, or click **⚡ Auto-fit to 1 message**
+3. Adjust **Quality** and **Max size**, or click **⚡ Auto-fit to 1 message**. If the pipe is unreliable, set **Recovery** so the recipient can rebuild lost parts
 4. Optionally set a password under **Lock it**
 5. Copy the text and paste into your chat — if it split into parts, **Copy next message** walks you through them one at a time and marks off what you've already sent (`Ctrl/Cmd+Enter` does the same from the keyboard)
 
@@ -74,6 +75,31 @@ When a password is set:
 - Salt (16 bytes) + IV (12 bytes) generated randomly per send
 - Key derived via **PBKDF2** (SHA-256, 250,000 iterations)
 - Payload encrypted with **AES-256-GCM** (authenticated — wrong password fails loudly)
+
+### Loss recovery
+
+A lost part normally costs a round trip: the recipient works out what's missing, tells you, and you resend. Over a lossy pipe that round trip is the slowest part of the job.
+
+Turning **Recovery** on adds parity parts computed with a Reed–Solomon erasure code. If some parts go missing, the recipient rebuilds them locally — no reply needed.
+
+```
+Recovery: Strong          24 data parts + 6 parity parts
+Parts 2, 6, 13, 21 lost in transit
+      │
+      ▼
+Receiver has 20 of 24 data parts + 6 parity
+      │
+      ▼  solve the erasure code
+"Rebuilt 4 missing parts from the recovery data"  →  image, byte-for-byte
+```
+
+The code works over **GF(2⁶)** rather than the usual GF(2⁸), and that choice is the whole trick: 64 field elements map exactly onto the 64 Base64 characters, so a parity symbol *is* a Base64 character. Parity parts ride in the ordinary chunk format at ordinary chunk size. GF(2⁸) would have forced parity back through Base64 at +33%.
+
+Coding uses a Cauchy matrix, every square submatrix of which is invertible — so **any** k surviving parts decode, not some privileged subset. It runs per block of 32 parts, because loss is bursty and a local code keeps recovery bounded.
+
+**Cost.** Each parity part is one more message, and every part gets 6 characters shorter to carry the parity header — so Strong on a 24-part send is 30 messages instead of 23. That's why it's off by default: turn it on when the pipe is unreliable, leave it off when it isn't.
+
+**Compatibility.** Parity parts are ordinary chunks whose index runs past `<total>`, and Carrier has always discarded indices outside `[1, total]`. A build that predates this ignores them completely and sees exactly the send it understands.
 
 ### Payload format
 ```

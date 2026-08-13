@@ -277,6 +277,15 @@
             </select>
             <span id="chatLimitHint" class="sr-only">Sets the per-message character limit for your chat app. Smaller limits split into more parts.</span>
           </div>
+          <div class="row">
+            <label for="recovery">Recovery</label>
+            <select id="recovery" autocomplete="off" aria-describedby="recoveryHint" title="Adds extra parts so the recipient can rebuild ones that go missing, without asking you to resend">
+              <option value="off" selected>Off</option>
+              <option value="light">Light (+10%)</option>
+              <option value="strong">Strong (+25%)</option>
+            </select>
+            <span id="recoveryHint" class="sr-only">Adds extra parts so the recipient can rebuild missing ones without asking you to resend. Costs more messages.</span>
+          </div>
           <div class="btnrow" role="group" aria-label="Quality presets">
             <button type="button" class="btn preset" data-q="45" data-d="512" aria-pressed="false" aria-label="Small preset — 512 pixels, quality 45, fewest messages" title="Small — 512 px, quality 45 · fewest messages">Small</button>
             <button type="button" class="btn preset" data-q="70" data-d="768" aria-pressed="false" aria-label="Balanced preset — 768 pixels, quality 70" title="Balanced — 768 px, quality 70">Balanced</button>
@@ -384,6 +393,7 @@
 <script>
 "use strict";
 let msgLimit = 60000;             // chars per message for the chosen chat app (user-selectable)
+let recoveryLevel = "off";        // Reed-Solomon redundancy: off | light | strong (see rsParityCount)
 const MSG_LIMITS = { 60000:"WhatsApp", 4096:"Telegram", 4000:"Slack", 2000:"Discord", 160:"SMS" };
 // bytes of compressed image that Base64-encode to fit one message: N bytes → ceil(N/3)*4 chars, so
 // N ≈ (limit − prefix) · 3/4; the 0.72 factor keeps a small safety margin under the raw ceiling
@@ -446,6 +456,113 @@ function crc32(bytes){
   for(let i=0;i<bytes.length;i++) c = CRC32_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
   return (c ^ 0xFFFFFFFF) >>> 0;
 }
+
+/* ---------- Reed-Solomon erasure coding over GF(2^6) ---------- */
+// A lost part currently costs a round trip: the receiver names what's missing and the sender re-sends it.
+// Over a lossy pipe (SMS, a chat that drops long messages) that round trip is the slowest part of the job.
+// These parity parts let the receiver rebuild the missing ones locally, with no reply to the sender.
+//
+// The field is GF(2^6), not the usual GF(2^8), and that choice is the whole trick: 64 field elements map
+// exactly onto the 64 Base64 characters, so a parity symbol IS a Base64 character. Parity parts ride in
+// the ordinary chunk format at ordinary chunk size — no second encoding, no size penalty over the data
+// parts. GF(2^8) would have forced parity through Base64 again at +33%.
+//
+// Parity indices run PAST <total>, and reassemble() has always dropped indices outside [1,total]. So a
+// Carrier build that predates this ignores parity parts completely and just sees the send it understands.
+const RS_HALF  = 32;   // Cauchy bases: parity rows below, data columns above. Caps n and k at 32 each.
+const RS_BLOCK = 32;   // data parts per coding block — loss is bursty, so keep recovery local
+const RS_META  = 6;    // per-parity-part header: block(1) + row(1) + core length(4), all Base64 chars
+const B64A = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+const B64V = (()=>{ const v = new Int8Array(128).fill(-1); for(let i=0;i<64;i++) v[B64A.charCodeAt(i)] = i; return v; })();
+
+// exp/log tables for GF(2^6) under x^6 + x + 1 (0x43); 2 is primitive, so it walks all 63 non-zero elements
+const GF_EXP = new Uint8Array(126), GF_LOG = new Uint8Array(64);
+(()=>{ let x = 1;
+  for(let i=0;i<63;i++){ GF_EXP[i] = x; GF_LOG[x] = i; x <<= 1; if(x & 0x40) x ^= 0x43; }
+  for(let i=63;i<126;i++) GF_EXP[i] = GF_EXP[i-63];
+})();
+const gfMul = (a,b) => (a === 0 || b === 0) ? 0 : GF_EXP[GF_LOG[a] + GF_LOG[b]];
+const gfInv = a => GF_EXP[(63 - GF_LOG[a]) % 63];
+
+// Cauchy matrix A[i][j] = 1/(x_i ^ y_j). Every square submatrix of a Cauchy matrix is invertible, which is
+// exactly what erasure decoding needs: ANY k surviving parts decode, not some privileged subset.
+// The bases are FIXED (x_i = i, y_j = RS_HALF + j) rather than derived from k or n. Deriving y from k was
+// a real bug in the prototype: a decoder only sees the parity parts that SURVIVED, so it cannot know how
+// many the sender made — a k-dependent matrix would decode against a different matrix than encoded.
+function rsMatrix(rows, n){
+  const A = [];
+  for(let i=0;i<rows;i++){
+    const r = new Uint8Array(n);
+    for(let j=0;j<n;j++) r[j] = gfInv(i ^ (RS_HALF + j));
+    A.push(r);
+  }
+  return A;
+}
+const b64ToSyms = (str, len) => { const out = new Uint8Array(len); for(let i=0;i<str.length && i<len;i++){ const v = B64V[str.charCodeAt(i)]; out[i] = v < 0 ? 0 : v; } return out; };
+const symsToB64 = syms => { let s = ""; for(let i=0;i<syms.length;i++) s += B64A[syms[i]]; return s; };
+
+// parity row i = sum over data j of A[i][j] * shard_j, symbol by symbol
+function rsEncode(shards, k){
+  const n = shards.length, len = shards[0].length, A = rsMatrix(k, n), out = [];
+  for(let i=0;i<k;i++){
+    const p = new Uint8Array(len);
+    for(let j=0;j<n;j++){
+      const a = A[i][j], s = shards[j];
+      if(a === 0) continue;
+      for(let b=0;b<len;b++) p[b] ^= gfMul(a, s[b]);
+    }
+    out.push(p);
+  }
+  return out;
+}
+// Rebuild the missing shards. present: Map(dataIndex -> syms). parity: Map(row -> syms).
+// Returns a Map of recovered index -> syms, or null when there isn't enough redundancy to solve.
+function rsDecode(n, len, present, parity){
+  const missing = [];
+  for(let i=0;i<n;i++) if(!present.has(i)) missing.push(i);
+  if(!missing.length) return new Map();
+  const rows = [...parity.keys()].sort((a,b)=>a-b).slice(0, missing.length);
+  if(rows.length < missing.length) return null;   // fewer parity parts than holes — nothing to be done
+  const A = rsMatrix(Math.max(...rows) + 1, n);
+
+  // syndrome_r = parity_r XOR (contribution of every PRESENT shard) = contribution of the MISSING ones
+  const S = rows.map(r => {
+    const s = Uint8Array.from(parity.get(r));
+    for(const [j, shard] of present){
+      const a = A[r][j];
+      if(a === 0) continue;
+      for(let b=0;b<len;b++) s[b] ^= gfMul(a, shard[b]);
+    }
+    return s;
+  });
+  // Gauss-Jordan on the t x t system, carrying every symbol column through together
+  const t = missing.length;
+  const B = rows.map(r => Uint8Array.from(missing.map(j => A[r][j])));
+  for(let c=0;c<t;c++){
+    let piv = -1;
+    for(let r=c;r<t;r++) if(B[r][c] !== 0){ piv = r; break; }
+    if(piv < 0) return null;   // Cauchy guarantees this can't happen; refuse rather than emit garbage
+    if(piv !== c){ const tb = B[c]; B[c] = B[piv]; B[piv] = tb; const ts = S[c]; S[c] = S[piv]; S[piv] = ts; }
+    const inv = gfInv(B[c][c]);
+    for(let j=0;j<t;j++) B[c][j] = gfMul(B[c][j], inv);
+    for(let b=0;b<len;b++) S[c][b] = gfMul(S[c][b], inv);
+    for(let r=0;r<t;r++){
+      if(r === c || B[r][c] === 0) continue;
+      const f = B[r][c];
+      for(let j=0;j<t;j++) B[r][j] ^= gfMul(f, B[c][j]);
+      for(let b=0;b<len;b++) S[r][b] ^= gfMul(f, S[c][b]);
+    }
+  }
+  const out = new Map();
+  missing.forEach((j, r) => out.set(j, S[r]));
+  return out;
+}
+// how many parity parts per block at each redundancy setting — always at least one, or the setting is a lie
+const RS_LEVELS = { off: 0, light: 0.1, strong: 0.25 };
+const rsParityCount = (n, level) => {
+  const frac = RS_LEVELS[level] || 0;
+  return frac ? Math.max(1, Math.min(RS_HALF, Math.ceil(n * frac))) : 0;
+};
 
 /* ---------- container (mime + image, optional encryption) ---------- */
 const FLAG_ENCRYPTED = 1;   // body is salt+iv+AES-256-GCM ciphertext
@@ -544,14 +661,18 @@ async function unpack(b64, password){
 }
 
 /* ---------- chunking ---------- */
-function chunkify(b64){
+function chunkify(b64, level = recoveryLevel){
   const sid = Array.from(crypto.getRandomValues(new Uint8Array(SID_LEN/2)), b => b.toString(16).padStart(2,'0')).join('');
   // the prefix length grows with the digit-count of index and total, so a chunk sized against a fixed
   // reserve can exceed msgLimit once the part count gets long — and a transport may split or truncate
   // that, silently losing data. Size `per` from chunkPrefixLen(), iterating until total stops growing.
-  let per = Math.max(1, msgLimit - chunkPrefixLen(1)), total = Math.max(1, Math.ceil(b64.length / per));
+  // parity parts carry RS_META extra characters of header, so when recovery is on every part — data
+  // included, since shards must be equal length — is sized RS_META shorter. That is the cost of the
+  // feature and it is why it is off by default.
+  const hdr = (RS_LEVELS[level] ? RS_META : 0);
+  let per = Math.max(1, msgLimit - chunkPrefixLen(1) - hdr), total = Math.max(1, Math.ceil(b64.length / per));
   for(let k=0;k<4;k++){
-    const p = Math.max(1, msgLimit - chunkPrefixLen(total));
+    const p = Math.max(1, msgLimit - chunkPrefixLen(total) - hdr);
     const t = Math.max(1, Math.ceil(b64.length / p));
     if(p === per && t === total) break;
     per = p; total = t;
@@ -559,8 +680,48 @@ function chunkify(b64){
   const out = [];
   for(let i=0;i<total;i++)
     out.push(`PXT/${sid}/${i+1}/${total}/` + b64.slice(i*per,(i+1)*per));
+  out.push(...parityChunks(b64, sid, total, per, level));
   return out;
 }
+// Build the parity parts for a payload. They are ordinary chunks whose index runs PAST <total>, which
+// reassemble() has always discarded — so a Carrier build predating this ignores them and sees only the
+// send it understands.
+//   payload: block(1) + row(1) + coreLength(4) + shard, all Base64 characters
+// The receiver reads `per` back as (payload length - RS_META), so it doesn't need to be transmitted.
+function parityChunks(b64, sid, total, per, level){
+  const k = rsParityCount(Math.min(total, RS_BLOCK), level);
+  if(!k || total < 2) return [];   // one part can't lose one part and still have anything to rebuild from
+  // Coding runs over the payload with Base64 padding removed: '=' is not one of the 64 field elements.
+  // Shard boundaries still line up with chunk boundaries because the stripped core is a PREFIX of b64.
+  const core = b64.replace(/=+$/, "");
+  const lenChars = enc64(core.length, 4);
+  if(lenChars === null) return [];   // beyond what 4 Base64 chars can address — skip parity, never mis-state it
+  const out = [];
+  let seq = 0;
+  for(let start=0; start<total; start+=RS_BLOCK){
+    const n = Math.min(RS_BLOCK, total - start);
+    if(n < 2) break;   // a trailing single-part block has nothing to protect
+    const shards = [];
+    for(let i=0;i<n;i++) shards.push(b64ToSyms(core.slice((start+i)*per, (start+i+1)*per), per));
+    const rows = rsEncode(shards, rsParityCount(n, level));
+    const blk = start / RS_BLOCK;
+    if(blk > 63) break;   // block index must fit one Base64 character
+    rows.forEach((row, j)=>{
+      out.push(`PXT/${sid}/${total + 1 + seq}/${total}/` + B64A[blk] + B64A[j] + lenChars + symsToB64(row));
+      seq++;
+    });
+  }
+  return out;
+}
+// little metadata helper: a non-negative integer as `width` Base64 characters, big-endian. Returns null
+// rather than silently wrapping when the value doesn't fit — a wrapped length would corrupt a recovery.
+function enc64(v, width){
+  if(v < 0 || v >= Math.pow(64, width)) return null;
+  let s = "";
+  for(let i=width-1;i>=0;i--) s += B64A[(v >> (6*i)) & 63];
+  return s;
+}
+const dec64 = str => { let v = 0; for(let i=0;i<str.length;i++){ const d = B64V[str.charCodeAt(i)]; if(d < 0) return -1; v = v * 64 + d; } return v; };
 // reassemble() is called far more often than the text changes: a paste runs updateProgress() and
 // maybeAutoReveal(), which runs doReveal(), which re-reassembles after its await to detect the inbox
 // changing mid-derive — four full regex scans, match-array allocations, and payload concatenations over
@@ -604,7 +765,16 @@ function reassembleParse(text){
   const map = new Map();
   // only keep chunks whose index is within [1,total] — a stray 0 or beyond-total index must not
   // inflate the "have" count or produce a "Got N of N, still need part N" contradiction
-  for(const p of group){ const i = parseInt(p[2],10); if(i >= 1 && i <= total) map.set(i, p[4]); }
+  const parityRaw = [];
+  for(const p of group){
+    const i = parseInt(p[2],10);
+    if(i >= 1 && i <= total) map.set(i, p[4]);
+    else if(i > total) parityRaw.push(p[4]);   // parity part — ignored entirely by pre-recovery builds
+  }
+  // Rebuild whatever is missing before anything downstream looks at the result, so the progress line, the
+  // Reveal button and doReveal all see one consistent picture: a recovered send is simply a complete one.
+  let repaired = 0;
+  if(map.size < total && parityRaw.length) repaired = rsRepair(map, total, parityRaw);
   // concatenate the present parts in index order (absent indices are simply skipped). NEVER iterate
   // 1..total: <total> comes straight from the pasted text, so a corrupt/oversized value like 999999999
   // would spin a billion-iteration loop and push a billion entries into `missing` — freezing / OOMing the
@@ -626,7 +796,68 @@ function reassembleParse(text){
       else { missingTrunc = true; break; }
     }
   }
-  return { s, total, have, missing, missingTrunc, multiSession: sessions.length > 1 ? sessions.length : 0 };
+  return { s, total, have, missing, missingTrunc, repaired, multiSession: sessions.length > 1 ? sessions.length : 0 };
+}
+// Fill holes in `map` (1-based part index -> payload text) from the parity parts. Mutates map; returns how
+// many parts were rebuilt. Every step is guarded: recovery is a best-effort bonus, and a malformed or
+// hostile parity part must leave the user exactly where they were, never worse.
+function rsRepair(map, total, parityRaw){
+  const byBlock = new Map();
+  let coreLen = -1, per = -1;
+  for(const raw of parityRaw){
+    if(raw.length <= RS_META) continue;
+    const blk = dec64(raw.slice(0,1)), row = dec64(raw.slice(1,2)), len = dec64(raw.slice(2,6));
+    if(blk < 0 || row < 0 || len < 0 || row >= RS_HALF) continue;
+    // every parity part of a send states the same core length and shard size; a disagreement means parts
+    // from two different packings are mixed in the box, and guessing between them would corrupt the image
+    if(coreLen < 0){ coreLen = len; per = raw.length - RS_META; }
+    else if(coreLen !== len || per !== raw.length - RS_META) return 0;
+    let m = byBlock.get(blk);
+    if(!m){ m = new Map(); byBlock.set(blk, m); }
+    m.set(row, b64ToSyms(raw.slice(RS_META), per));
+  }
+  if(per <= 0 || coreLen <= 0) return 0;
+  // The stated length must reproduce the sender's part count, or this parity belongs to another payload.
+  // Compare against the PADDED length, not the core: the sender chunked b64 including its '=' padding, so
+  // when that padding straddles a boundary the final part can be padding alone — ceil(core/per) is then
+  // one short of total and this guard would silently switch recovery off for a perfectly good send.
+  const paddedLen = coreLen + ((4 - coreLen % 4) % 4);
+  if(Math.ceil(paddedLen / per) !== total) return 0;
+  let repaired = 0;
+  for(const [blk, parity] of byBlock){
+    const start = blk * RS_BLOCK;
+    const n = Math.min(RS_BLOCK, total - start);
+    if(n < 2 || start < 0 || start >= total) continue;
+    const present = new Map();
+    let holes = 0;
+    for(let i=0;i<n;i++){
+      const payload = map.get(start + i + 1);
+      if(payload === undefined){ holes++; continue; }
+      // strip Base64 padding: '=' has no field element. Only the final part can carry it.
+      present.set(i, b64ToSyms(payload.replace(/=+$/, ""), per));
+    }
+    if(!holes) continue;
+    let out = null;
+    try { out = rsDecode(n, per, present, parity); } catch { out = null; }
+    if(!out) continue;   // not enough parity for this block — leave its holes for the user to chase
+    for(const [i, syms] of out){
+      const idx = start + i + 1;
+      const startCh = (idx - 1) * per;
+      // a rebuilt shard is always `per` symbols; trim the last part back to the true payload length and
+      // restore the Base64 padding, which is derived from that length rather than transmitted
+      // A rebuilt shard is always `per` symbols; cut it back to however much real payload this part covers.
+      let text = symsToB64(syms).slice(0, Math.max(0, Math.min(per, coreLen - startCh)));
+      // Then restore whatever Base64 padding falls inside THIS part's span. The padding is not simply
+      // "on the last part": the sender chunked core+padding, so at some payload sizes the '=' characters
+      // straddle a boundary — one on the second-to-last part, one on the last. Treating it as last-part-
+      // only produced a payload one character too long, which decoded to a corrupt image.
+      const padHere = Math.max(0, Math.min(startCh + per, paddedLen) - Math.max(startCh, coreLen));
+      text += "=".repeat(padHere);
+      map.set(idx, text);
+      repaired++;
+    }
+  }
+  return repaired;
 }
 
 /* ---------- compression ---------- */
@@ -872,7 +1103,7 @@ async function refresh(){
   // the panel contradicted itself: "Fits in a single WhatsApp message ✓" above six 160-char SMS chunks.
   // A real limit change SHOULD mint a new session id — the boundaries differ, so parts already sent can't
   // be reused — and #180's warning then correctly says the send has to restart.
-  const chunkKeyNow = `${packKeyNow}|${msgLimit}`;
+  const chunkKeyNow = `${packKeyNow}|${msgLimit}|${recoveryLevel}`;
   if(chunkKey !== chunkKeyNow){
     lastChunks = chunkify(b64);
     chunkKey = chunkKeyNow;
@@ -1147,6 +1378,9 @@ function setQuality(q){
   const ml = lsGet("carrier_msglimit");
   if(ml && MSG_LIMITS[ml]){ msgLimit = +ml; $("#chatLimit").value = ml; }
   else if(ml) lsRemove("carrier_msglimit");
+  const rv = lsGet("carrier_recovery");
+  if(rv && Object.prototype.hasOwnProperty.call(RS_LEVELS, rv)){ recoveryLevel = rv; $("#recovery").value = rv; }
+  else if(rv) lsRemove("carrier_recovery");
 })();
 
 // `input` fires continuously while a range is dragged — once per pixel on a mouse, at sample rate on a
@@ -1171,6 +1405,8 @@ $("#quality").addEventListener("input", e=>{ const v = e.target.value; setQualit
 $("#maxdim").addEventListener("change", e=>{ queuePersist("carrier_maxdim", e.target.value); syncPresets(); queueRefresh(); });
 // switching chat app changes the per-message char budget → re-chunk and redraw the meter/stats
 $("#chatLimit").addEventListener("change", e=>{ msgLimit = +e.target.value; queuePersist("carrier_msglimit", e.target.value); queueRefresh(); });
+// changing redundancy re-chunks (and resizes every part), so it goes through the same debounce
+$("#recovery").addEventListener("change", e=>{ recoveryLevel = e.target.value; queuePersist("carrier_recovery", e.target.value); queueRefresh(); });
 // drop the cached derived key the instant the password changes — don't retain the previous secret's key
 // in the heap until Start over, and don't let a future cache-keying refactor risk encrypting under a
 // stale key. getKeyMaterial re-derives on the next pack; correctness no longer rests only on its equality check.
@@ -1667,6 +1903,15 @@ function updateProgress(){
     // of padding — but enough to tell the user how big the incoming image is before they reveal it)
     const approx = fmtKB(Math.floor(r.s.length * 3 / 4));
     p.append("Got all ", b(r.total), ` part${r.total>1?"s":""} (~${approx}). Ready to reveal.`);
+    // say it plainly when the set was only complete BECAUSE of the recovery parts — the user is about to
+    // reveal an image assembled from data that never arrived, and that is worth knowing rather than hiding
+    if(r.repaired){
+      const rb = Object.assign(document.createElement("span"), {
+        textContent: ` Rebuilt ${r.repaired} missing part${r.repaired>1?"s":""} from the recovery data — no need to ask for a resend.`
+      });
+      rb.style.color = "var(--ok)";
+      p.appendChild(rb);
+    }
     // peek the header without decrypting: a locked message won't auto-reveal, so tell the user a
     // password is needed rather than leaving them to guess why nothing appeared
     if(headerFlags(r.s) & FLAG_ENCRYPTED){
@@ -1696,6 +1941,8 @@ function updateProgress(){
     // so have/total scales the assembled bytes to a usable estimate.
     const approxFull = fmtKB(Math.floor((r.s.length * 3 / 4) * (r.total / r.have)));
     p.append("Got ", b(r.have), " of ", b(r.total), ` parts (${pct}%, ~${approxFull} in all) — still need part${r.missing.length>1?"s":""} ${formatParts(r.missing)}${r.missingTrunc?", …":""}.`);
+    // recovery ran and helped but couldn't close the gap: don't let the count imply those parts arrived
+    if(r.repaired) p.append(` (${r.repaired} already rebuilt from recovery data.)`);
   }
   // mirror of the send side: assembling a long payload means hopping between the chat and this tab, and
   // the tab strip is the only place the count is visible without switching back. Never overwrite the
