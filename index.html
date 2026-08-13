@@ -564,6 +564,111 @@ const rsParityCount = (n, level) => {
   return frac ? Math.max(1, Math.min(RS_HALF, Math.ceil(n * frac))) : 0;
 };
 
+/* ---------- reliability mathematics for the redundancy planner ---------- */
+// "Light or Strong?" has a real answer, and it is computable. What the user actually wants is: how much
+// parity makes it overwhelmingly likely the image arrives complete, given how lossy this pipe is?
+//
+// Model. A send is n data parts plus k parity, so n+k parts go out and the receiver needs any n of them.
+// If each part is lost independently with probability p, the number lost is Binomial(n+k, p) and the send
+// survives when at most k are lost. But p is NOT known — it is estimated from a handful of past sends —
+// so treating a noisy estimate as exact would systematically under-provision. Instead p carries a Beta
+// posterior and the reliability is the POSTERIOR PREDICTIVE, integrating over everything p might be:
+//
+//   P(lose i of m) = integral over p of C(m,i) p^i (1-p)^(m-i) * Beta(p; a, b) dp
+//                  = C(m,i) * B(a+i, b+m-i) / B(a,b)          <- Beta-Binomial, closed form
+//
+// That closed form is why this is cheap enough to run on every keystroke. With little evidence the
+// posterior is wide, the predictive has fat tails, and the planner asks for more parity on its own —
+// which is the correct response to uncertainty rather than a fudge factor bolted on afterwards.
+
+// Lanczos approximation to log-gamma (g=7, n=9). Accurate to ~15 significant figures over the range used
+// here, and it keeps every factorial in log space: C(60000, 30000) overflows a double, its log does not.
+const LANCZOS = [
+  676.5203681218851, -1259.1392167224028, 771.32342877765313,
+  -176.61502916214059, 12.507343278686905, -0.13857109526572012,
+  9.9843695780195716e-6, 1.5056327351493116e-7
+];
+function lgamma(z){
+  if(z < 0.5) return Math.log(Math.PI / Math.sin(Math.PI * z)) - lgamma(1 - z);   // reflection
+  z -= 1;
+  let x = 0.99999999999980993;
+  for(let i=0;i<LANCZOS.length;i++) x += LANCZOS[i] / (z + i + 1);
+  const t = z + LANCZOS.length - 0.5;
+  return 0.5 * Math.log(2 * Math.PI) + (z + 0.5) * Math.log(t) - t + Math.log(x);
+}
+const logChoose = (n, k) => (k < 0 || k > n) ? -Infinity : lgamma(n + 1) - lgamma(k + 1) - lgamma(n - k + 1);
+const lbeta = (x, y) => lgamma(x) + lgamma(y) - lgamma(x + y);
+
+// P(at most k of m parts lost), with the loss rate marginalised over Beta(a,b).
+// Summed smallest-term-first and in log space, so a tail of very small probabilities doesn't lose
+// precision to the leading term.
+function betaBinomTail(m, k, a, b){
+  if(k >= m) return 1;
+  if(k < 0) return 0;
+  const denom = lbeta(a, b), terms = [];
+  for(let i=0;i<=k;i++) terms.push(logChoose(m, i) + lbeta(a + i, b + m - i) - denom);
+  terms.sort((x, y) => x - y);
+  let s = 0;
+  for(const t of terms) s += Math.exp(t);
+  return Math.min(1, s);
+}
+// the same tail with p known exactly — used to show the user a plain "at this loss rate" figure
+function binomTail(m, k, p){
+  if(k >= m) return 1;
+  if(k < 0) return 0;
+  if(p <= 0) return 1;
+  if(p >= 1) return k >= m ? 1 : 0;
+  const lp = Math.log(p), lq = Math.log1p(-p), terms = [];
+  for(let i=0;i<=k;i++) terms.push(logChoose(m, i) + i * lp + (m - i) * lq);
+  terms.sort((x, y) => x - y);
+  let s = 0;
+  for(const t of terms) s += Math.exp(t);
+  return Math.min(1, s);
+}
+
+// Observed loss history as a Beta posterior. Conjugate updating: Beta(a,b) + L losses in N parts becomes
+// Beta(a+L, b+N-L). The prior is deliberately informative — 2% loss carrying the weight of 50 parts — so
+// a first send with no history plans against something sane instead of the 50% a uniform prior implies.
+const LOSS_PRIOR_A = 1, LOSS_PRIOR_B = 49;
+function lossPosterior(){
+  const rec = lsGet("carrier_loss");
+  let lost = 0, seen = 0;
+  if(rec){
+    const m = /^(\d+),(\d+)$/.exec(rec);
+    if(m){ lost = +m[1]; seen = +m[2]; }
+    if(lost > seen || seen > 1e9){ lost = 0; seen = 0; lsRemove("carrier_loss"); }   // corrupt/tampered
+  }
+  return { a: LOSS_PRIOR_A + lost, b: LOSS_PRIOR_B + (seen - lost), lost, seen };
+}
+// Record an observation. Ages the history by halving once it gets long, so a pipe that used to be bad but
+// is now fine can actually be believed again — an un-aged counter would hold a grudge forever.
+function recordLoss(lost, seen){
+  if(!(seen > 0) || lost < 0 || lost > seen) return;
+  const p = lossPosterior();
+  let L = p.lost + lost, N = p.seen + seen;
+  while(N > 4000){ L = Math.round(L / 2); N = Math.round(N / 2); }
+  lsSet("carrier_loss", `${L},${N}`);
+}
+
+// Smallest k such that the WHOLE image arrives with probability >= target.
+// Coding is per block of RS_BLOCK parts and every block must survive independently, so a B-block send
+// needs each block at target^(1/B) — asking each block for the whole-image target would silently
+// under-provision a long send, which is exactly where loss hurts most.
+function planParity(total, target, post){
+  const { a, b } = post || lossPosterior();
+  const blocks = Math.max(1, Math.ceil(total / RS_BLOCK));
+  const biggest = Math.min(RS_BLOCK, total);
+  const perBlock = Math.pow(target, 1 / blocks);
+  let best = { k: 0, p: 0 };
+  for(let k=0;k<=Math.min(RS_HALF, biggest);k++){
+    const pr = betaBinomTail(biggest + k, k, a, b);
+    if(pr > best.p) best = { k, p: pr };
+    if(pr >= perBlock) return { k, blockProb: pr, imageProb: Math.pow(pr, blocks), blocks, met: true };
+  }
+  // even maximum parity can't reach the target on this pipe — return the best available and say so
+  return { k: best.k, blockProb: best.p, imageProb: Math.pow(best.p, blocks), blocks, met: false };
+}
+
 /* ---------- container (mime + image, optional encryption) ---------- */
 const FLAG_ENCRYPTED = 1;   // body is salt+iv+AES-256-GCM ciphertext
 const FLAG_CRC32     = 2;   // body carries a 4-byte big-endian CRC-32 trailer over everything before it
