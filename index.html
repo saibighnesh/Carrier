@@ -1617,7 +1617,15 @@ function updateProgress(){
   const ready = !!(r && r.missing.length === 0);
   if(!ready) lockedPrompted = false;   // re-arm: an incomplete box that completes again is a fresh prompt
   missingSnapshot = (r && r.missing.length) ? r : null;
-  $("#copyMissing").classList.toggle("hidden", !missingSnapshot);
+  const cm = $("#copyMissing");
+  cm.classList.toggle("hidden", !missingSnapshot);
+  if(missingSnapshot){
+    // say how many before the click, not after: "ask for 2" and "ask for 140" are different decisions —
+    // at 140 the sensible move is usually to ask for the whole set again rather than a list
+    const n = missingSnapshot.total - missingSnapshot.have;
+    cm.textContent = `Copy what's missing (${n})`;
+    cm.setAttribute("aria-label", `Copy a message naming the ${n} part${n!==1?"s":""} still missing`);
+  }
   $("#reveal").disabled = !ready;   // enable Reveal only once a complete message is present
   // explain the disabled state on hover instead of a dead greyed-out button with a stale tooltip
   $("#reveal").title = ready
