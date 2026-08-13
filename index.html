@@ -742,6 +742,8 @@ const sentChunks = new Set();
 let staleSend = false;
 // last pack() result and the inputs that produced it, so a no-op refresh doesn't mint a new session id
 let packKey = null, packB64 = null;
+// chunking is keyed separately: it depends on msgLimit, which pack() never sees
+let chunkKey = null;
 const nextUnsentIndex = () => lastChunks.findIndex(c => !sentChunks.has(c));
 // compose the Send-mode tab title. Pasting a long payload means living in the chat app, not here, so the
 // tab strip is the only place a user can see how far along the send is without switching back. Called
@@ -857,7 +859,17 @@ async function refresh(){
     b64 = await pack(img, srcMime, pw);
     if(!srcImage) return;   // Start over ran during packing — don't repopulate the cleared UI
     packKey = packKeyNow; packB64 = b64;
-    lastChunks = chunkify(b64);   // only a genuinely new payload gets a new session id
+  }
+  // Chunking depends on msgLimit; packing does not. Keeping chunkify() inside the cache-miss branch made
+  // the Chat app dropdown inert — changing it moves msgLimit but nothing in the pack key, so the cache hit
+  // and lastChunks kept the previous app's split. The fit note reads msgLimit directly and did update, so
+  // the panel contradicted itself: "Fits in a single WhatsApp message ✓" above six 160-char SMS chunks.
+  // A real limit change SHOULD mint a new session id — the boundaries differ, so parts already sent can't
+  // be reused — and #180's warning then correctly says the send has to restart.
+  const chunkKeyNow = `${packKeyNow}|${msgLimit}`;
+  if(chunkKey !== chunkKeyNow){
+    lastChunks = chunkify(b64);
+    chunkKey = chunkKeyNow;
   }
   // stats
   const origBytes = srcImage._bytes || 0;
@@ -1559,7 +1571,7 @@ function resetSend(){
   lastPreviewBytes = null; keyCache = null;   // drop the cached derived key when the image is cleared
   srcImage = null; lastChunks = [];
   sentChunks.clear(); staleSend = false; paintSent();   // the checklist belongs to the payload being cleared
-  packKey = null; packB64 = null;
+  packKey = null; packB64 = null; chunkKey = null;
   $("#chunks").innerHTML = "";
   ["tunePanel","lockPanel","outPanel"].forEach(id => $("#"+id).classList.add("hidden"));
   $("#pass").value = ""; maskPassword("pass"); updatePwStrength(); pwTruncNote("pass", "passTrunc");
