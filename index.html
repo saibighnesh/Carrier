@@ -447,6 +447,113 @@ function crc32(bytes){
   return (c ^ 0xFFFFFFFF) >>> 0;
 }
 
+/* ---------- Reed-Solomon erasure coding over GF(2^6) ---------- */
+// A lost part currently costs a round trip: the receiver names what's missing and the sender re-sends it.
+// Over a lossy pipe (SMS, a chat that drops long messages) that round trip is the slowest part of the job.
+// These parity parts let the receiver rebuild the missing ones locally, with no reply to the sender.
+//
+// The field is GF(2^6), not the usual GF(2^8), and that choice is the whole trick: 64 field elements map
+// exactly onto the 64 Base64 characters, so a parity symbol IS a Base64 character. Parity parts ride in
+// the ordinary chunk format at ordinary chunk size — no second encoding, no size penalty over the data
+// parts. GF(2^8) would have forced parity through Base64 again at +33%.
+//
+// Parity indices run PAST <total>, and reassemble() has always dropped indices outside [1,total]. So a
+// Carrier build that predates this ignores parity parts completely and just sees the send it understands.
+const RS_HALF  = 32;   // Cauchy bases: parity rows below, data columns above. Caps n and k at 32 each.
+const RS_BLOCK = 32;   // data parts per coding block — loss is bursty, so keep recovery local
+const RS_META  = 6;    // per-parity-part header: block(1) + row(1) + core length(4), all Base64 chars
+const B64A = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+const B64V = (()=>{ const v = new Int8Array(128).fill(-1); for(let i=0;i<64;i++) v[B64A.charCodeAt(i)] = i; return v; })();
+
+// exp/log tables for GF(2^6) under x^6 + x + 1 (0x43); 2 is primitive, so it walks all 63 non-zero elements
+const GF_EXP = new Uint8Array(126), GF_LOG = new Uint8Array(64);
+(()=>{ let x = 1;
+  for(let i=0;i<63;i++){ GF_EXP[i] = x; GF_LOG[x] = i; x <<= 1; if(x & 0x40) x ^= 0x43; }
+  for(let i=63;i<126;i++) GF_EXP[i] = GF_EXP[i-63];
+})();
+const gfMul = (a,b) => (a === 0 || b === 0) ? 0 : GF_EXP[GF_LOG[a] + GF_LOG[b]];
+const gfInv = a => GF_EXP[(63 - GF_LOG[a]) % 63];
+
+// Cauchy matrix A[i][j] = 1/(x_i ^ y_j). Every square submatrix of a Cauchy matrix is invertible, which is
+// exactly what erasure decoding needs: ANY k surviving parts decode, not some privileged subset.
+// The bases are FIXED (x_i = i, y_j = RS_HALF + j) rather than derived from k or n. Deriving y from k was
+// a real bug in the prototype: a decoder only sees the parity parts that SURVIVED, so it cannot know how
+// many the sender made — a k-dependent matrix would decode against a different matrix than encoded.
+function rsMatrix(rows, n){
+  const A = [];
+  for(let i=0;i<rows;i++){
+    const r = new Uint8Array(n);
+    for(let j=0;j<n;j++) r[j] = gfInv(i ^ (RS_HALF + j));
+    A.push(r);
+  }
+  return A;
+}
+const b64ToSyms = (str, len) => { const out = new Uint8Array(len); for(let i=0;i<str.length && i<len;i++){ const v = B64V[str.charCodeAt(i)]; out[i] = v < 0 ? 0 : v; } return out; };
+const symsToB64 = syms => { let s = ""; for(let i=0;i<syms.length;i++) s += B64A[syms[i]]; return s; };
+
+// parity row i = sum over data j of A[i][j] * shard_j, symbol by symbol
+function rsEncode(shards, k){
+  const n = shards.length, len = shards[0].length, A = rsMatrix(k, n), out = [];
+  for(let i=0;i<k;i++){
+    const p = new Uint8Array(len);
+    for(let j=0;j<n;j++){
+      const a = A[i][j], s = shards[j];
+      if(a === 0) continue;
+      for(let b=0;b<len;b++) p[b] ^= gfMul(a, s[b]);
+    }
+    out.push(p);
+  }
+  return out;
+}
+// Rebuild the missing shards. present: Map(dataIndex -> syms). parity: Map(row -> syms).
+// Returns a Map of recovered index -> syms, or null when there isn't enough redundancy to solve.
+function rsDecode(n, len, present, parity){
+  const missing = [];
+  for(let i=0;i<n;i++) if(!present.has(i)) missing.push(i);
+  if(!missing.length) return new Map();
+  const rows = [...parity.keys()].sort((a,b)=>a-b).slice(0, missing.length);
+  if(rows.length < missing.length) return null;   // fewer parity parts than holes — nothing to be done
+  const A = rsMatrix(Math.max(...rows) + 1, n);
+
+  // syndrome_r = parity_r XOR (contribution of every PRESENT shard) = contribution of the MISSING ones
+  const S = rows.map(r => {
+    const s = Uint8Array.from(parity.get(r));
+    for(const [j, shard] of present){
+      const a = A[r][j];
+      if(a === 0) continue;
+      for(let b=0;b<len;b++) s[b] ^= gfMul(a, shard[b]);
+    }
+    return s;
+  });
+  // Gauss-Jordan on the t x t system, carrying every symbol column through together
+  const t = missing.length;
+  const B = rows.map(r => Uint8Array.from(missing.map(j => A[r][j])));
+  for(let c=0;c<t;c++){
+    let piv = -1;
+    for(let r=c;r<t;r++) if(B[r][c] !== 0){ piv = r; break; }
+    if(piv < 0) return null;   // Cauchy guarantees this can't happen; refuse rather than emit garbage
+    if(piv !== c){ const tb = B[c]; B[c] = B[piv]; B[piv] = tb; const ts = S[c]; S[c] = S[piv]; S[piv] = ts; }
+    const inv = gfInv(B[c][c]);
+    for(let j=0;j<t;j++) B[c][j] = gfMul(B[c][j], inv);
+    for(let b=0;b<len;b++) S[c][b] = gfMul(S[c][b], inv);
+    for(let r=0;r<t;r++){
+      if(r === c || B[r][c] === 0) continue;
+      const f = B[r][c];
+      for(let j=0;j<t;j++) B[r][j] ^= gfMul(f, B[c][j]);
+      for(let b=0;b<len;b++) S[r][b] ^= gfMul(f, S[c][b]);
+    }
+  }
+  const out = new Map();
+  missing.forEach((j, r) => out.set(j, S[r]));
+  return out;
+}
+// how many parity parts per block at each redundancy setting — always at least one, or the setting is a lie
+const RS_LEVELS = { off: 0, light: 0.1, strong: 0.25 };
+const rsParityCount = (n, level) => {
+  const frac = RS_LEVELS[level] || 0;
+  return frac ? Math.max(1, Math.min(RS_HALF, Math.ceil(n * frac))) : 0;
+};
+
 /* ---------- container (mime + image, optional encryption) ---------- */
 const FLAG_ENCRYPTED = 1;   // body is salt+iv+AES-256-GCM ciphertext
 const FLAG_CRC32     = 2;   // body carries a 4-byte big-endian CRC-32 trailer over everything before it
