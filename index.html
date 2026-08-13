@@ -1664,7 +1664,12 @@ function updateProgress(){
     } else lockedPrompted = false;
   } else {
     const pct = Math.round(r.have / r.total * 100);   // how far along the reassembly is, by part count
-    p.append("Got ", b(r.have), " of ", b(r.total), ` parts (${pct}%) — still need part${r.missing.length>1?"s":""} ${formatParts(r.missing)}${r.missingTrunc?", …":""}.`);
+    // project the finished size from what has landed. A receiver watching a long send has no idea whether
+    // they are waiting on 40 KB or 4 MB, and the size only appeared once the set was already complete —
+    // by which point it answers nothing. Base64 decodes to 3/4 its length, and the parts are near-uniform,
+    // so have/total scales the assembled bytes to a usable estimate.
+    const approxFull = fmtKB(Math.floor((r.s.length * 3 / 4) * (r.total / r.have)));
+    p.append("Got ", b(r.have), " of ", b(r.total), ` parts (${pct}%, ~${approxFull} in all) — still need part${r.missing.length>1?"s":""} ${formatParts(r.missing)}${r.missingTrunc?", …":""}.`);
   }
   // mirror of the send side: assembling a long payload means hopping between the chat and this tab, and
   // the tab strip is the only place the count is visible without switching back. Never overwrite the
