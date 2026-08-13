@@ -281,6 +281,7 @@
             <label for="recovery">Recovery</label>
             <select id="recovery" autocomplete="off" aria-describedby="recoveryHint" title="Adds extra parts so the recipient can rebuild ones that go missing, without asking you to resend">
               <option value="off" selected>Off</option>
+              <option value="auto">Auto (aim for 99% delivery)</option>
               <option value="light">Light (+10%)</option>
               <option value="strong">Strong (+25%)</option>
             </select>
@@ -312,6 +313,7 @@
       </div>
       <p class="note" id="fitNote" role="status"></p>
       <p class="note warn hidden" id="alphaNote" role="status"></p>
+      <p class="note hidden" id="planNote" role="status"></p>
     </div>
 
     <div class="panel hidden" id="lockPanel" role="group" tabindex="-1" aria-labelledby="lockPanelLabel">
@@ -558,11 +560,122 @@ function rsDecode(n, len, present, parity){
   return out;
 }
 // how many parity parts per block at each redundancy setting — always at least one, or the setting is a lie
-const RS_LEVELS = { off: 0, light: 0.1, strong: 0.25 };
-const rsParityCount = (n, level) => {
+// "auto" is not a fraction — it is solved per send by planParity, so it carries a null here and every
+// caller routes through rsParityCount rather than reading the table directly.
+const RS_LEVELS = { off: 0, auto: null, light: 0.1, strong: 0.25 };
+const rsParityCount = (n, level, plan) => {
+  if(level === "auto") return Math.max(0, Math.min(RS_HALF, (plan || lastPlan || {k:0}).k));
   const frac = RS_LEVELS[level] || 0;
   return frac ? Math.max(1, Math.min(RS_HALF, Math.ceil(n * frac))) : 0;
 };
+// the plan behind the current packing, so the panel can show its reasoning and chunkify can act on it
+let lastPlan = null;
+const RS_TARGET = 0.99;   // the delivery probability Auto aims for
+
+/* ---------- reliability mathematics for the redundancy planner ---------- */
+// "Light or Strong?" has a real answer, and it is computable. What the user actually wants is: how much
+// parity makes it overwhelmingly likely the image arrives complete, given how lossy this pipe is?
+//
+// Model. A send is n data parts plus k parity, so n+k parts go out and the receiver needs any n of them.
+// If each part is lost independently with probability p, the number lost is Binomial(n+k, p) and the send
+// survives when at most k are lost. But p is NOT known — it is estimated from a handful of past sends —
+// so treating a noisy estimate as exact would systematically under-provision. Instead p carries a Beta
+// posterior and the reliability is the POSTERIOR PREDICTIVE, integrating over everything p might be:
+//
+//   P(lose i of m) = integral over p of C(m,i) p^i (1-p)^(m-i) * Beta(p; a, b) dp
+//                  = C(m,i) * B(a+i, b+m-i) / B(a,b)          <- Beta-Binomial, closed form
+//
+// That closed form is why this is cheap enough to run on every keystroke. With little evidence the
+// posterior is wide, the predictive has fat tails, and the planner asks for more parity on its own —
+// which is the correct response to uncertainty rather than a fudge factor bolted on afterwards.
+
+// Lanczos approximation to log-gamma (g=7, n=9). Accurate to ~15 significant figures over the range used
+// here, and it keeps every factorial in log space: C(60000, 30000) overflows a double, its log does not.
+const LANCZOS = [
+  676.5203681218851, -1259.1392167224028, 771.32342877765313,
+  -176.61502916214059, 12.507343278686905, -0.13857109526572012,
+  9.9843695780195716e-6, 1.5056327351493116e-7
+];
+function lgamma(z){
+  if(z < 0.5) return Math.log(Math.PI / Math.sin(Math.PI * z)) - lgamma(1 - z);   // reflection
+  z -= 1;
+  let x = 0.99999999999980993;
+  for(let i=0;i<LANCZOS.length;i++) x += LANCZOS[i] / (z + i + 1);
+  const t = z + LANCZOS.length - 0.5;
+  return 0.5 * Math.log(2 * Math.PI) + (z + 0.5) * Math.log(t) - t + Math.log(x);
+}
+const logChoose = (n, k) => (k < 0 || k > n) ? -Infinity : lgamma(n + 1) - lgamma(k + 1) - lgamma(n - k + 1);
+const lbeta = (x, y) => lgamma(x) + lgamma(y) - lgamma(x + y);
+
+// P(at most k of m parts lost), with the loss rate marginalised over Beta(a,b).
+// Summed smallest-term-first and in log space, so a tail of very small probabilities doesn't lose
+// precision to the leading term.
+function betaBinomTail(m, k, a, b){
+  if(k >= m) return 1;
+  if(k < 0) return 0;
+  const denom = lbeta(a, b), terms = [];
+  for(let i=0;i<=k;i++) terms.push(logChoose(m, i) + lbeta(a + i, b + m - i) - denom);
+  terms.sort((x, y) => x - y);
+  let s = 0;
+  for(const t of terms) s += Math.exp(t);
+  return Math.min(1, s);
+}
+// the same tail with p known exactly — used to show the user a plain "at this loss rate" figure
+function binomTail(m, k, p){
+  if(k >= m) return 1;
+  if(k < 0) return 0;
+  if(p <= 0) return 1;
+  if(p >= 1) return k >= m ? 1 : 0;
+  const lp = Math.log(p), lq = Math.log1p(-p), terms = [];
+  for(let i=0;i<=k;i++) terms.push(logChoose(m, i) + i * lp + (m - i) * lq);
+  terms.sort((x, y) => x - y);
+  let s = 0;
+  for(const t of terms) s += Math.exp(t);
+  return Math.min(1, s);
+}
+
+// Observed loss history as a Beta posterior. Conjugate updating: Beta(a,b) + L losses in N parts becomes
+// Beta(a+L, b+N-L). The prior is deliberately informative — 2% loss carrying the weight of 50 parts — so
+// a first send with no history plans against something sane instead of the 50% a uniform prior implies.
+const LOSS_PRIOR_A = 1, LOSS_PRIOR_B = 49;
+function lossPosterior(){
+  const rec = lsGet("carrier_loss");
+  let lost = 0, seen = 0;
+  if(rec){
+    const m = /^(\d+),(\d+)$/.exec(rec);
+    if(m){ lost = +m[1]; seen = +m[2]; }
+    if(lost > seen || seen > 1e9){ lost = 0; seen = 0; lsRemove("carrier_loss"); }   // corrupt/tampered
+  }
+  return { a: LOSS_PRIOR_A + lost, b: LOSS_PRIOR_B + (seen - lost), lost, seen };
+}
+// Record an observation. Ages the history by halving once it gets long, so a pipe that used to be bad but
+// is now fine can actually be believed again — an un-aged counter would hold a grudge forever.
+function recordLoss(lost, seen){
+  if(!(seen > 0) || lost < 0 || lost > seen) return;
+  const p = lossPosterior();
+  let L = p.lost + lost, N = p.seen + seen;
+  while(N > 4000){ L = Math.round(L / 2); N = Math.round(N / 2); }
+  lsSet("carrier_loss", `${L},${N}`);
+}
+
+// Smallest k such that the WHOLE image arrives with probability >= target.
+// Coding is per block of RS_BLOCK parts and every block must survive independently, so a B-block send
+// needs each block at target^(1/B) — asking each block for the whole-image target would silently
+// under-provision a long send, which is exactly where loss hurts most.
+function planParity(total, target, post){
+  const { a, b } = post || lossPosterior();
+  const blocks = Math.max(1, Math.ceil(total / RS_BLOCK));
+  const biggest = Math.min(RS_BLOCK, total);
+  const perBlock = Math.pow(target, 1 / blocks);
+  let best = { k: 0, p: 0 };
+  for(let k=0;k<=Math.min(RS_HALF, biggest);k++){
+    const pr = betaBinomTail(biggest + k, k, a, b);
+    if(pr > best.p) best = { k, p: pr };
+    if(pr >= perBlock) return { k, blockProb: pr, imageProb: Math.pow(pr, blocks), blocks, met: true };
+  }
+  // even maximum parity can't reach the target on this pipe — return the best available and say so
+  return { k: best.k, blockProb: best.p, imageProb: Math.pow(best.p, blocks), blocks, met: false };
+}
 
 /* ---------- container (mime + image, optional encryption) ---------- */
 const FLAG_ENCRYPTED = 1;   // body is salt+iv+AES-256-GCM ciphertext
@@ -669,7 +782,7 @@ function chunkify(b64, level = recoveryLevel){
   // parity parts carry RS_META extra characters of header, so when recovery is on every part — data
   // included, since shards must be equal length — is sized RS_META shorter. That is the cost of the
   // feature and it is why it is off by default.
-  const hdr = (RS_LEVELS[level] ? RS_META : 0);
+  const hdr = (level !== "off" && RS_LEVELS.hasOwnProperty(level) ? RS_META : 0);
   let per = Math.max(1, msgLimit - chunkPrefixLen(1) - hdr), total = Math.max(1, Math.ceil(b64.length / per));
   for(let k=0;k<4;k++){
     const p = Math.max(1, msgLimit - chunkPrefixLen(total) - hdr);
@@ -677,6 +790,9 @@ function chunkify(b64, level = recoveryLevel){
     if(p === per && t === total) break;
     per = p; total = t;
   }
+  // Auto is solved here, against the part count this packing actually produced — planning from a
+  // guessed count would size the parity for a send that isn't the one going out.
+  lastPlan = (level === "auto") ? planParity(total, RS_TARGET) : null;
   const out = [];
   for(let i=0;i<total;i++)
     out.push(`PXT/${sid}/${i+1}/${total}/` + b64.slice(i*per,(i+1)*per));
@@ -689,7 +805,7 @@ function chunkify(b64, level = recoveryLevel){
 //   payload: block(1) + row(1) + coreLength(4) + shard, all Base64 characters
 // The receiver reads `per` back as (payload length - RS_META), so it doesn't need to be transmitted.
 function parityChunks(b64, sid, total, per, level){
-  const k = rsParityCount(Math.min(total, RS_BLOCK), level);
+  const k = rsParityCount(Math.min(total, RS_BLOCK), level, lastPlan);
   if(!k || total < 2) return [];   // one part can't lose one part and still have anything to rebuild from
   // Coding runs over the payload with Base64 padding removed: '=' is not one of the 64 field elements.
   // Shard boundaries still line up with chunk boundaries because the stripped core is a PREFIX of b64.
@@ -703,7 +819,7 @@ function parityChunks(b64, sid, total, per, level){
     if(n < 2) break;   // a trailing single-part block has nothing to protect
     const shards = [];
     for(let i=0;i<n;i++) shards.push(b64ToSyms(core.slice((start+i)*per, (start+i+1)*per), per));
-    const rows = rsEncode(shards, rsParityCount(n, level));
+    const rows = rsEncode(shards, rsParityCount(n, level, lastPlan));
     const blk = start / RS_BLOCK;
     if(blk > 63) break;   // block index must fit one Base64 character
     rows.forEach((row, j)=>{
@@ -796,7 +912,8 @@ function reassembleParse(text){
       else { missingTrunc = true; break; }
     }
   }
-  return { s, total, have, missing, missingTrunc, repaired, multiSession: sessions.length > 1 ? sessions.length : 0 };
+  return { s, total, have, missing, missingTrunc, repaired, hadParity: parityRaw.length > 0,
+           multiSession: sessions.length > 1 ? sessions.length : 0 };
 }
 // Fill holes in `map` (1-based part index -> payload text) from the parity parts. Mutates map; returns how
 // many parts were rebuilt. Every step is guarded: recovery is a best-effort bonus, and a malformed or
@@ -1165,6 +1282,7 @@ async function refresh(){
     ? "This image has transparent areas, and your browser can only encode JPEG here — the transparency is filled in rather than kept. The recipient sees what the preview shows."
     : "";
   setOutputStale(false);   // this pass produced the chunks below — they match what's on screen again
+  showPlan();
   renderChunks();
   $("#lockPanel").classList.remove("hidden");
   $("#outPanel").classList.remove("hidden");
@@ -1200,6 +1318,46 @@ function setOutputStale(stale){
   n.textContent = stale
     ? "These messages are from the last compression that worked — not the settings above. Change a setting to try again."
     : "";
+}
+// Explain the redundancy in the terms the user is actually trading in: how many extra messages, and how
+// likely the image is to arrive whole. A parity count with no stated reason is a number to be ignored.
+function showPlan(){
+  const el = $("#planNote");
+  const total = lastChunks.length;
+  const level = recoveryLevel;
+  if(!total || level === "off"){ el.classList.add("hidden"); el.textContent = ""; return; }
+  // the DATA part count comes from the chunk header, not from #msgOut — that stat counts every message
+  // the user has to send, parity included, which is the right thing to show there and the wrong input here
+  const m = /^PXT\/[0-9a-f]+\/\d+\/(\d+)\//.exec(lastChunks[0]);
+  const dataParts = m ? +m[1] : total;
+  const extra = total - dataParts;
+  const post = lossPosterior();
+  const pct = n => (n * 100).toFixed(n > 0.999 ? 2 : 1);
+  // Quote the rate the planner is ACTUALLY using — the posterior mean — not the raw observed fraction.
+  // Those differ, and by a lot early on: 4 losses in 26 parts is 15.4% raw but 6.6% posterior, because the
+  // prior still carries weight. Stating the raw figure while computing from the posterior would let the
+  // user redo the arithmetic and get a different answer, with no way to tell which number was wrong.
+  // The raw counts are shown alongside so the estimate is auditable rather than merely asserted.
+  const est = post.a / (post.a + post.b);
+  const basis = post.seen > 0
+    ? `an estimated ${pct(est)}% loss rate (${post.lost} of ${post.seen} part${post.seen!==1?"s":""} lost so far)`
+    : `an assumed ${pct(LOSS_PRIOR_A / (LOSS_PRIOR_A + LOSS_PRIOR_B))}% loss rate — this device hasn't received a send yet`;
+  if(level === "auto"){
+    const plan = lastPlan || planParity(dataParts, RS_TARGET, post);
+    el.className = plan.met ? "note ok" : "note warn";
+    el.textContent = plan.met
+      ? `Auto chose ${plan.k} recovery part${plan.k!==1?"s":""} per block (+${extra} message${extra!==1?"s":""}): about ${pct(plan.imageProb)}% chance this arrives complete, at ${basis}.`
+      : `Even the maximum recovery only reaches about ${pct(plan.imageProb)}%, at ${basis} — this pipe is losing too much. Consider a smaller image, or send the .txt as a file.`;
+  } else {
+    // a fixed level still deserves an honest number rather than a reassuring label
+    const k = rsParityCount(Math.min(dataParts, RS_BLOCK), level);
+    const blocks = Math.max(1, Math.ceil(dataParts / RS_BLOCK));
+    const prob = Math.pow(betaBinomTail(Math.min(RS_BLOCK, dataParts) + k, k, post.a, post.b), blocks);
+    el.className = prob >= RS_TARGET ? "note ok" : "note warn";
+    el.textContent = `${k} recovery part${k!==1?"s":""} per block (+${extra} message${extra!==1?"s":""}): about ${pct(prob)}% chance this arrives complete, at ${basis}.`
+      + (prob < RS_TARGET ? " Auto would pick a level that clears 99%." : "");
+  }
+  el.classList.remove("hidden");
 }
 // build one chunk card element for message i (data lazily set as textContent, not innerHTML)
 function makeChunkCard(c, i){
@@ -1823,6 +1981,7 @@ function resetSend(){
   $("#meter").classList.remove("over","near");
   $("#fitNote").className = "note"; $("#fitNote").textContent = "";
   $("#alphaNote").classList.add("hidden"); $("#alphaNote").textContent = "";
+  $("#planNote").classList.add("hidden"); $("#planNote").textContent = "";
   setOutputStale(false);
   $("#thumb").removeAttribute("src"); $("#thumb").alt = "Compressed preview";
   $("#thumb").setAttribute("aria-label", "Open the compressed preview full size in a new tab");   // restore the resting label
@@ -2188,6 +2347,11 @@ async function doReveal(){
     // reassemble picked — and "most complete" can be a stale leftover, not the image the user is
     // assembling. Don't claim a plain "Received ✓" in that case; say the box held several images and this
     // was the most complete, so a wrong pick isn't silent.
+    // Close the loop: a successful reveal is the one moment we know both how many parts were sent and how
+    // many failed to arrive, so it is the only honest place to learn the loss rate from. Recorded once per
+    // reveal, and only for a send that carried recovery — without parity a user chases missing parts by
+    // hand and reveals at zero, which would teach the model that this pipe never loses anything.
+    if(now.repaired > 0 || now.hadParity) recordLoss(now.repaired || 0, now.total);
     if(now.multiSession){
       note.className="note warn";
       note.textContent = `Showed the most complete of ${now.multiSession} images in the box. If this isn't the one you meant, Clear and paste just that image.`;
