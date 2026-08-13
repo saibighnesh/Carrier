@@ -742,6 +742,8 @@ const sentChunks = new Set();
 let staleSend = false;
 // last pack() result and the inputs that produced it, so a no-op refresh doesn't mint a new session id
 let packKey = null, packB64 = null;
+// chunking is keyed separately: it depends on msgLimit, which pack() never sees
+let chunkKey = null;
 const nextUnsentIndex = () => lastChunks.findIndex(c => !sentChunks.has(c));
 // compose the Send-mode tab title. Pasting a long payload means living in the chat app, not here, so the
 // tab strip is the only place a user can see how far along the send is without switching back. Called
@@ -782,8 +784,14 @@ function paintSent(){
       nextBtn.setAttribute("aria-label", `Copy message ${next+1} of ${total} — the next one not yet copied`);
       nextBtn.title = `Copies message ${next+1} of ${total} and marks it off`;
     }
+    // "That's all of them" rather than a bare state line: on the final part paintSent() hides the button
+    // the click was on, so flashButton writes its "Copied 15 ✓" into a node that is already display:none
+    // and the one action that completes the send is the only one that appears to do nothing. The ordering
+    // can't be reversed — flashButton captures the resting label, and relabelling across a live flash is
+    // the stale-label bug from #174 — so the acknowledgement belongs here, in the live region that is
+    // already announcing the count.
     prog.textContent = sent >= total
-      ? `All ${total} parts sent. ✓`
+      ? `That's all ${total} parts sent. ✓ Nothing left to copy.`
       : `Sent ${sent} of ${total} parts — next up: part ${next+1}.`;
     prog.className = sent >= total ? "note ok" : "note";   // set BEFORE the hidden toggle — className assignment wipes it
   }
@@ -857,7 +865,17 @@ async function refresh(){
     b64 = await pack(img, srcMime, pw);
     if(!srcImage) return;   // Start over ran during packing — don't repopulate the cleared UI
     packKey = packKeyNow; packB64 = b64;
-    lastChunks = chunkify(b64);   // only a genuinely new payload gets a new session id
+  }
+  // Chunking depends on msgLimit; packing does not. Keeping chunkify() inside the cache-miss branch made
+  // the Chat app dropdown inert — changing it moves msgLimit but nothing in the pack key, so the cache hit
+  // and lastChunks kept the previous app's split. The fit note reads msgLimit directly and did update, so
+  // the panel contradicted itself: "Fits in a single WhatsApp message ✓" above six 160-char SMS chunks.
+  // A real limit change SHOULD mint a new session id — the boundaries differ, so parts already sent can't
+  // be reused — and #180's warning then correctly says the send has to restart.
+  const chunkKeyNow = `${packKeyNow}|${msgLimit}`;
+  if(chunkKey !== chunkKeyNow){
+    lastChunks = chunkify(b64);
+    chunkKey = chunkKeyNow;
   }
   // stats
   const origBytes = srcImage._bytes || 0;
@@ -1559,7 +1577,7 @@ function resetSend(){
   lastPreviewBytes = null; keyCache = null;   // drop the cached derived key when the image is cleared
   srcImage = null; lastChunks = [];
   sentChunks.clear(); staleSend = false; paintSent();   // the checklist belongs to the payload being cleared
-  packKey = null; packB64 = null;
+  packKey = null; packB64 = null; chunkKey = null;
   $("#chunks").innerHTML = "";
   ["tunePanel","lockPanel","outPanel"].forEach(id => $("#"+id).classList.add("hidden"));
   $("#pass").value = ""; maskPassword("pass"); updatePwStrength(); pwTruncNote("pass", "passTrunc");
@@ -2104,7 +2122,12 @@ modeBtns.forEach((btn, idx)=>{
     // the tab (Enter/Space → click with detail 0) and arrow-key roving (synthetic, isTrusted false) must
     // keep focus ON the tab, per the ARIA tabs pattern — otherwise focus silently skips into the panel.
     if(m === "recv") setTimeout(()=>{ if(!$("#recv").classList.contains("hidden") && e.isTrusted && e.detail > 0) $("#inbox").focus(); }, 50);
-    if(m === "recv") document.title = "Carrier — receive images";
+    // set the resting title, then let updateProgress — which owns the "3/7 parts" title — recompute it.
+    // Without this the count vanished on every mode switch and only came back on the next inbox edit,
+    // leaving the tab contradicting a #prog that still read "Got 5 of 19 parts". Switching modes
+    // mid-assembly is ordinary, and the tab strip is exactly where that count is meant to be readable.
+    // Memoised on the inbox string (#172), so re-running it here costs nothing.
+    if(m === "recv"){ document.title = "Carrier — receive images"; updateProgress(); }
     // set a correct Send title immediately (refresh() refines it with the message count ~180ms later).
     // Unconditional — not gated on !srcImage — so it always overrides any prior receive-mode title.
     else document.title = (srcImage && srcImage._name) ? `${srcImage._name} — Carrier` : "Carrier — send images through text-only chats";
