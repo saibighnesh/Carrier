@@ -28,7 +28,7 @@ Save the single `index.html` file and it works offline — on a plane, on a trai
 - **Send-tracking** — a multi-part send marks off each part as it goes out (copied, or saved into a `.txt`). **Copy next message** hands you the one you haven't sent yet, **Copy remaining** dumps everything still outstanding in one paste, and progress shows in the tab title so you can check it from the chat app. If a setting changes mid-send, Carrier says so — the earlier parts belong to a different version and the recipient can't combine the two
 - **AES-256-GCM encryption** — optional password lock using browser-native Web Crypto (PBKDF2, 250k iterations)
 - **Damage detection** — unlocked messages carry a CRC-32, so a part mangled in transit is reported as damaged instead of showing up as a broken image (encrypted messages get this from GCM's authentication tag)
-- **Loss recovery (Reed-Solomon)** — optionally add parity parts so the recipient can *rebuild* parts that never arrived, instead of asking you to resend them. Off by default; Light adds ~10%, Strong ~25%
+- **Loss recovery (Reed-Solomon)** — optionally add parity parts so the recipient can *rebuild* parts that never arrived, instead of asking you to resend them. Off by default. **Auto** computes how much redundancy you actually need from the loss rate this device has measured; Light and Strong are fixed ~10% / ~25%
 - **Fully offline** — no network calls at all; works without internet after first load
 - **Reassembly progress** — the receive side counts parts as they land (`3/7 parts` in the tab title), names exactly what's missing, and **Copy what's missing** writes the sender a ready-to-send list
 - **Accessible** — keyboard navigable throughout, controls named by their visible labels, atomic screen-reader announcements for both progress lines, and `Esc` to start over or clear from anywhere in the panel
@@ -96,6 +96,30 @@ Receiver has 20 of 24 data parts + 6 parity
 The code works over **GF(2⁶)** rather than the usual GF(2⁸), and that choice is the whole trick: 64 field elements map exactly onto the 64 Base64 characters, so a parity symbol *is* a Base64 character. Parity parts ride in the ordinary chunk format at ordinary chunk size. GF(2⁸) would have forced parity back through Base64 at +33%.
 
 Coding uses a Cauchy matrix, every square submatrix of which is invertible — so **any** k surviving parts decode, not some privileged subset. It runs per block of 32 parts, because loss is bursty and a local code keeps recovery bounded.
+
+### How much redundancy? (Auto)
+
+"Light or Strong?" has a real answer, so **Auto** computes it instead of asking you to guess.
+
+A send of *n* data parts plus *k* parity survives when at most *k* of the *n+k* parts are lost. If the loss rate *p* were known, that's a binomial tail. It isn't known — it's estimated from a handful of past sends — and treating a noisy estimate as exact systematically under-provisions. So *p* carries a **Beta posterior**, and reliability is the **posterior predictive**, integrating over everything *p* might be. That has a closed form:
+
+```
+P(lose i of m parts)  =  C(m,i) · B(a+i, b+m−i) / B(a,b)         (Beta-Binomial)
+
+P(survive)            =  Σ P(lose i)  for i = 0..k
+```
+
+With little evidence the posterior is wide, the predictive has fatter tails, and Auto asks for more parity on its own — the correct response to uncertainty rather than a safety factor bolted on afterwards. Everything runs in log space through a Lanczos log-gamma, so binomial coefficients that would overflow a double are routine.
+
+Coding is per block and **every** block must survive, so a *B*-block send requires each block at `target^(1/B)`. Asking each block for the whole-image target would silently under-provision long sends — exactly where loss hurts most.
+
+Carrier learns the rate from what actually arrives: each successful reveal records how many parts had to be rebuilt out of how many were sent, updating the posterior conjugately. Only sends that carried recovery count — without parity you'd chase missing parts by hand and reveal at zero, teaching the model that the pipe never loses anything.
+
+The panel shows its reasoning, and the numbers reconcile:
+
+> Auto chose 5 recovery parts per block (+5 messages): about 99.6% chance this arrives complete, at an estimated 6.6% loss rate (4 of 26 parts lost so far).
+
+Fixed levels get the same honest figure, and are told when Auto would do better.
 
 **Cost.** Each parity part is one more message, and every part gets 6 characters shorter to carry the parity header — so Strong on a 24-part send is 30 messages instead of 23. That's why it's off by default: turn it on when the pipe is unreliable, leave it off when it isn't.
 
