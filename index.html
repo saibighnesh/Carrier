@@ -2122,7 +2122,12 @@ modeBtns.forEach((btn, idx)=>{
     // the tab (Enter/Space → click with detail 0) and arrow-key roving (synthetic, isTrusted false) must
     // keep focus ON the tab, per the ARIA tabs pattern — otherwise focus silently skips into the panel.
     if(m === "recv") setTimeout(()=>{ if(!$("#recv").classList.contains("hidden") && e.isTrusted && e.detail > 0) $("#inbox").focus(); }, 50);
-    if(m === "recv") document.title = "Carrier — receive images";
+    // set the resting title, then let updateProgress — which owns the "3/7 parts" title — recompute it.
+    // Without this the count vanished on every mode switch and only came back on the next inbox edit,
+    // leaving the tab contradicting a #prog that still read "Got 5 of 19 parts". Switching modes
+    // mid-assembly is ordinary, and the tab strip is exactly where that count is meant to be readable.
+    // Memoised on the inbox string (#172), so re-running it here costs nothing.
+    if(m === "recv"){ document.title = "Carrier — receive images"; updateProgress(); }
     // set a correct Send title immediately (refresh() refines it with the message count ~180ms later).
     // Unconditional — not gated on !srcImage — so it always overrides any prior receive-mode title.
     else document.title = (srcImage && srcImage._name) ? `${srcImage._name} — Carrier` : "Carrier — send images through text-only chats";
