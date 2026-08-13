@@ -765,7 +765,16 @@ function reassembleParse(text){
   const map = new Map();
   // only keep chunks whose index is within [1,total] — a stray 0 or beyond-total index must not
   // inflate the "have" count or produce a "Got N of N, still need part N" contradiction
-  for(const p of group){ const i = parseInt(p[2],10); if(i >= 1 && i <= total) map.set(i, p[4]); }
+  const parityRaw = [];
+  for(const p of group){
+    const i = parseInt(p[2],10);
+    if(i >= 1 && i <= total) map.set(i, p[4]);
+    else if(i > total) parityRaw.push(p[4]);   // parity part — ignored entirely by pre-recovery builds
+  }
+  // Rebuild whatever is missing before anything downstream looks at the result, so the progress line, the
+  // Reveal button and doReveal all see one consistent picture: a recovered send is simply a complete one.
+  let repaired = 0;
+  if(map.size < total && parityRaw.length) repaired = rsRepair(map, total, parityRaw);
   // concatenate the present parts in index order (absent indices are simply skipped). NEVER iterate
   // 1..total: <total> comes straight from the pasted text, so a corrupt/oversized value like 999999999
   // would spin a billion-iteration loop and push a billion entries into `missing` — freezing / OOMing the
@@ -787,7 +796,59 @@ function reassembleParse(text){
       else { missingTrunc = true; break; }
     }
   }
-  return { s, total, have, missing, missingTrunc, multiSession: sessions.length > 1 ? sessions.length : 0 };
+  return { s, total, have, missing, missingTrunc, repaired, multiSession: sessions.length > 1 ? sessions.length : 0 };
+}
+// Fill holes in `map` (1-based part index -> payload text) from the parity parts. Mutates map; returns how
+// many parts were rebuilt. Every step is guarded: recovery is a best-effort bonus, and a malformed or
+// hostile parity part must leave the user exactly where they were, never worse.
+function rsRepair(map, total, parityRaw){
+  const byBlock = new Map();
+  let coreLen = -1, per = -1;
+  for(const raw of parityRaw){
+    if(raw.length <= RS_META) continue;
+    const blk = dec64(raw.slice(0,1)), row = dec64(raw.slice(1,2)), len = dec64(raw.slice(2,6));
+    if(blk < 0 || row < 0 || len < 0 || row >= RS_HALF) continue;
+    // every parity part of a send states the same core length and shard size; a disagreement means parts
+    // from two different packings are mixed in the box, and guessing between them would corrupt the image
+    if(coreLen < 0){ coreLen = len; per = raw.length - RS_META; }
+    else if(coreLen !== len || per !== raw.length - RS_META) return 0;
+    let m = byBlock.get(blk);
+    if(!m){ m = new Map(); byBlock.set(blk, m); }
+    m.set(row, b64ToSyms(raw.slice(RS_META), per));
+  }
+  if(per <= 0 || coreLen <= 0) return 0;
+  // the core length must agree with the parts that DID arrive, or the parity belongs to another payload
+  if(Math.ceil(coreLen / per) !== total) return 0;
+  let repaired = 0;
+  for(const [blk, parity] of byBlock){
+    const start = blk * RS_BLOCK;
+    const n = Math.min(RS_BLOCK, total - start);
+    if(n < 2 || start < 0 || start >= total) continue;
+    const present = new Map();
+    let holes = 0;
+    for(let i=0;i<n;i++){
+      const payload = map.get(start + i + 1);
+      if(payload === undefined){ holes++; continue; }
+      // strip Base64 padding: '=' has no field element. Only the final part can carry it.
+      present.set(i, b64ToSyms(payload.replace(/=+$/, ""), per));
+    }
+    if(!holes) continue;
+    let out = null;
+    try { out = rsDecode(n, per, present, parity); } catch { out = null; }
+    if(!out) continue;   // not enough parity for this block — leave its holes for the user to chase
+    for(const [i, syms] of out){
+      const idx = start + i + 1;
+      const startCh = (idx - 1) * per;
+      // a rebuilt shard is always `per` symbols; trim the last part back to the true payload length and
+      // restore the Base64 padding, which is derived from that length rather than transmitted
+      let text = symsToB64(syms).slice(0, Math.max(0, Math.min(per, coreLen - startCh)));
+      // padding lives only in the final part, and its width follows from the core length
+      if(idx === total) text += "=".repeat((4 - coreLen % 4) % 4);
+      map.set(idx, text);
+      repaired++;
+    }
+  }
+  return repaired;
 }
 
 /* ---------- compression ---------- */
@@ -1833,6 +1894,15 @@ function updateProgress(){
     // of padding — but enough to tell the user how big the incoming image is before they reveal it)
     const approx = fmtKB(Math.floor(r.s.length * 3 / 4));
     p.append("Got all ", b(r.total), ` part${r.total>1?"s":""} (~${approx}). Ready to reveal.`);
+    // say it plainly when the set was only complete BECAUSE of the recovery parts — the user is about to
+    // reveal an image assembled from data that never arrived, and that is worth knowing rather than hiding
+    if(r.repaired){
+      const rb = Object.assign(document.createElement("span"), {
+        textContent: ` Rebuilt ${r.repaired} missing part${r.repaired>1?"s":""} from the recovery data — no need to ask for a resend.`
+      });
+      rb.style.color = "var(--ok)";
+      p.appendChild(rb);
+    }
     // peek the header without decrypting: a locked message won't auto-reveal, so tell the user a
     // password is needed rather than leaving them to guess why nothing appeared
     if(headerFlags(r.s) & FLAG_ENCRYPTED){
@@ -1862,6 +1932,8 @@ function updateProgress(){
     // so have/total scales the assembled bytes to a usable estimate.
     const approxFull = fmtKB(Math.floor((r.s.length * 3 / 4) * (r.total / r.have)));
     p.append("Got ", b(r.have), " of ", b(r.total), ` parts (${pct}%, ~${approxFull} in all) — still need part${r.missing.length>1?"s":""} ${formatParts(r.missing)}${r.missingTrunc?", …":""}.`);
+    // recovery ran and helped but couldn't close the gap: don't let the count imply those parts arrived
+    if(r.repaired) p.append(` (${r.repaired} already rebuilt from recovery data.)`);
   }
   // mirror of the send side: assembling a long payload means hopping between the chat and this tab, and
   // the tab strip is the only place the count is visible without switching back. Never overwrite the
