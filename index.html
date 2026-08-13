@@ -277,6 +277,15 @@
             </select>
             <span id="chatLimitHint" class="sr-only">Sets the per-message character limit for your chat app. Smaller limits split into more parts.</span>
           </div>
+          <div class="row">
+            <label for="recovery">Recovery</label>
+            <select id="recovery" autocomplete="off" aria-describedby="recoveryHint" title="Adds extra parts so the recipient can rebuild ones that go missing, without asking you to resend">
+              <option value="off" selected>Off</option>
+              <option value="light">Light (+10%)</option>
+              <option value="strong">Strong (+25%)</option>
+            </select>
+            <span id="recoveryHint" class="sr-only">Adds extra parts so the recipient can rebuild missing ones without asking you to resend. Costs more messages.</span>
+          </div>
           <div class="btnrow" role="group" aria-label="Quality presets">
             <button type="button" class="btn preset" data-q="45" data-d="512" aria-pressed="false" aria-label="Small preset — 512 pixels, quality 45, fewest messages" title="Small — 512 px, quality 45 · fewest messages">Small</button>
             <button type="button" class="btn preset" data-q="70" data-d="768" aria-pressed="false" aria-label="Balanced preset — 768 pixels, quality 70" title="Balanced — 768 px, quality 70">Balanced</button>
@@ -384,6 +393,7 @@
 <script>
 "use strict";
 let msgLimit = 60000;             // chars per message for the chosen chat app (user-selectable)
+let recoveryLevel = "off";        // Reed-Solomon redundancy: off | light | strong (see rsParityCount)
 const MSG_LIMITS = { 60000:"WhatsApp", 4096:"Telegram", 4000:"Slack", 2000:"Discord", 160:"SMS" };
 // bytes of compressed image that Base64-encode to fit one message: N bytes → ceil(N/3)*4 chars, so
 // N ≈ (limit − prefix) · 3/4; the 0.72 factor keeps a small safety margin under the raw ceiling
@@ -651,14 +661,18 @@ async function unpack(b64, password){
 }
 
 /* ---------- chunking ---------- */
-function chunkify(b64){
+function chunkify(b64, level = recoveryLevel){
   const sid = Array.from(crypto.getRandomValues(new Uint8Array(SID_LEN/2)), b => b.toString(16).padStart(2,'0')).join('');
   // the prefix length grows with the digit-count of index and total, so a chunk sized against a fixed
   // reserve can exceed msgLimit once the part count gets long — and a transport may split or truncate
   // that, silently losing data. Size `per` from chunkPrefixLen(), iterating until total stops growing.
-  let per = Math.max(1, msgLimit - chunkPrefixLen(1)), total = Math.max(1, Math.ceil(b64.length / per));
+  // parity parts carry RS_META extra characters of header, so when recovery is on every part — data
+  // included, since shards must be equal length — is sized RS_META shorter. That is the cost of the
+  // feature and it is why it is off by default.
+  const hdr = (RS_LEVELS[level] ? RS_META : 0);
+  let per = Math.max(1, msgLimit - chunkPrefixLen(1) - hdr), total = Math.max(1, Math.ceil(b64.length / per));
   for(let k=0;k<4;k++){
-    const p = Math.max(1, msgLimit - chunkPrefixLen(total));
+    const p = Math.max(1, msgLimit - chunkPrefixLen(total) - hdr);
     const t = Math.max(1, Math.ceil(b64.length / p));
     if(p === per && t === total) break;
     per = p; total = t;
@@ -666,8 +680,48 @@ function chunkify(b64){
   const out = [];
   for(let i=0;i<total;i++)
     out.push(`PXT/${sid}/${i+1}/${total}/` + b64.slice(i*per,(i+1)*per));
+  out.push(...parityChunks(b64, sid, total, per, level));
   return out;
 }
+// Build the parity parts for a payload. They are ordinary chunks whose index runs PAST <total>, which
+// reassemble() has always discarded — so a Carrier build predating this ignores them and sees only the
+// send it understands.
+//   payload: block(1) + row(1) + coreLength(4) + shard, all Base64 characters
+// The receiver reads `per` back as (payload length - RS_META), so it doesn't need to be transmitted.
+function parityChunks(b64, sid, total, per, level){
+  const k = rsParityCount(Math.min(total, RS_BLOCK), level);
+  if(!k || total < 2) return [];   // one part can't lose one part and still have anything to rebuild from
+  // Coding runs over the payload with Base64 padding removed: '=' is not one of the 64 field elements.
+  // Shard boundaries still line up with chunk boundaries because the stripped core is a PREFIX of b64.
+  const core = b64.replace(/=+$/, "");
+  const lenChars = enc64(core.length, 4);
+  if(lenChars === null) return [];   // beyond what 4 Base64 chars can address — skip parity, never mis-state it
+  const out = [];
+  let seq = 0;
+  for(let start=0; start<total; start+=RS_BLOCK){
+    const n = Math.min(RS_BLOCK, total - start);
+    if(n < 2) break;   // a trailing single-part block has nothing to protect
+    const shards = [];
+    for(let i=0;i<n;i++) shards.push(b64ToSyms(core.slice((start+i)*per, (start+i+1)*per), per));
+    const rows = rsEncode(shards, rsParityCount(n, level));
+    const blk = start / RS_BLOCK;
+    if(blk > 63) break;   // block index must fit one Base64 character
+    rows.forEach((row, j)=>{
+      out.push(`PXT/${sid}/${total + 1 + seq}/${total}/` + B64A[blk] + B64A[j] + lenChars + symsToB64(row));
+      seq++;
+    });
+  }
+  return out;
+}
+// little metadata helper: a non-negative integer as `width` Base64 characters, big-endian. Returns null
+// rather than silently wrapping when the value doesn't fit — a wrapped length would corrupt a recovery.
+function enc64(v, width){
+  if(v < 0 || v >= Math.pow(64, width)) return null;
+  let s = "";
+  for(let i=width-1;i>=0;i--) s += B64A[(v >> (6*i)) & 63];
+  return s;
+}
+const dec64 = str => { let v = 0; for(let i=0;i<str.length;i++){ const d = B64V[str.charCodeAt(i)]; if(d < 0) return -1; v = v * 64 + d; } return v; };
 // reassemble() is called far more often than the text changes: a paste runs updateProgress() and
 // maybeAutoReveal(), which runs doReveal(), which re-reassembles after its await to detect the inbox
 // changing mid-derive — four full regex scans, match-array allocations, and payload concatenations over
@@ -979,7 +1033,7 @@ async function refresh(){
   // the panel contradicted itself: "Fits in a single WhatsApp message ✓" above six 160-char SMS chunks.
   // A real limit change SHOULD mint a new session id — the boundaries differ, so parts already sent can't
   // be reused — and #180's warning then correctly says the send has to restart.
-  const chunkKeyNow = `${packKeyNow}|${msgLimit}`;
+  const chunkKeyNow = `${packKeyNow}|${msgLimit}|${recoveryLevel}`;
   if(chunkKey !== chunkKeyNow){
     lastChunks = chunkify(b64);
     chunkKey = chunkKeyNow;
@@ -1254,6 +1308,9 @@ function setQuality(q){
   const ml = lsGet("carrier_msglimit");
   if(ml && MSG_LIMITS[ml]){ msgLimit = +ml; $("#chatLimit").value = ml; }
   else if(ml) lsRemove("carrier_msglimit");
+  const rv = lsGet("carrier_recovery");
+  if(rv && Object.prototype.hasOwnProperty.call(RS_LEVELS, rv)){ recoveryLevel = rv; $("#recovery").value = rv; }
+  else if(rv) lsRemove("carrier_recovery");
 })();
 
 // `input` fires continuously while a range is dragged — once per pixel on a mouse, at sample rate on a
@@ -1278,6 +1335,8 @@ $("#quality").addEventListener("input", e=>{ const v = e.target.value; setQualit
 $("#maxdim").addEventListener("change", e=>{ queuePersist("carrier_maxdim", e.target.value); syncPresets(); queueRefresh(); });
 // switching chat app changes the per-message char budget → re-chunk and redraw the meter/stats
 $("#chatLimit").addEventListener("change", e=>{ msgLimit = +e.target.value; queuePersist("carrier_msglimit", e.target.value); queueRefresh(); });
+// changing redundancy re-chunks (and resizes every part), so it goes through the same debounce
+$("#recovery").addEventListener("change", e=>{ recoveryLevel = e.target.value; queuePersist("carrier_recovery", e.target.value); queueRefresh(); });
 // drop the cached derived key the instant the password changes — don't retain the previous secret's key
 // in the heap until Start over, and don't let a future cache-keying refactor risk encrypting under a
 // stale key. getKeyMaterial re-derives on the next pack; correctness no longer rests only on its equality check.
