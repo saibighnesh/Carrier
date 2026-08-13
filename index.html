@@ -1332,25 +1332,29 @@ function showPlan(){
   const dataParts = m ? +m[1] : total;
   const extra = total - dataParts;
   const post = lossPosterior();
-  const rate = post.a / (post.a + post.b);
   const pct = n => (n * 100).toFixed(n > 0.999 ? 2 : 1);
-  // measured vs assumed: never present the prior as if it were evidence
+  // Quote the rate the planner is ACTUALLY using — the posterior mean — not the raw observed fraction.
+  // Those differ, and by a lot early on: 4 losses in 26 parts is 15.4% raw but 6.6% posterior, because the
+  // prior still carries weight. Stating the raw figure while computing from the posterior would let the
+  // user redo the arithmetic and get a different answer, with no way to tell which number was wrong.
+  // The raw counts are shown alongside so the estimate is auditable rather than merely asserted.
+  const est = post.a / (post.a + post.b);
   const basis = post.seen > 0
-    ? `measured ${pct(post.lost / post.seen)}% loss over ${post.seen} received part${post.seen!==1?"s":""}`
-    : `assuming ${pct(LOSS_PRIOR_A / (LOSS_PRIOR_A + LOSS_PRIOR_B))}% loss until this device has seen a real send`;
+    ? `an estimated ${pct(est)}% loss rate (${post.lost} of ${post.seen} part${post.seen!==1?"s":""} lost so far)`
+    : `an assumed ${pct(LOSS_PRIOR_A / (LOSS_PRIOR_A + LOSS_PRIOR_B))}% loss rate — this device hasn't received a send yet`;
   if(level === "auto"){
     const plan = lastPlan || planParity(dataParts, RS_TARGET, post);
     el.className = plan.met ? "note ok" : "note warn";
     el.textContent = plan.met
-      ? `Auto chose ${plan.k} recovery part${plan.k!==1?"s":""} per block (+${extra} message${extra!==1?"s":""}): about ${pct(plan.imageProb)}% chance this arrives complete at ${basis}.`
-      : `Even the maximum recovery only reaches about ${pct(plan.imageProb)}% at ${basis} — this pipe is losing too much. Consider a smaller image, or send the .txt as a file.`;
+      ? `Auto chose ${plan.k} recovery part${plan.k!==1?"s":""} per block (+${extra} message${extra!==1?"s":""}): about ${pct(plan.imageProb)}% chance this arrives complete, at ${basis}.`
+      : `Even the maximum recovery only reaches about ${pct(plan.imageProb)}%, at ${basis} — this pipe is losing too much. Consider a smaller image, or send the .txt as a file.`;
   } else {
     // a fixed level still deserves an honest number rather than a reassuring label
     const k = rsParityCount(Math.min(dataParts, RS_BLOCK), level);
     const blocks = Math.max(1, Math.ceil(dataParts / RS_BLOCK));
     const prob = Math.pow(betaBinomTail(Math.min(RS_BLOCK, dataParts) + k, k, post.a, post.b), blocks);
     el.className = prob >= RS_TARGET ? "note ok" : "note warn";
-    el.textContent = `${k} recovery part${k!==1?"s":""} per block (+${extra} message${extra!==1?"s":""}): about ${pct(prob)}% chance this arrives complete at ${basis}.`
+    el.textContent = `${k} recovery part${k!==1?"s":""} per block (+${extra} message${extra!==1?"s":""}): about ${pct(prob)}% chance this arrives complete, at ${basis}.`
       + (prob < RS_TARGET ? " Auto would pick a level that clears 99%." : "");
   }
   el.classList.remove("hidden");
