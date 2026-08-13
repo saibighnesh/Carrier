@@ -817,8 +817,12 @@ function rsRepair(map, total, parityRaw){
     m.set(row, b64ToSyms(raw.slice(RS_META), per));
   }
   if(per <= 0 || coreLen <= 0) return 0;
-  // the core length must agree with the parts that DID arrive, or the parity belongs to another payload
-  if(Math.ceil(coreLen / per) !== total) return 0;
+  // The stated length must reproduce the sender's part count, or this parity belongs to another payload.
+  // Compare against the PADDED length, not the core: the sender chunked b64 including its '=' padding, so
+  // when that padding straddles a boundary the final part can be padding alone — ceil(core/per) is then
+  // one short of total and this guard would silently switch recovery off for a perfectly good send.
+  const paddedLen = coreLen + ((4 - coreLen % 4) % 4);
+  if(Math.ceil(paddedLen / per) !== total) return 0;
   let repaired = 0;
   for(const [blk, parity] of byBlock){
     const start = blk * RS_BLOCK;
@@ -841,9 +845,14 @@ function rsRepair(map, total, parityRaw){
       const startCh = (idx - 1) * per;
       // a rebuilt shard is always `per` symbols; trim the last part back to the true payload length and
       // restore the Base64 padding, which is derived from that length rather than transmitted
+      // A rebuilt shard is always `per` symbols; cut it back to however much real payload this part covers.
       let text = symsToB64(syms).slice(0, Math.max(0, Math.min(per, coreLen - startCh)));
-      // padding lives only in the final part, and its width follows from the core length
-      if(idx === total) text += "=".repeat((4 - coreLen % 4) % 4);
+      // Then restore whatever Base64 padding falls inside THIS part's span. The padding is not simply
+      // "on the last part": the sender chunked core+padding, so at some payload sizes the '=' characters
+      // straddle a boundary — one on the second-to-last part, one on the last. Treating it as last-part-
+      // only produced a payload one character too long, which decoded to a corrupt image.
+      const padHere = Math.max(0, Math.min(startCh + per, paddedLen) - Math.max(startCh, coreLen));
+      text += "=".repeat(padHere);
       map.set(idx, text);
       repaired++;
     }
