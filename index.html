@@ -915,6 +915,7 @@ function reassembleParse(text){
   // Reveal button and doReveal all see one consistent picture: a recovered send is simply a complete one.
   let repaired = 0;
   if(map.size < total && parityRaw.length) repaired = rsRepair(map, total, parityRaw);
+  const parityHave = parityRaw.length;
   // concatenate the present parts in index order (absent indices are simply skipped). NEVER iterate
   // 1..total: <total> comes straight from the pasted text, so a corrupt/oversized value like 999999999
   // would spin a billion-iteration loop and push a billion entries into `missing` — freezing / OOMing the
@@ -936,7 +937,7 @@ function reassembleParse(text){
       else { missingTrunc = true; break; }
     }
   }
-  return { s, total, have, missing, missingTrunc, repaired, hadParity: parityRaw.length > 0,
+  return { s, total, have, missing, missingTrunc, repaired, parityHave, hadParity: parityHave > 0,
            multiSession: sessions.length > 1 ? sessions.length : 0 };
 }
 // Fill holes in `map` (1-based part index -> payload text) from the parity parts. Mutates map; returns how
@@ -1901,7 +1902,11 @@ $("#saveTxt").addEventListener("click", ()=>{
   const appName = MSG_LIMITS[String(msgLimit)] || "your chat app";
   const n = lastChunks.length;
   const savedOn = localDate();   // YYYY-MM-DD in the user's own timezone — a backup should record when it was made
-  const header = `# Carrier — ${n} message${n!==1?"s":""} for ${appName}, saved ${savedOn}. Paste every line below into Carrier's Receive tab (order doesn't matter) to rebuild the image.\n\n`;
+  // record the recovery split in the backup. A saved .txt is read months later, often by someone deciding
+  // whether a short paste is complete — "24 image + 5 recovery" answers that where a bare total can't.
+  const dataN = chunkDataCount(), parityN = n - dataN;
+  const recoveryNote = parityN > 0 ? ` ${dataN} carry the image and ${parityN} are recovery parts, so up to ${parityN} missing message${parityN!==1?"s":""} per block can be rebuilt.` : "";
+  const header = `# Carrier — ${n} message${n!==1?"s":""} for ${appName}, saved ${savedOn}.${recoveryNote} Paste every line below into Carrier's Receive tab (order doesn't matter) to rebuild the image.\n\n`;
   const blob = new Blob([header + lastChunks.join("\n\n")], {type:"text/plain"});
   // reclaim the *previous* save's URL now rather than on a fixed timer: a timer set too short frees the
   // blob before a lingering "Always ask where to save" dialog reads it, producing a 0-byte/truncated
@@ -2120,6 +2125,10 @@ function updateProgress(){
       });
       rb.style.color = "var(--ok)";
       p.appendChild(rb);
+    } else if(r.parityHave){
+      // recovery arrived and wasn't needed. Say so rather than leaving it invisible: the sender paid for
+      // those messages, and knowing they went unused is what tells them the setting can come down.
+      p.append(` Includes ${r.parityHave} recovery part${r.parityHave!==1?"s":""}, not needed this time.`);
     }
     // peek the header without decrypting: a locked message won't auto-reveal, so tell the user a
     // password is needed rather than leaving them to guess why nothing appeared
@@ -2269,9 +2278,15 @@ let missingSnapshot = null;
 $("#copyMissing").addEventListener("click", async ()=>{
   if(!missingSnapshot || !missingSnapshot.missing.length) return;
   const { missing, total, missingTrunc } = missingSnapshot;
+  // Name what recovery already fixed. Without it the sender sees a shorter list than the receiver's own
+  // count implies and can reasonably conclude parts are being asked for twice — or resend parts that were
+  // already rebuilt, which is the round trip this whole feature exists to avoid.
+  const already = missingSnapshot.repaired
+    ? ` (${missingSnapshot.repaired} other${missingSnapshot.repaired!==1?"s":""} were already rebuilt from the recovery parts, so I don't need ${missingSnapshot.repaired!==1?"those":"that one"}.)`
+    : "";
   const msg = missingTrunc
-    ? `Carrier: I'm missing more than ${missing.length} of the ${total} parts — starting with ${formatParts(missing)}. Easiest is to send the whole set again.`
-    : `Carrier: I'm still missing part${missing.length>1?"s":""} ${formatParts(missing)} of ${total}. Could you resend ${missing.length>1?"those":"that one"}?`;
+    ? `Carrier: I'm missing more than ${missing.length} of the ${total} parts — starting with ${formatParts(missing)}. Easiest is to send the whole set again.${already}`
+    : `Carrier: I'm still missing part${missing.length>1?"s":""} ${formatParts(missing)} of ${total}. Could you resend ${missing.length>1?"those":"that one"}?${already}`;
   try{
     await writeToClipboard(msg);
     flashButton($("#copyMissing"), "Copied ✓", "Copied the list of missing parts");
