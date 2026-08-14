@@ -2278,9 +2278,15 @@ let missingSnapshot = null;
 $("#copyMissing").addEventListener("click", async ()=>{
   if(!missingSnapshot || !missingSnapshot.missing.length) return;
   const { missing, total, missingTrunc } = missingSnapshot;
+  // Name what recovery already fixed. Without it the sender sees a shorter list than the receiver's own
+  // count implies and can reasonably conclude parts are being asked for twice — or resend parts that were
+  // already rebuilt, which is the round trip this whole feature exists to avoid.
+  const already = missingSnapshot.repaired
+    ? ` (${missingSnapshot.repaired} other${missingSnapshot.repaired!==1?"s":""} were already rebuilt from the recovery parts, so I don't need ${missingSnapshot.repaired!==1?"those":"that one"}.)`
+    : "";
   const msg = missingTrunc
-    ? `Carrier: I'm missing more than ${missing.length} of the ${total} parts — starting with ${formatParts(missing)}. Easiest is to send the whole set again.`
-    : `Carrier: I'm still missing part${missing.length>1?"s":""} ${formatParts(missing)} of ${total}. Could you resend ${missing.length>1?"those":"that one"}?`;
+    ? `Carrier: I'm missing more than ${missing.length} of the ${total} parts — starting with ${formatParts(missing)}. Easiest is to send the whole set again.${already}`
+    : `Carrier: I'm still missing part${missing.length>1?"s":""} ${formatParts(missing)} of ${total}. Could you resend ${missing.length>1?"those":"that one"}?${already}`;
   try{
     await writeToClipboard(msg);
     flashButton($("#copyMissing"), "Copied ✓", "Copied the list of missing parts");
