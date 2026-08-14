@@ -22,6 +22,7 @@ Save the single `index.html` file and it works offline — on a plane, on a trai
 ## Features
 
 - **Single file** — one `index.html`, zero dependencies, no build step
+- **Compact encoding** — optionally packs 12 bits into each character instead of Base64's 6, roughly halving the message count on apps that count characters. Off by default; both sides need a Carrier that understands it
 - **Smart compression** — auto-resizes and re-encodes (WebP → JPEG fallback) to hit a target size
 - **Auto-fit** — one click finds the best quality/dimension combo to land in a single message
 - **Multi-part chunking** — if the image is still too big, splits into numbered parts (`PXT/id/1/3`, `2/3`, `3/3`) that reassemble in any order
@@ -75,6 +76,37 @@ When a password is set:
 - Salt (16 bytes) + IV (12 bytes) generated randomly per send
 - Key derived via **PBKDF2** (SHA-256, 250,000 iterations)
 - Payload encrypted with **AES-256-GCM** (authenticated — wrong password fails loudly)
+
+### Compact encoding — the character problem
+
+Every chat limit is counted in **characters**, and Base64 spends a character on 6 bits. That's a 33% tax on every image, paid in the one currency Carrier is short of.
+
+Density is `log₂(N)` bits per character, so the only lever is the alphabet size *N*. Every ASCII scheme is stuck near the bottom:
+
+| scheme | symbols | bits/char | vs Base64 |
+|---|---|---|---|
+| Base64 | 64 | 6.000 | — |
+| Ascii85 | 85 | 6.409 | +6.8% |
+| basE91 | 91 | 6.508 | +8.5% |
+| all printable ASCII | 95 | 6.570 | +9.5% |
+| **Compact (2¹² CJK)** | **4096** | **12.000** | **+100%** |
+
+None of the ASCII options change a message count. 4096 symbols gives exactly 12 bits each, and being a power of two makes it pure bit-packing rather than big-integer base conversion across the payload. The arithmetic lands evenly:
+
+```
+Base64 :  3 bytes → 4 characters
+Compact:  3 bytes → 2 characters      (exactly half)
+```
+
+The symbols are CJK Unified Ideographs `U+4E00..U+5DFF`, chosen for what that block **cannot** do: no case, no combining marks, no canonical or compatibility decomposition (so normalisation can neither rewrite a symbol nor merge two), no whitespace, no markdown-active punctuation, one UTF-16 code unit each, and disjoint from Base64 so the two encodings can never be confused. All of those are asserted in the test suite, not assumed.
+
+A leading symbol carries `byteLength mod 3` — the one fact the character count can't supply, since a 2-byte and a 3-byte tail occupy the same number of characters.
+
+**The cost, plainly.** A CJK character is 3 UTF-8 bytes against Base64's 1. Where a limit is counted in characters this halves the message count; where it's counted in **bytes** it is 1.5× *worse*. And any non-Latin character drops SMS from GSM-7 (160 per segment) to UCS-2 (70) — so Compact makes SMS worse, and Carrier says so when you pick that combination.
+
+**Compatibility.** Compact sends use a `PXC/` prefix. A Carrier that predates this matches only `[A-Za-z0-9+/=]` and so finds *no* chunks at all — a clean "no Carrier message found" rather than a corrupt image. Both sides need a build that understands it.
+
+**Recovery is unavailable while Compact is on.** The erasure code works over GF(2⁶), a field sized so parity symbols *are* Base64 characters; 12-bit symbols need GF(2¹²), which is a real change rather than a tweak. Shipping a half-working interaction would be worse than the limitation.
 
 ### Loss recovery
 
