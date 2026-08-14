@@ -1242,7 +1242,13 @@ async function refresh(){
   $("#charOut").innerHTML = `<span translate="no">${b64.length.toLocaleString()}</span> <small>chars</small>`;
   $("#charOut").title = `≈ ${fmtKB(b64.length)} of text once Base64-encoded`;   // put the byte weight of the text on hover
   $("#msgOut").textContent = lastChunks.length;
-  $("#msgOut").title = `${lastChunks.length} ${MSG_LIMITS[String(msgLimit)] || "chat"} message${lastChunks.length!==1?"s":""} to send`;
+  const dataCount = chunkDataCount(), parityCount = lastChunks.length - dataCount;
+  const appName = MSG_LIMITS[String(msgLimit)] || "chat";
+  // the headline number is everything the user has to paste; the breakdown says how much of it is the
+  // image and how much is insurance, which is the figure they need to judge the recovery setting
+  $("#msgOut").title = parityCount > 0
+    ? `${lastChunks.length} ${appName} messages to send — ${dataCount} carrying the image, ${parityCount} recovery`
+    : `${lastChunks.length} ${appName} message${lastChunks.length!==1?"s":""} to send`;
   $("#encTag").textContent = pw ? " · 🔒 encrypted" : "";   // tell the user the copied text is locked
   // meter (fill of one message) — divide by the real data capacity (limit minus the chunk prefix),
   // not the raw limit, so at small app limits the % doesn't read "under" while already spilling to 2 parts
