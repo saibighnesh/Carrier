@@ -659,23 +659,46 @@ function recordLoss(lost, seen){
   lsSet("carrier_loss", `${L},${N}`);
 }
 
-// Smallest k such that the WHOLE image arrives with probability >= target.
-// Coding is per block of RS_BLOCK parts and every block must survive independently, so a B-block send
-// needs each block at target^(1/B) — asking each block for the whole-image target would silently
-// under-provision a long send, which is exactly where loss hurts most.
+// The block layout the encoder will ACTUALLY produce. The planner has to model the send that ships, not an
+// idealised one, so this mirrors parityChunks exactly — including both cases where it declines to code:
+// a block of fewer than two parts (nothing to rebuild from), and blocks past what the one-character block
+// index in the parity header can address. Getting this wrong meant quoting a protected probability for
+// parts that were shipping bare.
+function rsBlockLayout(total, kFor){
+  const out = [];
+  for(let start=0; start<total; start+=RS_BLOCK){
+    const n = Math.min(RS_BLOCK, total - start);
+    if(n < 2){ out.push({ n, k: 0 }); break; }              // parityChunks breaks here too
+    const coded = (start / RS_BLOCK) <= 63;
+    out.push({ n, k: coded ? Math.max(0, Math.min(RS_HALF, kFor(n))) : 0 });
+    if(!coded) break;                                       // and here
+  }
+  return out;
+}
+// Whole-image survival: every block must survive, so it is the product over the real layout — not one
+// block's probability raised to the block count. Blocks differ in size (a 45-part send is 32 then 13) and
+// an uncoded block survives only if every one of its parts arrives.
+function imageProb(layout, a, b){
+  let p = 1;
+  for(const blk of layout) p *= betaBinomTail(blk.n + blk.k, blk.k, a, b);
+  return p;
+}
+const uncodedParts = layout => layout.reduce((n, blk) => n + (blk.k ? 0 : blk.n), 0);
+
+// Smallest k such that the whole image arrives with probability >= target, measured against the layout
+// that will really be emitted. Reports how many parts ended up with no protection, so a caller can say so
+// rather than presenting an unreachable target as if parity were the answer.
 function planParity(total, target, post){
   const { a, b } = post || lossPosterior();
-  const blocks = Math.max(1, Math.ceil(total / RS_BLOCK));
-  const biggest = Math.min(RS_BLOCK, total);
-  const perBlock = Math.pow(target, 1 / blocks);
-  let best = { k: 0, p: 0 };
-  for(let k=0;k<=Math.min(RS_HALF, biggest);k++){
-    const pr = betaBinomTail(biggest + k, k, a, b);
-    if(pr > best.p) best = { k, p: pr };
-    if(pr >= perBlock) return { k, blockProb: pr, imageProb: Math.pow(pr, blocks), blocks, met: true };
+  const kMax = Math.min(RS_HALF, Math.max(1, Math.min(RS_BLOCK, total)));
+  let best = null;
+  for(let k=0;k<=kMax;k++){
+    const layout = rsBlockLayout(total, () => k);
+    const p = imageProb(layout, a, b);
+    if(!best || p > best.imageProb) best = { k, imageProb: p, layout };
+    if(p >= target) return { k, imageProb: p, layout, blocks: layout.length, uncoded: uncodedParts(layout), met: true };
   }
-  // even maximum parity can't reach the target on this pipe — return the best available and say so
-  return { k: best.k, blockProb: best.p, imageProb: Math.pow(best.p, blocks), blocks, met: false };
+  return { ...best, blocks: best.layout.length, uncoded: uncodedParts(best.layout), met: false };
 }
 
 /* ---------- container (mime + image, optional encryption) ---------- */
@@ -1351,18 +1374,22 @@ function showPlan(){
     : `an assumed ${pct(LOSS_PRIOR_A / (LOSS_PRIOR_A + LOSS_PRIOR_B))}% loss rate — this device hasn't received a send yet`;
   if(level === "auto"){
     const plan = lastPlan || planParity(dataParts, RS_TARGET, post);
+    const bare = plan.uncoded || 0;
     el.className = plan.met ? "note ok" : "note warn";
     el.textContent = plan.met
       ? `Auto chose ${plan.k} recovery part${plan.k!==1?"s":""} per block (+${extra} message${extra!==1?"s":""}): about ${pct(plan.imageProb)}% chance this arrives complete, at ${basis}.`
-      : `Even the maximum recovery only reaches about ${pct(plan.imageProb)}%, at ${basis} — this pipe is losing too much. Consider a smaller image, or send the .txt as a file.`;
+      : `Even the maximum recovery only reaches about ${pct(plan.imageProb)}%, at ${basis}.`
+        + (bare ? ` ${bare} part${bare!==1?"s":""} can't be covered by recovery at all — lower the max size, or pick an app with a bigger per-message limit.`
+                : " This pipe is losing too much — consider a smaller image, or sending the .txt as a file.");
   } else {
-    // a fixed level still deserves an honest number rather than a reassuring label
-    const k = rsParityCount(Math.min(dataParts, RS_BLOCK), level);
-    const blocks = Math.max(1, Math.ceil(dataParts / RS_BLOCK));
-    const prob = Math.pow(betaBinomTail(Math.min(RS_BLOCK, dataParts) + k, k, post.a, post.b), blocks);
+    // a fixed level gets the same honest number, over the same real layout — its k varies with block size
+    const layout = rsBlockLayout(dataParts, n => rsParityCount(n, level));
+    const prob = imageProb(layout, post.a, post.b);
+    const bare = uncodedParts(layout);
     el.className = prob >= RS_TARGET ? "note ok" : "note warn";
-    el.textContent = `${k} recovery part${k!==1?"s":""} per block (+${extra} message${extra!==1?"s":""}): about ${pct(prob)}% chance this arrives complete, at ${basis}.`
-      + (prob < RS_TARGET ? " Auto would pick a level that clears 99%." : "");
+    el.textContent = `${extra} recovery message${extra!==1?"s":""}: about ${pct(prob)}% chance this arrives complete, at ${basis}.`
+      + (bare ? ` ${bare} part${bare!==1?"s":""} can't be covered by recovery.` : "")
+      + (prob < RS_TARGET ? " Auto would pick a level that clears 99% where it can." : "");
   }
   el.classList.remove("hidden");
 }
