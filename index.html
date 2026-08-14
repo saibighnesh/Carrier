@@ -447,6 +447,81 @@ function b64ToBytes(b64){
   return Uint8Array.from(atob(b64), c => c.charCodeAt(0));
 }
 
+/* ---------- dense text encoding: 12 bits per character ---------- */
+// Carrier's cost is CHARACTERS — every chat limit is counted in them — and Base64 spends a character on
+// only 6 bits. That is a 33% tax on every image, paid in the one currency the app is short of.
+//
+// The ceiling for any ASCII scheme is low: Base85 buys 6.8%, basE91 8.5%, the whole printable ASCII range
+// 9.5%. None of that changes a message count. The lever is the alphabet size, because density is
+// log2(N) bits per character, and N is only bounded by what survives a chat client.
+//
+// 4096 symbols gives exactly 12 bits each — double Base64 — and being a power of two makes it pure bit
+// packing rather than big-integer base conversion across the whole payload. The arithmetic lands evenly:
+//
+//     Base64 :  3 bytes -> 4 characters
+//     dense  :  3 bytes -> 2 characters      (exactly half)
+//
+// The symbols are CJK Unified Ideographs U+4E00..U+5DFF. That block is chosen for what it CANNOT do:
+// no case, no combining marks, no canonical or compatibility decomposition (so no normalisation can
+// rewrite or merge two symbols), no whitespace, no markdown-active punctuation, one UTF-16 code unit
+// each, and disjoint from Base64 so the two encodings can never be confused for one another.
+//
+// THE COST, stated plainly: a CJK character is 3 UTF-8 bytes against Base64's 1. Where a limit is counted
+// in characters this halves the message count; where it is counted in BYTES it is 1.5x worse. And any
+// non-Latin character drops SMS from GSM-7 (160 per segment) to UCS-2 (70). Hence opt-in, and steered by
+// the chat app rather than left as a trap.
+const DENSE_BASE = 0x4E00;   // first symbol
+const DENSE_BITS = 12;
+const DENSE_MASK = 0xFFF;    // 2^12 - 1
+
+// Bytes -> dense text. The leading symbol carries byteLength mod 3, which is the one bit of information
+// the character count cannot supply on its own: n and n+1 bytes can both round up to the same number of
+// characters, so without it the decoder could not tell a 2-byte tail from a 3-byte one.
+function bytesToDense(bytes){
+  const out = [String.fromCharCode(DENSE_BASE + (bytes.length % 3))];
+  let acc = 0, nbits = 0;
+  for(let i=0;i<bytes.length;i++){
+    acc = (acc << 8) | bytes[i];         // at most 8 + 11 = 19 bits live, well inside a safe integer
+    nbits += 8;
+    while(nbits >= DENSE_BITS){
+      nbits -= DENSE_BITS;
+      out.push(String.fromCharCode(DENSE_BASE + ((acc >> nbits) & DENSE_MASK)));
+    }
+  }
+  if(nbits) out.push(String.fromCharCode(DENSE_BASE + ((acc << (DENSE_BITS - nbits)) & DENSE_MASK)));
+  return out.join("");
+}
+// Dense text -> bytes. Validates every symbol: a payload that reached here through a client that rewrote
+// even one character must fail loudly rather than decode into plausible rubbish.
+function denseToBytes(text){
+  if(!text.length) throw new Error("Empty message.");
+  const r = text.charCodeAt(0) - DENSE_BASE;
+  if(r < 0 || r > 2) throw new Error("This message's header is damaged.");
+  const c = text.length - 1;
+  // invert the encoder: it emits ceil(2n/3) symbols, so the count plus the remainder pins n exactly
+  const n = r === 0 ? (c / 2) * 3
+          : r === 1 ? ((c - 1) / 2) * 3 + 1
+          :           (c / 2) * 3 - 1;
+  if(!Number.isInteger(n) || n < 0) throw new Error("This message is truncated — some characters are missing.");
+  const out = new Uint8Array(n);
+  let acc = 0, nbits = 0, o = 0;
+  for(let i=1;i<text.length;i++){
+    const v = text.charCodeAt(i) - DENSE_BASE;
+    if(v < 0 || v > DENSE_MASK) throw new Error("This message contains characters that aren't part of it — the chat app may have altered the text.");
+    acc = (acc << DENSE_BITS) | v;
+    nbits += DENSE_BITS;
+    while(nbits >= 8 && o < n){
+      nbits -= 8;
+      out[o++] = (acc >> nbits) & 0xFF;
+    }
+  }
+  if(o !== n) throw new Error("This message is truncated — some characters are missing.");
+  return out;
+}
+// how many characters `bytes` will occupy in each encoding — used to price the choice for the user
+const denseCharCount = byteLen => 1 + Math.ceil(byteLen * 8 / DENSE_BITS);
+const b64CharCount = byteLen => Math.ceil(byteLen / 3) * 4;
+
 /* ---------- CRC-32 (IEEE 802.3) ---------- */
 // table built once at load; the classic byte-at-a-time loop clears a few MB in single-digit milliseconds,
 // so adding it to every pack/unpack costs nothing the user can perceive
