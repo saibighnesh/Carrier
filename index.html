@@ -181,6 +181,9 @@
 
   .note{font-size:12.5px;color:var(--muted);margin-top:12px;overflow-wrap:anywhere}
   .kbdhint{color:var(--faint);font-size:11.5px;margin-top:8px}
+  .linkbtn{background:none;border:0;padding:0 0 0 4px;color:var(--recv);font:inherit;font-size:11.5px;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+  .linkbtn:hover{color:var(--ink)}
+  .linkbtn:focus-visible{outline:2px solid var(--recv);outline-offset:2px;border-radius:3px}
   .kbdhint kbd{font-size:10.5px;background:var(--bg)}
   .note.warn{color:var(--send)}
   .note.err{color:var(--danger)}
@@ -288,6 +291,8 @@
             </select>
             <span id="recoveryHint" class="sr-only">Adds extra parts so the recipient can rebuild missing ones without asking you to resend. Costs more messages.</span>
           </div>
+          <p class="note hidden" id="lossNote" style="margin-top:2px"><span id="lossText"></span>
+            <button type="button" class="linkbtn" id="lossReset" title="Forget the measured loss history for this chat app and plan from the default assumption again">Reset</button></p>
           <div class="btnrow" role="group" aria-label="Quality presets">
             <button type="button" class="btn preset" data-q="45" data-d="512" aria-pressed="false" aria-label="Small preset — 512 pixels, quality 45, fewest messages" title="Small — 512 px, quality 45 · fewest messages">Small</button>
             <button type="button" class="btn preset" data-q="70" data-d="768" aria-pressed="false" aria-label="Balanced preset — 768 pixels, quality 70" title="Balanced — 768 px, quality 70">Balanced</button>
@@ -1362,6 +1367,7 @@ async function refresh(){
     : "";
   setOutputStale(false);   // this pass produced the chunks below — they match what's on screen again
   showPlan();
+  showLossHistory();
   renderChunks();
   $("#lockPanel").classList.remove("hidden");
   $("#outPanel").classList.remove("hidden");
@@ -1449,6 +1455,23 @@ function chunkDataCount(){
   const m = /^PXT\/[0-9a-f]+\/\d+\/(\d+)\//.exec(lastChunks[0]);
   return m ? Math.min(+m[1], lastChunks.length) : lastChunks.length;
 }
+// The measured loss history drives every Auto decision, and it was invisible and unresettable — a run of
+// bad luck, or a transport that has since improved, left an estimate the user could neither see nor
+// correct. Shown per chat app, because that is how it is now stored.
+function showLossHistory(){
+  const post = lossPosterior();
+  const el = $("#lossNote"), txt = $("#lossText");
+  if(!post.seen){ el.classList.add("hidden"); txt.textContent = ""; return; }
+  const rate = (post.a / (post.a + post.b) * 100).toFixed(1);
+  txt.textContent = `${MSG_LIMITS[String(msgLimit)] || "This app"}: ${post.lost} of ${post.seen} parts lost so far, so recovery plans for about ${rate}%.`;
+  el.classList.remove("hidden");
+}
+$("#lossReset").addEventListener("click", ()=>{
+  lsRemove(lossKey());
+  showLossHistory();
+  if(srcImage) queueRefresh();   // the plan changes, so re-pack and re-price it
+  $("#recovery").focus();        // this button hides itself — don't drop focus to <body>
+});
 // build one chunk card element for message i (data lazily set as textContent, not innerHTML)
 function makeChunkCard(c, i){
   const el = document.createElement("div");
