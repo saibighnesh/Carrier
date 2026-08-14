@@ -161,6 +161,7 @@
   .chunk.sent .pill{color:var(--ok)}
   .chunk.sent .data{opacity:.55}
   .sentmark{font-family:var(--mono);font-size:11px;color:var(--ok);margin-left:8px}
+  .chunk .pill.pill--recovery{color:var(--recv)}   /* teal: not part of the image, but still must be sent */
   .chunk .head{display:flex;align-items:center;justify-content:space-between;
     padding:8px 12px;border-bottom:1px solid var(--line)}
   .chunk .pill{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--send)}
@@ -1359,15 +1360,31 @@ function showPlan(){
   }
   el.classList.remove("hidden");
 }
+// How many of lastChunks are data parts. Read from the <total> field of the first chunk rather than
+// recomputed from the settings: the header is what the receiver will act on, so it is the authority.
+function chunkDataCount(){
+  if(!lastChunks.length) return 0;
+  const m = /^PXT\/[0-9a-f]+\/\d+\/(\d+)\//.exec(lastChunks[0]);
+  return m ? Math.min(+m[1], lastChunks.length) : lastChunks.length;
+}
 // build one chunk card element for message i (data lazily set as textContent, not innerHTML)
 function makeChunkCard(c, i){
   const el = document.createElement("div");
   el.className = "chunk";
   el.setAttribute("role","listitem");
   const preview = c.length > CHUNK_PREVIEW ? c.slice(0, CHUNK_PREVIEW) + " …" : c;
-  const pillLabel = lastChunks.length === 1 ? "SINGLE MESSAGE" : `MESSAGE ${i+1} / ${lastChunks.length}`;
+  // A recovery part is not message 27 of 30 — it is recovery part 1 of 4, and the difference matters when
+  // the send goes wrong: these are the ones the recipient can manage without, and the ones worth resending
+  // last. Presenting them as ordinary messages hid that entirely.
+  const dataParts = chunkDataCount();
+  const isParity = i >= dataParts;
+  const pillLabel = isParity
+    ? `RECOVERY ${i - dataParts + 1} / ${lastChunks.length - dataParts}`
+    : (dataParts === 1 ? "SINGLE MESSAGE" : `MESSAGE ${i+1} / ${dataParts}`);
   el.innerHTML =
-    `<div class="head"><span class="pill" title="Part ${i+1} of ${lastChunks.length}">${pillLabel}</span>
+    `<div class="head"><span class="pill${isParity ? " pill--recovery" : ""}" title="${isParity
+        ? `Recovery part ${i - dataParts + 1} of ${lastChunks.length - dataParts} — lets the recipient rebuild a message that goes missing`
+        : `Part ${i+1} of ${dataParts}`}">${pillLabel}</span>
      <span class="sentmark"></span>
      <span style="font-family:var(--mono);font-size:10px;color:var(--faint);margin-right:auto;padding-left:10px">${c.length.toLocaleString()} chars</span>
      <button type="button" class="copyone" data-i="${i}" aria-label="Copy message ${i+1} of ${lastChunks.length}" data-orig-label="Copy message ${i+1} of ${lastChunks.length}">Copy</button></div>
