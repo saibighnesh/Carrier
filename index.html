@@ -1901,7 +1901,11 @@ $("#saveTxt").addEventListener("click", ()=>{
   const appName = MSG_LIMITS[String(msgLimit)] || "your chat app";
   const n = lastChunks.length;
   const savedOn = localDate();   // YYYY-MM-DD in the user's own timezone — a backup should record when it was made
-  const header = `# Carrier — ${n} message${n!==1?"s":""} for ${appName}, saved ${savedOn}. Paste every line below into Carrier's Receive tab (order doesn't matter) to rebuild the image.\n\n`;
+  // record the recovery split in the backup. A saved .txt is read months later, often by someone deciding
+  // whether a short paste is complete — "24 image + 5 recovery" answers that where a bare total can't.
+  const dataN = chunkDataCount(), parityN = n - dataN;
+  const recoveryNote = parityN > 0 ? ` ${dataN} carry the image and ${parityN} are recovery parts, so up to ${parityN} missing message${parityN!==1?"s":""} per block can be rebuilt.` : "";
+  const header = `# Carrier — ${n} message${n!==1?"s":""} for ${appName}, saved ${savedOn}.${recoveryNote} Paste every line below into Carrier's Receive tab (order doesn't matter) to rebuild the image.\n\n`;
   const blob = new Blob([header + lastChunks.join("\n\n")], {type:"text/plain"});
   // reclaim the *previous* save's URL now rather than on a fixed timer: a timer set too short frees the
   // blob before a lingering "Always ask where to save" dialog reads it, producing a 0-byte/truncated
