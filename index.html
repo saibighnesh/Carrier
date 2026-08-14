@@ -639,24 +639,64 @@ function binomTail(m, k, p){
 // Beta(a+L, b+N-L). The prior is deliberately informative — 2% loss carrying the weight of 50 parts — so
 // a first send with no history plans against something sane instead of the 50% a uniform prior implies.
 const LOSS_PRIOR_A = 1, LOSS_PRIOR_B = 49;
+// The loss rate is a property of the TRANSPORT, and the app already knows which one is selected. A
+// 60k-character WhatsApp message either arrives or doesn't; 160-character SMS parts drop individually and
+// often. Blending them gives an estimate wrong for both — SMS evidence over-provisions WhatsApp, and the
+// WhatsApp-dominated rate under-provisions SMS badly. Everything else here is already per-app (msgLimit,
+// the meter, the .txt name, the tab title); this was the one per-transport property kept globally.
+const lossKey = () => `carrier_loss_${msgLimit}`;
+// One-time migration of pre-per-app evidence, attributed to the app currently selected rather than
+// discarded: a user with real history shouldn't lose it, and their last-used app is the best guess.
+// Deliberately lazy rather than an IIFE at load. Running it at load means merely *loading* this section
+// touches storage and depends on msgLimit and the ls* wrappers already existing — a load-order coupling
+// that broke four test harnesses the moment this section moved. Doing it on first read has no ordering
+// requirement at all.
+let lossMigrated = false;
+function migrateLoss(){
+  if(lossMigrated) return;
+  lossMigrated = true;
+  const legacy = lsGet("carrier_loss");
+  if(legacy !== null && lsGet(lossKey()) === null){ lsSet(lossKey(), legacy); lsRemove("carrier_loss"); }
+}
 function lossPosterior(){
-  const rec = lsGet("carrier_loss");
+  migrateLoss();
+  const rec = lsGet(lossKey());
   let lost = 0, seen = 0;
   if(rec){
     const m = /^(\d+),(\d+)$/.exec(rec);
     if(m){ lost = +m[1]; seen = +m[2]; }
-    if(lost > seen || seen > 1e9){ lost = 0; seen = 0; lsRemove("carrier_loss"); }   // corrupt/tampered
+    if(lost > seen || seen > 1e9){ lost = 0; seen = 0; lsRemove(lossKey()); }   // corrupt/tampered
   }
   return { a: LOSS_PRIOR_A + lost, b: LOSS_PRIOR_B + (seen - lost), lost, seen };
+}
+// Observations already folded into the posterior, keyed by session id and part count. Without this, every
+// press of Reveal counted the SAME send again: three clicks on one 11-part send with 2 losses stored
+// 2,11 then 4,22 then 6,33. That doesn't surface as a visible error, it surfaces as a plausible one — the
+// estimated loss rate is permanently too high and Auto quietly over-buys parity on every later send.
+// In-memory only: a reload followed by re-pasting the same message will count it again, which is far rarer
+// than a second click and not worth persisting a growing set of keys to prevent.
+const countedSends = new Set();
+// Fold one send into the loss model, at most once. `unarrived` is the count of parts that never showed up
+// and are not coming without a resend — zero on the success path, the outstanding count on the failure one.
+function observeSend(r, unarrived){
+  if(!r || !r.total || !r.sid) return;
+  // only sends that carried recovery are evidence: without parity the receiver chases parts by hand and
+  // reveals at zero missing, which would teach the model this pipe never loses anything
+  if(!r.hadParity) return;
+  const key = `${r.sid}:${r.total}`;
+  if(countedSends.has(key)) return;
+  countedSends.add(key);
+  recordLoss(Math.min(r.total, (r.repaired || 0) + Math.max(0, unarrived)), r.total);
 }
 // Record an observation. Ages the history by halving once it gets long, so a pipe that used to be bad but
 // is now fine can actually be believed again — an un-aged counter would hold a grudge forever.
 function recordLoss(lost, seen){
   if(!(seen > 0) || lost < 0 || lost > seen) return;
+  migrateLoss();
   const p = lossPosterior();
   let L = p.lost + lost, N = p.seen + seen;
   while(N > 4000){ L = Math.round(L / 2); N = Math.round(N / 2); }
-  lsSet("carrier_loss", `${L},${N}`);
+  lsSet(lossKey(), `${L},${N}`);
 }
 
 // The block layout the encoder will ACTUALLY produce. The planner has to model the send that ships, not an
@@ -688,17 +728,25 @@ const uncodedParts = layout => layout.reduce((n, blk) => n + (blk.k ? 0 : blk.n)
 // Smallest k such that the whole image arrives with probability >= target, measured against the layout
 // that will really be emitted. Reports how many parts ended up with no protection, so a caller can say so
 // rather than presenting an unreachable target as if parity were the answer.
+// Cost ceiling. Optimising reliability without bounding cost spends everything it has: at 30% measured
+// loss a 24-part send solves to k=23, i.e. 47 messages to paste for one image, reported as a success. That
+// is arithmetically right and practically absurd — past this point the useful advice is a smaller image or
+// the .txt as a file, not more insurance. The fixed levels were capped at 25% by construction; Auto
+// removed that ceiling for a reliability target and nothing replaced it.
+const RS_COST_CAP = 0.5;   // parity per block may not exceed half the block's data parts
 function planParity(total, target, post){
   const { a, b } = post || lossPosterior();
-  const kMax = Math.min(RS_HALF, Math.max(1, Math.min(RS_BLOCK, total)));
+  const hard = Math.min(RS_HALF, Math.max(1, Math.min(RS_BLOCK, total)));
+  const kMax = Math.max(1, Math.min(hard, Math.ceil(Math.min(RS_BLOCK, total) * RS_COST_CAP)));
   let best = null;
   for(let k=0;k<=kMax;k++){
     const layout = rsBlockLayout(total, () => k);
     const p = imageProb(layout, a, b);
     if(!best || p > best.imageProb) best = { k, imageProb: p, layout };
-    if(p >= target) return { k, imageProb: p, layout, blocks: layout.length, uncoded: uncodedParts(layout), met: true };
+    if(p >= target) return { k, imageProb: p, layout, blocks: layout.length, uncoded: uncodedParts(layout), met: true, capped: false };
   }
-  return { ...best, blocks: best.layout.length, uncoded: uncodedParts(best.layout), met: false };
+  // target unreachable within the cost ceiling — stop at the ceiling and report what was achieved
+  return { ...best, blocks: best.layout.length, uncoded: uncodedParts(best.layout), met: false, capped: kMax < hard };
 }
 
 /* ---------- container (mime + image, optional encryption) ---------- */
@@ -937,7 +985,7 @@ function reassembleParse(text){
       else { missingTrunc = true; break; }
     }
   }
-  return { s, total, have, missing, missingTrunc, repaired, parityHave, hadParity: parityHave > 0,
+  return { s, sid, total, have, missing, missingTrunc, repaired, parityHave, hadParity: parityHave > 0,
            multiSession: sessions.length > 1 ? sessions.length : 0 };
 }
 // Fill holes in `map` (1-based part index -> payload text) from the parity parts. Mutates map; returns how
@@ -1379,9 +1427,9 @@ function showPlan(){
     el.className = plan.met ? "note ok" : "note warn";
     el.textContent = plan.met
       ? `Auto chose ${plan.k} recovery part${plan.k!==1?"s":""} per block (+${extra} message${extra!==1?"s":""}): about ${pct(plan.imageProb)}% chance this arrives complete, at ${basis}.`
-      : `Even the maximum recovery only reaches about ${pct(plan.imageProb)}%, at ${basis}.`
+      : `Recovery is capped at +${extra} message${extra!==1?"s":""} and reaches about ${pct(plan.imageProb)}%, at ${basis}.`
         + (bare ? ` ${bare} part${bare!==1?"s":""} can't be covered by recovery at all — lower the max size, or pick an app with a bigger per-message limit.`
-                : " This pipe is losing too much — consider a smaller image, or sending the .txt as a file.");
+                : " Insuring past this point costs more messages than the image itself — a smaller image, or sending the .txt as a file, beats buying more recovery.");
   } else {
     // a fixed level gets the same honest number, over the same real layout — its k varies with block size
     const layout = rsBlockLayout(dataParts, n => rsParityCount(n, level));
@@ -2289,6 +2337,12 @@ $("#copyMissing").addEventListener("click", async ()=>{
     : `Carrier: I'm still missing part${missing.length>1?"s":""} ${formatParts(missing)} of ${total}. Could you resend ${missing.length>1?"those":"that one"}?${already}`;
   try{
     await writeToClipboard(msg);
+    // Loss was previously recorded only in doReveal, which runs only when the payload is COMPLETE — so the
+    // worst outcomes were the only ones never counted. That is survivorship bias, and it biases the rate
+    // downward, making Auto under-provision, which makes more sends unrecoverable, which keeps them out of
+    // the evidence. Copying a missing-parts request is the one reachable signal that a send has settled and
+    // failed: the user is going back to the sender about it. Counts once, like the success path.
+    observeSend(missingSnapshot, missing.length);
     flashButton($("#copyMissing"), "Copied ✓", "Copied the list of missing parts");
   }catch{
     flashButton($("#copyMissing"), "Copy failed", "Copy failed — clipboard access denied");
@@ -2416,7 +2470,7 @@ async function doReveal(){
     // many failed to arrive, so it is the only honest place to learn the loss rate from. Recorded once per
     // reveal, and only for a send that carried recovery — without parity a user chases missing parts by
     // hand and reveals at zero, which would teach the model that this pipe never loses anything.
-    if(now.repaired > 0 || now.hadParity) recordLoss(now.repaired || 0, now.total);
+    observeSend(now, 0);
     if(now.multiSession){
       note.className="note warn";
       note.textContent = `Showed the most complete of ${now.multiSession} images in the box. If this isn't the one you meant, Clear and paste just that image.`;
