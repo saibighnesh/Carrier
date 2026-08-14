@@ -1386,7 +1386,11 @@ async function refresh(){
   // "settings changed" warning on screen when the user had changed nothing.
   // Keyed on everything pack() consumes: the source (loadToken changes on a new file or Start over), the
   // two encode settings that determine the bytes, and the password.
-  const packKeyNow = `${loadToken}|${d}|${q}|${pw}`;
+  // textCodec belongs here because pack() consumes it. Leaving it out made the Compact control inert —
+  // the cache served the previous Base64 payload and the panel reported a change that hadn't happened.
+  // Exactly the defect #196 fixed for the Chat app dropdown, reintroduced by adding a setting without
+  // adding it to the key. Anything pack() reads has to be in this string.
+  const packKeyNow = `${loadToken}|${d}|${q}|${pw}|${textCodec}`;
   let b64;
   if(packKey === packKeyNow && packB64 !== null){
     b64 = packB64;
