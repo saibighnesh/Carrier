@@ -1424,7 +1424,12 @@ async function refresh(){
   const outFmt = (srcMime || "").replace(/^image\//, "").toUpperCase();   // WEBP or JPEG — the encoder's chosen format
   $("#sizeOut").innerHTML = `<span translate="no">${fmtKB(img.length)}</span> <small>${outFmt ? `<span translate="no">${outFmt}</span> · ` : ""}<span translate="no">${img._w}×${img._h}</span>${pctOrig}</small>`;
   $("#charOut").innerHTML = `<span translate="no">${b64.length.toLocaleString()}</span> <small>chars</small>`;
-  $("#charOut").title = `≈ ${fmtKB(b64.length)} of text once Base64-encoded`;   // put the byte weight of the text on hover
+  // name the encoding actually in use. This said "once Base64-encoded" unconditionally, which is simply
+  // untrue for a Compact send — and it is the one tooltip a user checks when working out why the
+  // character count halved, so a wrong answer there undermines the feature it is describing.
+  $("#charOut").title = textCodec === "dense"
+    ? `≈ ${fmtKB(b64.length * 3)} of text once Compact-encoded (each character is 3 bytes of UTF-8)`
+    : `≈ ${fmtKB(b64.length)} of text once Base64-encoded`;
   $("#msgOut").textContent = lastChunks.length;
   const dataCount = chunkDataCount(), parityCount = lastChunks.length - dataCount;
   const appName = MSG_LIMITS[String(msgLimit)] || "chat";
