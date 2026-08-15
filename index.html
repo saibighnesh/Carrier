@@ -1056,6 +1056,9 @@ function reassembleParse(text){
     if(score > bestScore){ bestScore = score; sid = s; }
   }
   const group = bySid.get(sid);
+  // the prefix that matched decides the encoding — the two alphabets are disjoint, so this is a fact
+  // rather than an inference, and every size figure downstream depends on getting it right
+  const isDense = group[0][1] === "PXC";
   const total = parseInt(group[0][4],10);
   if(!total) return null;
   const map = new Map();
@@ -1093,7 +1096,7 @@ function reassembleParse(text){
       else { missingTrunc = true; break; }
     }
   }
-  return { s, sid, total, have, missing, missingTrunc, repaired, parityHave, hadParity: parityHave > 0,
+  return { s, sid, total, have, missing, missingTrunc, repaired, parityHave, dense: isDense, hadParity: parityHave > 0,
            multiSession: sessions.length > 1 ? sessions.length : 0 };
 }
 // Fill holes in `map` (1-based part index -> payload text) from the parity parts. Mutates map; returns how
@@ -2355,7 +2358,7 @@ function updateProgress(){
     p.className = "progress ok";
     // ~size of the assembled payload: Base64 decodes to ¾ its length (a rough figure — a couple bytes
     // of padding — but enough to tell the user how big the incoming image is before they reveal it)
-    const approx = fmtKB(Math.floor(r.s.length * 3 / 4));
+    const approx = fmtKB(payloadBytes(r));
     p.append("Got all ", b(r.total), ` part${r.total>1?"s":""} (~${approx}). Ready to reveal.`);
     // say it plainly when the set was only complete BECAUSE of the recovery parts — the user is about to
     // reveal an image assembled from data that never arrived, and that is worth knowing rather than hiding
@@ -2397,7 +2400,7 @@ function updateProgress(){
     // they are waiting on 40 KB or 4 MB, and the size only appeared once the set was already complete —
     // by which point it answers nothing. Base64 decodes to 3/4 its length, and the parts are near-uniform,
     // so have/total scales the assembled bytes to a usable estimate.
-    const approxFull = fmtKB(Math.floor((r.s.length * 3 / 4) * (r.total / r.have)));
+    const approxFull = fmtKB(Math.floor(payloadBytes(r) * (r.total / r.have)));
     p.append("Got ", b(r.have), " of ", b(r.total), ` parts (${pct}%, ~${approxFull} in all) — still need part${r.missing.length>1?"s":""} ${formatParts(r.missing)}${r.missingTrunc?", …":""}.`);
     // recovery ran and helped but couldn't close the gap: don't let the count imply those parts arrived
     if(r.repaired) p.append(` (${r.repaired} already rebuilt from recovery data.)`);
@@ -2413,6 +2416,17 @@ function updateProgress(){
     warn.style.color = "var(--danger)";
     p.appendChild(warn);
   }
+}
+// How many bytes the assembled text represents. 3/4 is BASE64's ratio — 4 characters carry 3 bytes —
+// and Compact carries 12 bits per character, so the two differ by a factor of 4. Hardcoding the Base64
+// figure made every dense payload report half its real size, in the direction that costs a receiver on a
+// metered connection, and left the pre-reveal estimate contradicting the caption that followed it.
+// The dense form is exact rather than a second approximation: the encoder emits one header symbol plus
+// ceil(8n/12), so this inverts precisely what it produced.
+function payloadBytes(r){
+  return r.dense
+    ? Math.floor(Math.max(0, r.s.length - 1) * DENSE_BITS / 8)
+    : Math.floor(r.s.length * 3 / 4);
 }
 // peek the header flags byte without decrypting: null = not a valid Carrier header, else the flags byte
 // Collapse consecutive indices into ranges: [6,7,8,…,19] renders as "6-19", not fourteen numbers.
