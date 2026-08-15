@@ -1423,8 +1423,22 @@ async function refresh(){
   // ("% of original", "chars") while never rewriting the digits, KB/MB, or the × separator
   const outFmt = (srcMime || "").replace(/^image\//, "").toUpperCase();   // WEBP or JPEG — the encoder's chosen format
   $("#sizeOut").innerHTML = `<span translate="no">${fmtKB(img.length)}</span> <small>${outFmt ? `<span translate="no">${outFmt}</span> · ` : ""}<span translate="no">${img._w}×${img._h}</span>${pctOrig}</small>`;
-  $("#charOut").innerHTML = `<span translate="no">${b64.length.toLocaleString()}</span> <small>chars</small>`;
-  $("#charOut").title = `≈ ${fmtKB(b64.length)} of text once Base64-encoded`;   // put the byte weight of the text on hover
+  // With Compact on, show what it saved against the Base64 the user would otherwise be pasting. The
+  // character count alone is only meaningful next to the number it replaced — "6,352 chars" means
+  // nothing on its own, "half of 12,704" is the entire point of the setting.
+  // derive the container size back out of the dense text rather than re-guessing it from the parts:
+  // the encoder emits 1 header symbol plus ceil(8n/12), so this inverts exactly what was produced
+  const b64Equiv = textCodec === "dense" ? b64CharCount(Math.floor((b64.length - 1) * DENSE_BITS / 8)) : 0;
+  const savedTag = (b64Equiv > b64.length)
+    ? ` <small>chars · half of ${b64Equiv.toLocaleString()} as Base64</small>`
+    : " <small>chars</small>";
+  $("#charOut").innerHTML = `<span translate="no">${b64.length.toLocaleString()}</span>${savedTag}`;
+  // name the encoding actually in use. This said "once Base64-encoded" unconditionally, which is simply
+  // untrue for a Compact send — and it is the one tooltip a user checks when working out why the
+  // character count halved, so a wrong answer there undermines the feature it is describing.
+  $("#charOut").title = textCodec === "dense"
+    ? `≈ ${fmtKB(b64.length * 3)} of text once Compact-encoded (each character is 3 bytes of UTF-8)`
+    : `≈ ${fmtKB(b64.length)} of text once Base64-encoded`;
   $("#msgOut").textContent = lastChunks.length;
   const dataCount = chunkDataCount(), parityCount = lastChunks.length - dataCount;
   const appName = MSG_LIMITS[String(msgLimit)] || "chat";
@@ -2113,7 +2127,13 @@ $("#saveTxt").addEventListener("click", ()=>{
   // whether a short paste is complete — "24 image + 5 recovery" answers that where a bare total can't.
   const dataN = chunkDataCount(), parityN = n - dataN;
   const recoveryNote = parityN > 0 ? ` ${dataN} carry the image and ${parityN} are recovery parts, so up to ${parityN} missing message${parityN!==1?"s":""} per block can be rebuilt.` : "";
-  const header = `# Carrier — ${n} message${n!==1?"s":""} for ${appName}, saved ${savedOn}.${recoveryNote} Paste every line below into Carrier's Receive tab (order doesn't matter) to rebuild the image.\n\n`;
+  // A Compact backup is unreadable to a Carrier that predates the encoding, and the failure it produces
+  // is "no Carrier message found" — which reads as a corrupt file rather than a version mismatch. Say so
+  // in the file itself, since that is the only place a reader six months from now will look.
+  const compactNote = textCodec === "dense"
+    ? " These use Carrier's Compact encoding, so they need a version of Carrier that understands it — an older one will report finding no message at all."
+    : "";
+  const header = `# Carrier — ${n} message${n!==1?"s":""} for ${appName}, saved ${savedOn}.${recoveryNote}${compactNote} Paste every line below into Carrier's Receive tab (order doesn't matter) to rebuild the image.\n\n`;
   const blob = new Blob([header + lastChunks.join("\n\n")], {type:"text/plain"});
   // reclaim the *previous* save's URL now rather than on a fixed timer: a timer set too short frees the
   // blob before a lingering "Always ask where to save" dialog reads it, producing a 0-byte/truncated
