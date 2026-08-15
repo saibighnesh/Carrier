@@ -1423,7 +1423,16 @@ async function refresh(){
   // ("% of original", "chars") while never rewriting the digits, KB/MB, or the × separator
   const outFmt = (srcMime || "").replace(/^image\//, "").toUpperCase();   // WEBP or JPEG — the encoder's chosen format
   $("#sizeOut").innerHTML = `<span translate="no">${fmtKB(img.length)}</span> <small>${outFmt ? `<span translate="no">${outFmt}</span> · ` : ""}<span translate="no">${img._w}×${img._h}</span>${pctOrig}</small>`;
-  $("#charOut").innerHTML = `<span translate="no">${b64.length.toLocaleString()}</span> <small>chars</small>`;
+  // With Compact on, show what it saved against the Base64 the user would otherwise be pasting. The
+  // character count alone is only meaningful next to the number it replaced — "6,352 chars" means
+  // nothing on its own, "half of 12,704" is the entire point of the setting.
+  // derive the container size back out of the dense text rather than re-guessing it from the parts:
+  // the encoder emits 1 header symbol plus ceil(8n/12), so this inverts exactly what was produced
+  const b64Equiv = textCodec === "dense" ? b64CharCount(Math.floor((b64.length - 1) * DENSE_BITS / 8)) : 0;
+  const savedTag = (b64Equiv > b64.length)
+    ? ` <small>chars · half of ${b64Equiv.toLocaleString()} as Base64</small>`
+    : " <small>chars</small>";
+  $("#charOut").innerHTML = `<span translate="no">${b64.length.toLocaleString()}</span>${savedTag}`;
   // name the encoding actually in use. This said "once Base64-encoded" unconditionally, which is simply
   // untrue for a Compact send — and it is the one tooltip a user checks when working out why the
   // character count halved, so a wrong answer there undermines the feature it is describing.
