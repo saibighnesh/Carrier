@@ -1532,7 +1532,10 @@ function showPlan(){
   const el = $("#planNote");
   const total = lastChunks.length;
   const level = recoveryLevel;
-  if(!total || level === "off"){ el.classList.add("hidden"); el.textContent = ""; return; }
+  // No recovery means there is no plan to report. Showing one anyway printed the NO-protection figure
+  // under a heading that has meant "what your recovery bought you" since #201 — a true number in a place
+  // that made it mean the opposite. Compact suppresses recovery, so it suppresses the panel with it.
+  if(!total || level === "off" || textCodec === "dense"){ el.classList.add("hidden"); el.textContent = ""; return; }
   // the DATA part count comes from the chunk header, not from #msgOut — that stat counts every message
   // the user has to send, parity included, which is the right thing to show there and the wrong input here
   const m = /^PX[TC]\/[0-9a-f]+\/\d+\/(\d+)\//.exec(lastChunks[0]);   // PXT or PXC — both carry <total>
@@ -1599,6 +1602,15 @@ $("#lossReset").addEventListener("click", ()=>{
 function showCompact(){
   const el = $("#compactNote");
   const app = MSG_LIMITS[String(msgLimit)] || "this app";
+  // Compact and recovery are mutually exclusive — chunkify forces the level off, because the erasure
+  // code's field is sized to Base64. Say that in the control rather than leaving it set to something
+  // that will not happen: an enabled dropdown reading "Strong" over a send carrying no parity is the
+  // UI asserting something false.
+  const rec = $("#recovery");
+  rec.disabled = (textCodec === "dense");
+  rec.title = rec.disabled
+    ? "Unavailable while Compact is on — the recovery code is built around Base64 characters"
+    : "Adds extra parts so the recipient can rebuild ones that go missing, without asking you to resend";
   if(textCodec !== "dense"){
     // only advertise it where it would actually pay — never beside SMS, where it is a loss
     if(msgLimit >= 2000 && lastChunks.length > 1){
