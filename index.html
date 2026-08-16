@@ -2159,7 +2159,11 @@ $("#saveTxt").addEventListener("click", ()=>{
   const base = (srcImage && srcImage._name ? srcImage._name.replace(/\.[^.]+$/, "") : "carrier").replace(/[^\w.-]+/g, "_").slice(0, 40) || "carrier";
   const app = (MSG_LIMITS[String(msgLimit)] || "").toLowerCase().replace(/[^a-z0-9]+/g, "");   // record which app's per-message limit these chunks fit
   const appTag = app ? `-${app}` : "";
-  downloadURL(url, `${base}-carrier${appTag}-${lastChunks.length}msg-${savedOn.replace(/-/g, "")}.txt`);   // YYYYMMDD in the name too
+  // record the encoding in the name too. The header already explains it, but a folder listing doesn't
+  // show headers — and a Compact backup is the one that will fail confusingly on an older Carrier, so it
+  // is worth being able to spot it without opening the file.
+  const codecTag = textCodec === "dense" ? "-compact" : "";
+  downloadURL(url, `${base}-carrier${appTag}${codecTag}-${lastChunks.length}msg-${savedOn.replace(/-/g, "")}.txt`);   // YYYYMMDD in the name too
   // the .txt holds every part verbatim, so saving it delivers the whole payload exactly as Copy all
   // does — just down a different pipe. Leaving the tracker at "0 of 7" after a save would have the
   // checklist contradict what the user just did, and Copy next would offer part 1 again.
