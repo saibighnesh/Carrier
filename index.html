@@ -528,6 +528,22 @@ function denseToBytes(text){
   if(o !== n) throw new Error("This message is truncated — some characters are missing.");
   return out;
 }
+// Decode just the first `want` bytes of a dense payload, ignoring the length header. denseToBytes derives
+// the byte count from the TOTAL character count, so handing it a short prefix makes it compute a length
+// for a payload that isn't there — and for two of the three possible remainders that isn't even an
+// integer, so it throws. Peeking at a header needs to read symbols, not infer a size.
+function densePrefixBytes(text, want){
+  const out = new Uint8Array(want);
+  let acc = 0, nbits = 0, o = 0;
+  for(let i=1;i<text.length && o<want;i++){          // skip [0], the length header
+    const v = text.charCodeAt(i) - DENSE_BASE;
+    if(v < 0 || v > DENSE_MASK) return null;
+    acc = (acc << DENSE_BITS) | v;
+    nbits += DENSE_BITS;
+    while(nbits >= 8 && o < want){ nbits -= 8; out[o++] = (acc >> nbits) & 0xFF; }
+  }
+  return o < want ? null : out;
+}
 // how many characters `bytes` will occupy in each encoding — used to price the choice for the user
 const denseCharCount = byteLen => 1 + Math.ceil(byteLen * 8 / DENSE_BITS);
 const b64CharCount = byteLen => Math.ceil(byteLen / 3) * 4;
@@ -1274,6 +1290,20 @@ const sentChunks = new Set();
 let staleSend = false;
 // last pack() result and the inputs that produced it, so a no-op refresh doesn't mint a new session id
 let packKey = null, packB64 = null;
+
+// EVERY input pack() consumes must be listed here, and every additional input chunkify() consumes must be
+// listed below. Omitting one does not fail loudly — it silently serves a cached payload while the panel
+// reports a change that never happened, so the control appears to work and produces nothing. That has
+// happened twice: #196 left out msgLimit and the Chat app dropdown became inert (six SMS-sized chunks
+// sitting under "Fits in a single WhatsApp message"), and #214 left out textCodec and the Compact control
+// became inert the same way. Neither is visible in the diff that causes it, because the defect is a line
+// NOT written, and no test catches it because both halves are individually correct.
+// These two functions exist so that adding a setting means adding it to a list that is obviously for that
+// purpose, rather than remembering to edit a template literal elsewhere in the file.
+const packInputs = (maxDim, quality, password) =>
+  [loadToken, maxDim, quality, password, textCodec].join("|");
+const chunkInputs = packKeyStr =>
+  [packKeyStr, msgLimit, recoveryLevel].join("|");
 // chunking is keyed separately: it depends on msgLimit, which pack() never sees
 let chunkKey = null;
 const nextUnsentIndex = () => lastChunks.findIndex(c => !sentChunks.has(c));
@@ -1393,7 +1423,7 @@ async function refresh(){
   // the cache served the previous Base64 payload and the panel reported a change that hadn't happened.
   // Exactly the defect #196 fixed for the Chat app dropdown, reintroduced by adding a setting without
   // adding it to the key. Anything pack() reads has to be in this string.
-  const packKeyNow = `${loadToken}|${d}|${q}|${pw}|${textCodec}`;
+  const packKeyNow = packInputs(d, q, pw);
   let b64;
   if(packKey === packKeyNow && packB64 !== null){
     b64 = packB64;
@@ -1408,7 +1438,7 @@ async function refresh(){
   // the panel contradicted itself: "Fits in a single WhatsApp message ✓" above six 160-char SMS chunks.
   // A real limit change SHOULD mint a new session id — the boundaries differ, so parts already sent can't
   // be reused — and #180's warning then correctly says the send has to restart.
-  const chunkKeyNow = `${packKeyNow}|${msgLimit}|${recoveryLevel}`;
+  const chunkKeyNow = chunkInputs(packKeyNow);
   if(chunkKey !== chunkKeyNow){
     lastChunks = chunkify(b64);
     chunkKey = chunkKeyNow;
@@ -2449,8 +2479,15 @@ function formatParts(nums){
 }
 function headerFlags(s){
   try{
-    const h = b64ToBytes(s.slice(0,8));   // first 8 base64 chars → 6 bytes, enough for MAGIC(4)+flags(1)
-    if(h.length < 5 || !MAGIC.every((m,i)=>h[i]===m)) return null;
+    // Decode with whichever codec the text is in. This assumed Base64 unconditionally, so every Compact
+    // payload threw inside atob and came back null — and all three callers silently took the wrong branch:
+    // no "🔒 Locked" hint, no auto-reveal, and an encrypted message captioned "✓ intact" (the label meant
+    // for UNENCRYPTED payloads that passed their CRC). The alphabets are disjoint, so the first character
+    // settles it, exactly as unpack() already decides. Dense needs 4 characters for the 5 bytes required
+    // at 12 bits each; Base64 needs 8 at 6 bits.
+    const dense = s.length > 0 && s.charCodeAt(0) >= DENSE_BASE && s.charCodeAt(0) < DENSE_BASE + 4096;
+    const h = dense ? densePrefixBytes(s, 5) : b64ToBytes(s.slice(0, 8));
+    if(!h || h.length < 5 || !MAGIC.every((m,i)=>h[i]===m)) return null;
     return h[4];
   }catch{ return null; }
 }
