@@ -528,6 +528,22 @@ function denseToBytes(text){
   if(o !== n) throw new Error("This message is truncated — some characters are missing.");
   return out;
 }
+// Decode just the first `want` bytes of a dense payload, ignoring the length header. denseToBytes derives
+// the byte count from the TOTAL character count, so handing it a short prefix makes it compute a length
+// for a payload that isn't there — and for two of the three possible remainders that isn't even an
+// integer, so it throws. Peeking at a header needs to read symbols, not infer a size.
+function densePrefixBytes(text, want){
+  const out = new Uint8Array(want);
+  let acc = 0, nbits = 0, o = 0;
+  for(let i=1;i<text.length && o<want;i++){          // skip [0], the length header
+    const v = text.charCodeAt(i) - DENSE_BASE;
+    if(v < 0 || v > DENSE_MASK) return null;
+    acc = (acc << DENSE_BITS) | v;
+    nbits += DENSE_BITS;
+    while(nbits >= 8 && o < want){ nbits -= 8; out[o++] = (acc >> nbits) & 0xFF; }
+  }
+  return o < want ? null : out;
+}
 // how many characters `bytes` will occupy in each encoding — used to price the choice for the user
 const denseCharCount = byteLen => 1 + Math.ceil(byteLen * 8 / DENSE_BITS);
 const b64CharCount = byteLen => Math.ceil(byteLen / 3) * 4;
@@ -2449,8 +2465,15 @@ function formatParts(nums){
 }
 function headerFlags(s){
   try{
-    const h = b64ToBytes(s.slice(0,8));   // first 8 base64 chars → 6 bytes, enough for MAGIC(4)+flags(1)
-    if(h.length < 5 || !MAGIC.every((m,i)=>h[i]===m)) return null;
+    // Decode with whichever codec the text is in. This assumed Base64 unconditionally, so every Compact
+    // payload threw inside atob and came back null — and all three callers silently took the wrong branch:
+    // no "🔒 Locked" hint, no auto-reveal, and an encrypted message captioned "✓ intact" (the label meant
+    // for UNENCRYPTED payloads that passed their CRC). The alphabets are disjoint, so the first character
+    // settles it, exactly as unpack() already decides. Dense needs 4 characters for the 5 bytes required
+    // at 12 bits each; Base64 needs 8 at 6 bits.
+    const dense = s.length > 0 && s.charCodeAt(0) >= DENSE_BASE && s.charCodeAt(0) < DENSE_BASE + 4096;
+    const h = dense ? densePrefixBytes(s, 5) : b64ToBytes(s.slice(0, 8));
+    if(!h || h.length < 5 || !MAGIC.every((m,i)=>h[i]===m)) return null;
     return h[4];
   }catch{ return null; }
 }
