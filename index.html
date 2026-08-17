@@ -283,9 +283,9 @@
           </div>
           <div class="row">
             <label for="compact">Compact</label>
-            <select id="compact" autocomplete="off" aria-describedby="compactHint" title="Packs 12 bits into each character instead of Base64's 6, roughly halving the number of messages — but only where the app counts characters">
+            <select id="compact" autocomplete="off" aria-describedby="compactHint" title="Packs 14 bits into each character instead of Base64's 6 — less than half the text — but only where the app counts characters">
               <option value="b64" selected>Off — universal</option>
-              <option value="dense">On — half the messages</option>
+              <option value="dense">On — under half the text</option>
             </select>
             <span id="compactHint" class="sr-only">Halves the message count on apps that count characters. Both sides need a version of Carrier that understands it, and it makes SMS worse rather than better.</span>
           </div>
@@ -411,7 +411,7 @@
 "use strict";
 let msgLimit = 60000;             // chars per message for the chosen chat app (user-selectable)
 let recoveryLevel = "off";        // Reed-Solomon redundancy: off | light | strong (see rsParityCount)
-let textCodec = "b64";            // wire text encoding: b64 (universal) | dense (12 bits/char, opt-in)
+let textCodec = "b64";            // wire text encoding: b64 (universal) | dense (14 bits/char on the wire, opt-in)
 const MSG_LIMITS = { 60000:"WhatsApp", 4096:"Telegram", 4000:"Slack", 2000:"Discord", 160:"SMS" };
 // bytes of compressed image that Base64-encode to fit one message: N bytes → ceil(N/3)*4 chars, so
 // N ≈ (limit − prefix) · 3/4; the 0.72 factor keeps a small safety margin under the raw ceiling
@@ -532,18 +532,89 @@ function denseToBytes(text){
 // the byte count from the TOTAL character count, so handing it a short prefix makes it compute a length
 // for a payload that isn't there — and for two of the three possible remainders that isn't even an
 // integer, so it throws. Peeking at a header needs to read symbols, not infer a size.
-function densePrefixBytes(text, want){
+function densePrefixBytes(text, want, bits = DENSE_BITS){
+  const mask = (1 << bits) - 1;
   const out = new Uint8Array(want);
   let acc = 0, nbits = 0, o = 0;
   for(let i=1;i<text.length && o<want;i++){          // skip [0], the length header
     const v = text.charCodeAt(i) - DENSE_BASE;
-    if(v < 0 || v > DENSE_MASK) return null;
-    acc = (acc << DENSE_BITS) | v;
-    nbits += DENSE_BITS;
+    if(v < 0 || v > mask) return null;
+    acc = (acc << bits) | v;
+    nbits += bits;
     while(nbits >= 8 && o < want){ nbits -= 8; out[o++] = (acc >> nbits) & 0xFF; }
   }
   return o < want ? null : out;
 }
+/* ---------- dense v2: 14 bits per character ---------- */
+// The v1 alphabet stopped at 4,096 symbols because 12 divides into bytes neatly. But the density law is
+// bits/char = log2(N), and the audited-safe CJK block holds 20,992 single-code-unit symbols — so 12 bits
+// leaves real distance on the table. The true ceiling, base-20992 conversion at 14.358 bits/char, needs
+// big-integer division across the whole payload: O(n^2) naive, O(n log^2 n) divide-and-conquer, and all
+// of it resident. 2^14 = 16,384 symbols reaches 97.5% of that ceiling and stays a streaming bit
+// rotation: O(n) time, O(1) auxiliary space, every intermediate inside a 32-bit integer (at most
+// 14+7 = 21 live bits). The remaining 2.49% is not worth a complexity class.
+//
+// The cycle arithmetic: lcm(14,8) = 56 bits, so 7 bytes <-> 4 characters exactly.
+//   chars(n) = 1 + ceil(4n/7)
+// The ceil hides an ambiguity the header must resolve: for n = 7k+r, the payload occupies
+// 4k + [0,1,2,2,3,3,4][r] characters — r=2,3 collide, r=4,5 collide — so the character count alone
+// cannot recover n. One leading symbol carries n mod 7, and k follows exactly.
+//
+// The header symbol lives at offsets 3..9 from U+4E00, DISJOINT from v1's 0..2: the first character of a
+// payload states its own version, so decode dispatch is a fact read off the text, never a guess. v1
+// decoding is kept forever — saved .txt files and in-flight sends must stay readable.
+const DENSE2_BITS = 14;
+const DENSE2_MASK = 0x3FFF;      // 2^14 - 1
+const DENSE2_HDR  = 3;           // header offset base: U+4E00+3 .. U+4E00+9 encode n mod 7
+const D2_PAY = Array.from({length:7}, (_,r)=>Math.ceil(4*r/7));   // [0,1,2,2,3,3,4] — payload chars per remainder
+
+function bytesToDense2(bytes){
+  const n = bytes.length;
+  const chars = 1 + Math.ceil(n * 8 / DENSE2_BITS);
+  const out = new Uint16Array(chars);                 // exact-size, filled once — no string growth
+  out[0] = DENSE_BASE + DENSE2_HDR + (n % 7);
+  let acc = 0, nbits = 0, o = 1;
+  for(let i=0;i<n;i++){
+    acc = ((acc << 8) | bytes[i]) >>> 0;              // <= 21 live bits, safely inside int32
+    nbits += 8;
+    if(nbits >= DENSE2_BITS){
+      nbits -= DENSE2_BITS;
+      out[o++] = DENSE_BASE + ((acc >>> nbits) & DENSE2_MASK);
+    }
+  }
+  if(nbits) out[o++] = DENSE_BASE + ((acc << (DENSE2_BITS - nbits)) & DENSE2_MASK);
+  // build the string in bounded slices: fromCharCode(...whole) would blow the argument limit on big sends
+  let str = "";
+  for(let i=0;i<chars;i+=0x4000) str += String.fromCharCode(...out.subarray(i, Math.min(chars, i+0x4000)));
+  return str;
+}
+function dense2ToBytes(text){
+  if(!text.length) throw new Error("Empty message.");
+  const r = text.charCodeAt(0) - DENSE_BASE - DENSE2_HDR;
+  if(r < 0 || r > 6) throw new Error("This message's header is damaged.");
+  const c = text.length - 1;
+  const k4 = c - D2_PAY[r];                           // 4k, per the cycle arithmetic above
+  if(k4 < 0 || k4 % 4 !== 0) throw new Error("This message is truncated — some characters are missing.");
+  const n = (k4 / 4) * 7 + r;
+  const out = new Uint8Array(n);
+  let acc = 0, nbits = 0, o = 0;
+  for(let i=1;i<text.length;i++){
+    const v = text.charCodeAt(i) - DENSE_BASE;
+    if(v < 0 || v > DENSE2_MASK) throw new Error("This message contains characters that aren't part of it — the chat app may have altered the text.");
+    acc = ((acc << DENSE2_BITS) | v) >>> 0;
+    nbits += DENSE2_BITS;
+    while(nbits >= 8 && o < n){ nbits -= 8; out[o++] = (acc >>> nbits) & 0xFF; }
+  }
+  if(o !== n) throw new Error("This message is truncated — some characters are missing.");
+  return out;
+}
+// first-character version dispatch — the offsets are disjoint by construction, so this is exact
+const denseVersionOf = t => {
+  if(!t.length) return 0;
+  const off = t.charCodeAt(0) - DENSE_BASE;
+  return (off >= 0 && off <= 2) ? 1 : (off >= DENSE2_HDR && off <= DENSE2_HDR + 6) ? 2 : 0;
+};
+const dense2CharCount = byteLen => 1 + Math.ceil(byteLen * 8 / DENSE2_BITS);
 // how many characters `bytes` will occupy in each encoding — used to price the choice for the user
 const denseCharCount = byteLen => 1 + Math.ceil(byteLen * 8 / DENSE_BITS);
 const b64CharCount = byteLen => Math.ceil(byteLen / 3) * 4;
@@ -927,16 +998,17 @@ async function pack(img, mime, password){
   const c = new Uint8Array(5 + body.length);
   c.set(MAGIC,0); c[4] = flags; c.set(body,5);
   // the container bytes are identical either way — only the text they are carried in differs
-  return textCodec === "dense" ? bytesToDense(c) : bytesToB64(c);
+  return textCodec === "dense" ? bytesToDense2(c) : bytesToB64(c);   // v2 on the wire; v1 decode kept below
 }
 async function unpack(text, password){
   // dispatch on the text itself rather than on a setting: the receiver has no idea what the sender chose,
   // and the two alphabets are disjoint, so the first character settles it unambiguously
   const t = text.trim();
-  const isDense = t.length > 0 && t.charCodeAt(0) >= DENSE_BASE && t.charCodeAt(0) < DENSE_BASE + 4096;
+  // the first character states the version — v1 headers sit at offsets 0..2, v2 at 3..9, by construction
+  const dv = denseVersionOf(t);
   let c;
-  try { c = isDense ? denseToBytes(t) : b64ToBytes(t); }
-  catch(e) { throw new Error(isDense ? (e instanceof Error ? e.message : String(e)) : "That text isn't valid — a chunk may be missing or mistyped."); }
+  try { c = dv === 2 ? dense2ToBytes(t) : dv === 1 ? denseToBytes(t) : b64ToBytes(t); }
+  catch(e) { throw new Error(dv ? (e instanceof Error ? e.message : String(e)) : "That text isn't valid — a chunk may be missing or mistyped."); }
   for(let i=0;i<4;i++) if(c[i]!==MAGIC[i]) throw new Error("This doesn't look like a Carrier message.");
   const flags = c[4], body = c.subarray(5);
   let plain, verified = false;   // verified = the bytes were checked against an integrity value, not just parsed
@@ -985,7 +1057,10 @@ function chunkify(b64, level = recoveryLevel){
   // A distinct prefix for dense sends. The old data charset is [A-Za-z0-9+/=], so a build predating this
   // cannot match a dense chunk at all — it reports "no Carrier message found", which is a clean refusal
   // rather than a corrupt image. Sharing the prefix would have invited exactly that corruption.
-  const tag = textCodec === "dense" ? "PXC" : "PXT";
+  // PXD for v2. A pre-v2 build's regex matches PXT|PXC literally, so a v2 send produces ZERO matches —
+  // "no Carrier message found", the clean refusal — rather than a partial match of the narrower v1
+  // character class, which would have surfaced as a bogus "damaged" error.
+  const tag = textCodec === "dense" ? "PXD" : "PXT";
   const out = [];
   for(let i=0;i<total;i++)
     out.push(`${tag}/${sid}/${i+1}/${total}/` + b64.slice(i*per,(i+1)*per));
@@ -1050,7 +1125,7 @@ function reassembleParse(text){
   // Both encodings in one pass. The data class carries the Base64 set and the dense block; they are
   // disjoint, so a chunk cannot be read as the wrong kind, and the lookahead stops a greedy match from
   // swallowing the next chunk whichever prefix it uses.
-  const re = /(PXT|PXC)\/([0-9a-f]+)\/(\d+)\/(\d+)\/((?:(?!PX[TC]\/[0-9a-f]+\/\d+\/\d+\/)[A-Za-z0-9+/=\u4E00-\u5DFF])+)/g;
+  const re = /(PXT|PXC|PXD)\/([0-9a-f]+)\/(\d+)\/(\d+)\/((?:(?!PX[TCD]\/[0-9a-f]+\/\d+\/\d+\/)[A-Za-z0-9+/=\u4E00-\u8DFF])+)/g;
   const parts = [...text.matchAll(re)];
   if(!parts.length) return null;
   // group parts by session id in ONE pass. The old code ran `parts.filter(p=>p[1]===s)` once PER distinct
@@ -1074,7 +1149,8 @@ function reassembleParse(text){
   const group = bySid.get(sid);
   // the prefix that matched decides the encoding — the two alphabets are disjoint, so this is a fact
   // rather than an inference, and every size figure downstream depends on getting it right
-  const isDense = group[0][1] === "PXC";
+  const denseBits = group[0][1] === "PXD" ? DENSE2_BITS : group[0][1] === "PXC" ? DENSE_BITS : 0;
+  const isDense = denseBits > 0;
   const total = parseInt(group[0][4],10);
   if(!total) return null;
   const map = new Map();
@@ -1112,7 +1188,7 @@ function reassembleParse(text){
       else { missingTrunc = true; break; }
     }
   }
-  return { s, sid, total, have, missing, missingTrunc, repaired, parityHave, dense: isDense, hadParity: parityHave > 0,
+  return { s, sid, total, have, missing, missingTrunc, repaired, parityHave, dense: isDense, denseBits, hadParity: parityHave > 0,
            multiSession: sessions.length > 1 ? sessions.length : 0 };
 }
 // Fill holes in `map` (1-based part index -> payload text) from the parity parts. Mutates map; returns how
@@ -1461,7 +1537,7 @@ async function refresh(){
   // nothing on its own, "half of 12,704" is the entire point of the setting.
   // derive the container size back out of the dense text rather than re-guessing it from the parts:
   // the encoder emits 1 header symbol plus ceil(8n/12), so this inverts exactly what was produced
-  const b64Equiv = textCodec === "dense" ? b64CharCount(Math.floor((b64.length - 1) * DENSE_BITS / 8)) : 0;
+  const b64Equiv = textCodec === "dense" ? b64CharCount(Math.floor((b64.length - 1) * DENSE2_BITS / 8)) : 0;
   const savedTag = (b64Equiv > b64.length)
     ? ` <small>chars · half of ${b64Equiv.toLocaleString()} as Base64</small>`
     : " <small>chars</small>";
@@ -1571,7 +1647,7 @@ function showPlan(){
   if(!total || level === "off" || textCodec === "dense"){ el.classList.add("hidden"); el.textContent = ""; return; }
   // the DATA part count comes from the chunk header, not from #msgOut — that stat counts every message
   // the user has to send, parity included, which is the right thing to show there and the wrong input here
-  const m = /^PX[TC]\/[0-9a-f]+\/\d+\/(\d+)\//.exec(lastChunks[0]);   // PXT or PXC — both carry <total>
+  const m = /^PX[TCD]\/[0-9a-f]+\/\d+\/(\d+)\//.exec(lastChunks[0]);   // PXT or PXC — both carry <total>
   const dataParts = m ? +m[1] : total;
   const extra = total - dataParts;
   const post = lossPosterior();
@@ -1610,7 +1686,7 @@ function showPlan(){
 // recomputed from the settings: the header is what the receiver will act on, so it is the authority.
 function chunkDataCount(){
   if(!lastChunks.length) return 0;
-  const m = /^PX[TC]\/[0-9a-f]+\/\d+\/(\d+)\//.exec(lastChunks[0]);   // PXT or PXC — both carry <total>
+  const m = /^PX[TCD]\/[0-9a-f]+\/\d+\/(\d+)\//.exec(lastChunks[0]);   // PXT or PXC — both carry <total>
   return m ? Math.min(+m[1], lastChunks.length) : lastChunks.length;
 }
 // The measured loss history drives every Auto decision, and it was invisible and unresettable — a run of
@@ -1648,7 +1724,7 @@ function showCompact(){
     // only advertise it where it would actually pay — never beside SMS, where it is a loss
     if(msgLimit >= 2000 && lastChunks.length > 1){
       el.className = "note";
-      el.textContent = `Compact would roughly halve these ${lastChunks.length} messages — both sides need a Carrier that understands it.`;
+      el.textContent = `Compact would cut these ${lastChunks.length} messages by more than half — both sides need a Carrier that understands it.`;
       el.classList.remove("hidden");
     } else { el.classList.add("hidden"); el.textContent = ""; }
     return;
@@ -1659,7 +1735,7 @@ function showCompact(){
     el.textContent = `Compact makes ${app} worse, not better — a non-Latin character drops SMS from 160 characters per segment to 70. Turn it off for ${app}.`;
   } else {
     el.className = "note ok";
-    el.textContent = "Compact is on: 12 bits per character instead of 6, so about half the messages. The recipient needs a Carrier that understands it, and recovery is unavailable while it's on.";
+    el.textContent = "Compact is on: 14 bits per character instead of 6 — 2.3x the density, under half the text. The recipient needs a Carrier that understands it, and recovery is unavailable while it's on.";
   }
   el.classList.remove("hidden");
 }
@@ -2459,7 +2535,7 @@ function updateProgress(){
 // ceil(8n/12), so this inverts precisely what it produced.
 function payloadBytes(r){
   return r.dense
-    ? Math.floor(Math.max(0, r.s.length - 1) * DENSE_BITS / 8)
+    ? Math.floor(Math.max(0, r.s.length - 1) * (r.denseBits || DENSE_BITS) / 8)
     : Math.floor(r.s.length * 3 / 4);
 }
 // peek the header flags byte without decrypting: null = not a valid Carrier header, else the flags byte
@@ -2485,8 +2561,8 @@ function headerFlags(s){
     // for UNENCRYPTED payloads that passed their CRC). The alphabets are disjoint, so the first character
     // settles it, exactly as unpack() already decides. Dense needs 4 characters for the 5 bytes required
     // at 12 bits each; Base64 needs 8 at 6 bits.
-    const dense = s.length > 0 && s.charCodeAt(0) >= DENSE_BASE && s.charCodeAt(0) < DENSE_BASE + 4096;
-    const h = dense ? densePrefixBytes(s, 5) : b64ToBytes(s.slice(0, 8));
+    const dv = denseVersionOf(s);
+    const h = dv ? densePrefixBytes(s, 5, dv === 2 ? DENSE2_BITS : DENSE_BITS) : b64ToBytes(s.slice(0, 8));
     if(!h || h.length < 5 || !MAGIC.every((m,i)=>h[i]===m)) return null;
     return h[4];
   }catch{ return null; }
