@@ -6,7 +6,10 @@ import assert from "node:assert/strict";
 const html = readFileSync(HTML, "utf8");
 const a = html.indexOf("/* ---------- Reed-Solomon erasure coding");
 const b = html.indexOf("/* ---------- container (mime");
-const src = html.slice(a, b) + "\nglobalThis.__rs = { rsEncode, rsDecode, rsMatrix, gfMul, gfInv, GF_EXP, b64ToSyms, symsToB64, rsParityCount, RS_BLOCK, RS_META };";
+// this range now also contains the GF(2^14) block added for Compact recovery, which references the dense
+// codec's constants — stub them (this suite only exercises the original GF(2^6)/Base64 path, untouched)
+const src = "const DENSE_BASE = 0x4E00, DENSE2_BITS = 14, DENSE2_MASK = 0x3FFF;\n"
+  + html.slice(a, b) + "\nglobalThis.__rs = { rsEncode, rsDecode, rsMatrix, gfMul, gfInv, GF_EXP, b64ToSyms, symsToB64, rsParityCount, RS_BLOCK, RS_META };";
 new Function(src)();
 const { rsEncode, rsDecode, rsMatrix, gfMul, gfInv, GF_EXP, b64ToSyms, symsToB64, rsParityCount } = globalThis.__rs;
 

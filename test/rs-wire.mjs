@@ -11,9 +11,13 @@ const src = [
   "const SID_LEN = 6;",
   "const chunkPrefixLen = total => 4 + SID_LEN + 3 + 2 * String(total).length;",
   "const crypto = globalThis.crypto;",
+  // this range now also contains the GF(2^14) block added for Compact recovery; stub what it references
+  // (this suite only exercises the original GF(2^6)/Base64 parity path, which is untouched)
+  "const DENSE_BASE = 0x4E00, DENSE2_BITS = 14, DENSE2_MASK = 0x3FFF;",
   slice("/* ---------- Reed-Solomon erasure coding", "/* ---------- container (mime"),
   slice("/* ---------- chunking ---------- */", "/* ---------- compression ---------- */"),
-  "globalThis.__w = { chunkify, parityChunks, rsDecode, b64ToSyms, symsToB64, dec64, enc64, RS_META, RS_BLOCK, setLimit:v=>{msgLimit=v}, rsParityCount };",
+  // parityChunks is now a thin dispatcher; parityChunksB64 is where the emission this suite tests lives
+  "globalThis.__w = { chunkify, parityChunksB64, rsDecode, b64ToSyms, symsToB64, dec64, enc64, RS_META, RS_BLOCK, setLimit:v=>{msgLimit=v}, rsParityCount };",
 ].join("\n");
 new Function(src)();
 const { chunkify, rsDecode, b64ToSyms, symsToB64, dec64, RS_META, setLimit } = globalThis.__w;

@@ -95,13 +95,18 @@ await t("both encodings can sit in one box without contaminating each other", as
   assert.deepEqual(Uint8Array.from(out.img), img, "whichever it picked must decode correctly");
 });
 
-await t("dense sends carry no parity, deliberately, at every recovery level", async () => {
+await t("dense sends now carry real parity at every recovery level (GF(2^14))", async () => {
+  // this used to assert the OPPOSITE — that dense emitted no parity, because the field was sized to
+  // Base64. GF(2^14) recovery (see test/gf14.mjs) removed that limitation; a Compact send should carry
+  // and USE parity exactly like a Base64 one does.
   setLimit(160); setCodec("dense");
   for (const lvl of ["light","strong","auto"]) {
     const cs = chunkify(await pack(img,"image/webp",""), lvl);
     const total = +cs[0].match(/\/(\d+)\/[^/]*$/)[1];
-    assert.equal(cs.length, total, `${lvl}: dense must emit no parity while the field is GF(2^6)`);
+    assert.ok(cs.length > total, `${lvl}: expected parity parts, got none`);
+    assert.ok(cs.every(c => c.startsWith("PXD/")), `${lvl}: parity must share the data tag`);
   }
+  setCodec("b64");
 });
 
 console.log(`\n${pass} passed`);

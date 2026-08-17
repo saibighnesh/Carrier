@@ -9,6 +9,7 @@ const store = new Map();
 const src = [
   "let msgLimit = 60000;",
   "const RS_BLOCK = 32, RS_HALF = 32;",
+  "const RS_BLOCK_CEILING = { b64: 64, dense: 16384 };",
   "const lsGet = k => store.has(k) ? store.get(k) : null;",
   "const lsSet = (k,v) => store.set(k, String(v));",
   "const lsRemove = k => store.delete(k);",
