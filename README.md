@@ -89,22 +89,32 @@ Density is `log₂(N)` bits per character, so the only lever is the alphabet siz
 | Ascii85 | 85 | 6.409 | +6.8% |
 | basE91 | 91 | 6.508 | +8.5% |
 | all printable ASCII | 95 | 6.570 | +9.5% |
-| **Compact (2¹² CJK)** | **4096** | **12.000** | **+100%** |
+| Compact v1 (2¹² CJK) | 4096 | 12.000 | +100% |
+| **Compact v2 (2¹⁴ CJK)** | **16384** | **14.000** | **+133%** |
+| theoretical ceiling (base-20992) | 20992 | 14.358 | +139% |
 
-None of the ASCII options change a message count. 4096 symbols gives exactly 12 bits each, and being a power of two makes it pure bit-packing rather than big-integer base conversion across the payload. The arithmetic lands evenly:
+None of the ASCII options change a message count — and the byte side is closed too: deflate and brotli on WebP-entropy bytes both return ≥100% of the input, so compressing the compressed image is provably empty. Character density is the only open axis.
+
+The audited-safe CJK block holds 20,992 single-code-unit symbols, so the true ceiling is base-20992 radix conversion at 14.358 bits/char. But a non-power-of-two base needs big-integer division across the whole payload — O(n²) naive, O(n log² n) divide-and-conquer, all of it resident. **2¹⁴ = 16,384 symbols reaches 97.5% of that ceiling and stays a streaming bit rotation: O(n) time, O(1) auxiliary space**, every intermediate inside a 32-bit integer. The last 2.49% is not worth a complexity class. Measured: 1 MB round-trips in 20 ms.
+
+The cycle arithmetic: `lcm(14,8) = 56` bits, so 7 bytes ↔ 4 characters exactly, and
 
 ```
-Base64 :  3 bytes → 4 characters
-Compact:  3 bytes → 2 characters      (exactly half)
+chars(n) = 1 + ⌈4n/7⌉
+
+Base64    :  7 bytes → 9.33 characters
+Compact v2:  7 bytes → 4 characters      (43% — 2.33× denser)
 ```
 
-The symbols are CJK Unified Ideographs `U+4E00..U+5DFF`, chosen for what that block **cannot** do: no case, no combining marks, no canonical or compatibility decomposition (so normalisation can neither rewrite a symbol nor merge two), no whitespace, no markdown-active punctuation, one UTF-16 code unit each, and disjoint from Base64 so the two encodings can never be confused. All of those are asserted in the test suite, not assumed.
+The `⌈·⌉` hides a real ambiguity: for `n = 7k+r` the payload occupies `4k + [0,1,2,2,3,3,4][r]` characters — r=2,3 collide and r=4,5 collide — so the character count alone cannot recover `n`. One leading symbol carries `n mod 7`, at offsets disjoint from v1's, so **the first character of any payload states its own version** and decode dispatch is a fact read off the text, never a guess. v1 decoding is kept forever; saved files stay readable.
+
+The symbols are CJK Unified Ideographs `U+4E00..U+8DFF`, chosen for what that block **cannot** do: no case, no combining marks, no canonical or compatibility decomposition (so normalisation can neither rewrite a symbol nor merge two), no whitespace, no markdown-active punctuation, one UTF-16 code unit each, and disjoint from Base64 so the two encodings can never be confused. All of those are asserted in the test suite, not assumed.
 
 A leading symbol carries `byteLength mod 3` — the one fact the character count can't supply, since a 2-byte and a 3-byte tail occupy the same number of characters.
 
 **The cost, plainly.** A CJK character is 3 UTF-8 bytes against Base64's 1. Where a limit is counted in characters this halves the message count; where it's counted in **bytes** it is 1.5× *worse*. And any non-Latin character drops SMS from GSM-7 (160 per segment) to UCS-2 (70) — so Compact makes SMS worse, and Carrier says so when you pick that combination.
 
-**Compatibility.** Compact sends use a `PXC/` prefix. A Carrier that predates this matches only `[A-Za-z0-9+/=]` and so finds *no* chunks at all — a clean "no Carrier message found" rather than a corrupt image. Both sides need a build that understands it.
+**Compatibility.** Compact sends use a `PXD/` prefix (v1 used `PXC/`, still decoded). A Carrier that predates this matches only `[A-Za-z0-9+/=]` and so finds *no* chunks at all — a clean "no Carrier message found" rather than a corrupt image. Both sides need a build that understands it.
 
 **Recovery is unavailable while Compact is on.** The erasure code works over GF(2⁶), a field sized so parity symbols *are* Base64 characters; 12-bit symbols need GF(2¹²), which is a real change rather than a tweak. Shipping a half-working interaction would be worse than the limitation.
 
