@@ -323,7 +323,7 @@
         <!-- aria-live + aria-atomic sit on the whole .stat (not just the value) so each announcement reads
              the label with its value ("Compressed 42 KB 800×600"), never a context-free bare number -->
         <div class="stat" aria-live="polite" aria-atomic="true"><div class="k" title="Compressed image size and pixel dimensions">Compressed</div><div class="v" id="sizeOut">—</div></div>
-        <div class="stat" aria-live="polite" aria-atomic="true"><div class="k" title="Total Base64 characters to send">As text</div><div class="v" id="charOut">—</div></div>
+        <div class="stat" aria-live="polite" aria-atomic="true"><div class="k" title="Total characters of text to send">As text</div><div class="v" id="charOut">—</div></div>
         <div class="stat" aria-live="polite" aria-atomic="true"><div class="k" title="Number of chat messages needed">Messages</div><div class="v" id="msgOut" translate="no">—</div></div>
       </div>
       <p class="note" id="fitNote" role="status"></p>
@@ -422,7 +422,12 @@ const SID_LEN = 6;   // chunkify's session id: 3 random bytes rendered as hex
 // per-message limit pushes the part count to six digits (prefix 25) — where the meter then read "under
 // the limit" for a payload that had already spilled into another part.
 const chunkPrefixLen = total => 4 + SID_LEN + 3 + 2 * String(total).length;
-const targetBytes = () => Math.floor((msgLimit - chunkPrefixLen(1)) * 0.72);
+// bytes that fit one message = (chars available) x (bits each char carries) / 8, with a 4% safety margin.
+// This hardcoded Base64's ratio (6/8 x 0.96 = 0.72) even after Compact shipped 14-bit characters — so
+// "Auto-fit to 1 message" under Compact aimed at a budget 2.33x smaller than the real one and crushed
+// image quality to hit it. The bits-per-char must come from the codec that will actually carry the text.
+const textBitsPerChar = () => textCodec === "dense" ? DENSE2_BITS : 6;
+const targetBytes = () => Math.floor((msgLimit - chunkPrefixLen(1)) * (textBitsPerChar() / 8) * 0.96);
 const CHUNK_RENDER_CAP = 200;     // cap DOM cards — tiny per-app limits (SMS) can produce thousands of chunks
 const CHUNK_PREVIEW = 280;        // chars of a chunk shown on a card; the full text is swapped in for printing
 // only these raster image types may be turned into a blob and opened — never text/html or svg (XSS)
@@ -1105,7 +1110,11 @@ function enc64(v, width){
   for(let i=width-1;i>=0;i--) s += B64A[(v >> (6*i)) & 63];
   return s;
 }
-const dec64 = str => { let v = 0; for(let i=0;i<str.length;i++){ const d = B64V[str.charCodeAt(i)]; if(d < 0) return -1; v = v * 64 + d; } return v; };
+// B64V has 128 entries; indexing it with a char code >= 128 yields undefined, and `undefined < 0` is
+// FALSE — so a CJK character walked straight past the guard and turned v into NaN, which then slipped
+// every `< 0` check downstream in rsRepair. A consistency check happened to catch it later; that was
+// luck, not design. Bound the index before the lookup.
+const dec64 = str => { let v = 0; for(let i=0;i<str.length;i++){ const cc = str.charCodeAt(i); const d = cc < 128 ? B64V[cc] : -1; if(d < 0) return -1; v = v * 64 + d; } return v; };
 // reassemble() is called far more often than the text changes: a paste runs updateProgress() and
 // maybeAutoReveal(), which runs doReveal(), which re-reassembles after its await to detect the inbox
 // changing mid-derive — four full regex scans, match-array allocations, and payload concatenations over
@@ -1366,6 +1375,9 @@ const sentChunks = new Set();
 let staleSend = false;
 // last pack() result and the inputs that produced it, so a no-op refresh doesn't mint a new session id
 let packKey = null, packB64 = null;
+// last compressOnce() result — the canvas encode is the most expensive step in refresh() and its inputs
+// change far less often than refresh() runs
+let imgKey = null, imgCache = null, imgMimeCache = "image/webp";
 
 // EVERY input pack() consumes must be listed here, and every additional input chunkify() consumes must be
 // listed below. Omitting one does not fail loudly — it silently serves a cached payload while the panel
@@ -1477,14 +1489,27 @@ async function refresh(){
   refreshing = true;
   try {
   const q = +$("#quality").value, d = +$("#maxdim").value;
-  const img = await compressOnce(d, q);
-  if(!srcImage) return;   // Start over ran during compression — abandon this stale pass
-  // preview
-  if(thumbUrl) URL.revokeObjectURL(thumbUrl);
-  const blob = new Blob([img], {type:srcMime});
-  thumbUrl = URL.createObjectURL(blob);
-  lastPreviewBytes = img; lastPreviewMime = srcMime;   // keep the bytes so a zoom can mint its own URL
-  $("#thumb").src = thumbUrl;
+  // The compression cache sits ABOVE compressOnce for the same reason the pack cache exists below it:
+  // refresh() fires on password keystrokes, chat-app changes, Compact and Recovery toggles — none of
+  // which move a pixel — and each was re-running the full canvas resize + WebP encode anyway. On a large
+  // photo that is the single most expensive step in the pass, spent producing a byte-identical result.
+  // Keyed on exactly what compressOnce consumes: the source image (loadToken) and the two encode settings.
+  const imgKeyNow = `${loadToken}|${d}|${q}`;
+  let img;
+  if(imgKey === imgKeyNow && imgCache !== null){
+    img = imgCache;
+    srcMime = imgMimeCache;   // encodeCanvas sets this global as a side effect; restore it on a cache hit
+  } else {
+    img = await compressOnce(d, q);
+    if(!srcImage) return;   // Start over ran during compression — abandon this stale pass
+    imgKey = imgKeyNow; imgCache = img; imgMimeCache = srcMime;
+    // the preview only changes when the pixels do — rebuild it on a miss, never on a hit
+    if(thumbUrl) URL.revokeObjectURL(thumbUrl);
+    const blob = new Blob([img], {type:srcMime});
+    thumbUrl = URL.createObjectURL(blob);
+    lastPreviewBytes = img; lastPreviewMime = srcMime;   // keep the bytes so a zoom can mint its own URL
+    $("#thumb").src = thumbUrl;
+  }
   // pack with current password to get true size — use the raw value (no trim): a password is an
   // exact secret, and trimming let an all-whitespace entry collapse to "" and ship UNENCRYPTED
   const pw = $("#pass").value;
@@ -2380,6 +2405,7 @@ function resetSend(){
   srcImage = null; lastChunks = [];
   sentChunks.clear(); staleSend = false; paintSent();   // the checklist belongs to the payload being cleared
   packKey = null; packB64 = null; chunkKey = null;
+  imgKey = null; imgCache = null;
   $("#chunks").innerHTML = "";
   ["tunePanel","lockPanel","outPanel"].forEach(id => $("#"+id).classList.add("hidden"));
   $("#pass").value = ""; maskPassword("pass"); updatePwStrength(); pwTruncNote("pass", "passTrunc");
