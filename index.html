@@ -742,6 +742,137 @@ function rsDecode(n, len, present, parity){
   missing.forEach((j, r) => out.set(j, S[r]));
   return out;
 }
+/* ---------- GF(2^14) recovery for Compact sends ---------- */
+// Recovery originally worked only under Base64, because GF(2^6) is sized so a parity symbol IS a Base64
+// character — the trick that makes it free. A Compact character carries 14 bits, so the same trick needs
+// GF(2^14): a parity symbol becomes a dense character, no re-encoding, same "no inflation" property at the
+// wider alphabet. Shipping that (rather than leaving Compact and recovery mutually exclusive) is the
+// difference between a real feature and a footnote saying it doesn't exist yet.
+//
+// The GF(2^6) tables above are UNCHANGED — this is a second, independent field, not a refactor of the
+// live Base64 recovery path. Reusing rsMatrix/rsEncode/rsDecode's *shape* for it (rather than copy-pasting
+// ~55 lines a second time) is done via a small factory, gfField(), so the two fields can never drift the
+// way #196/#214/#221 drifted: the Cauchy construction, the Gauss-Jordan solve, and the "refuse rather than
+// guess" posture are written once and used by both.
+//
+// 0x4443 is a VERIFIED primitive polynomial for GF(2^14), not a remembered one: searched and checked by
+// test/field14.mjs — full closure (all 16,383 non-zero elements reached, 0 holes), 500k+ sampled
+// round-trip (a*b/b=a) and distributivity (a*(b^c)=(a*b)^(a*c)) checks, 0 failures. Primitivity is the
+// property everything downstream rests on; a wrong polynomial would decode garbage only on the specific
+// loss patterns that hit the missing elements, which no small hand-check would catch.
+const GF14_POLY = 0x4443;
+const GF14_ORDER = 1 << DENSE2_BITS, GF14_N = GF14_ORDER - 1;   // tied to DENSE2_BITS, not a second "14"
+const GF14_EXP = new Uint16Array(2 * GF14_N), GF14_LOG = new Int32Array(GF14_ORDER).fill(-1);
+(()=>{ let x = 1;
+  for(let i=0;i<GF14_N;i++){ GF14_EXP[i] = x; GF14_LOG[x] = i; x <<= 1; if(x & GF14_ORDER) x ^= GF14_POLY; }
+  for(let i=GF14_N;i<2*GF14_N;i++) GF14_EXP[i] = GF14_EXP[i-GF14_N];
+})();
+const gf14Mul = (a,b) => (a === 0 || b === 0) ? 0 : GF14_EXP[GF14_LOG[a] + GF14_LOG[b]];
+const gf14Inv = a => GF14_EXP[(GF14_N - GF14_LOG[a]) % GF14_N];
+
+// Factory producing a matrix/encode/decode triple for one field, given its multiply/invert and the same
+// Cauchy y-offset both fields use (RS_HALF — block size stays 32 regardless of field, so the bound that
+// keeps `i ^ (half+j)` a valid nonzero element holds identically for either order). Symbols are stored in
+// Uint16Array throughout: 14-bit values need it, and 6-bit values fit inside it without any behaviour
+// change, so the SAME factory instance shape serves both without a second code path per width.
+function gfField(mul, inv, half){
+  function matrix(rows, n){
+    const A = [];
+    for(let i=0;i<rows;i++){
+      const r = new Uint16Array(n);
+      for(let j=0;j<n;j++) r[j] = inv(i ^ (half + j));
+      A.push(r);
+    }
+    return A;
+  }
+  function encode(shards, k){
+    const n = shards.length, len = shards[0].length, A = matrix(k, n), out = [];
+    for(let i=0;i<k;i++){
+      const p = new Uint16Array(len);
+      for(let j=0;j<n;j++){
+        const a = A[i][j], s = shards[j];
+        if(a === 0) continue;
+        for(let b=0;b<len;b++) p[b] ^= mul(a, s[b]);
+      }
+      out.push(p);
+    }
+    return out;
+  }
+  function decode(n, len, present, parity){
+    const missing = [];
+    for(let i=0;i<n;i++) if(!present.has(i)) missing.push(i);
+    if(!missing.length) return new Map();
+    const rows = [...parity.keys()].sort((a,b)=>a-b).slice(0, missing.length);
+    if(rows.length < missing.length) return null;
+    const A = matrix(Math.max(...rows) + 1, n);
+    const S = rows.map(r => {
+      const s = Uint16Array.from(parity.get(r));
+      for(const [j, shard] of present){
+        const a = A[r][j];
+        if(a === 0) continue;
+        for(let b=0;b<len;b++) s[b] ^= mul(a, shard[b]);
+      }
+      return s;
+    });
+    const t = missing.length;
+    const B = rows.map(r => Uint16Array.from(missing.map(j => A[r][j])));
+    for(let c=0;c<t;c++){
+      let piv = -1;
+      for(let r=c;r<t;r++) if(B[r][c] !== 0){ piv = r; break; }
+      if(piv < 0) return null;   // Cauchy guarantees this can't happen; refuse rather than emit garbage
+      if(piv !== c){ const tb = B[c]; B[c] = B[piv]; B[piv] = tb; const ts = S[c]; S[c] = S[piv]; S[piv] = ts; }
+      const ivv = inv(B[c][c]);
+      for(let j=0;j<t;j++) B[c][j] = mul(B[c][j], ivv);
+      for(let b=0;b<len;b++) S[c][b] = mul(S[c][b], ivv);
+      for(let r=0;r<t;r++){
+        if(r === c || B[r][c] === 0) continue;
+        const f = B[r][c];
+        for(let j=0;j<t;j++) B[r][j] ^= mul(f, B[c][j]);
+        for(let b=0;b<len;b++) S[r][b] ^= mul(f, S[c][b]);
+      }
+    }
+    const out = new Map();
+    missing.forEach((j, r) => out.set(j, S[r]));
+    return out;
+  }
+  return { matrix, encode, decode };
+}
+const RS14 = gfField(gf14Mul, gf14Inv, RS_HALF);
+
+// A dense character IS a 14-bit RS symbol (value = code - DENSE_BASE), so parity output maps straight back
+// to characters — the same no-re-encoding property Base64 parity has, at the wider alphabet.
+const denseToSyms = (str, len) => { const out = new Uint16Array(len); for(let i=0;i<str.length && i<len;i++){ const v = str.charCodeAt(i) - DENSE_BASE; out[i] = (v >= 0 && v < GF14_ORDER) ? v : 0; } return out; };
+const symsToDense = syms => { let s = ""; for(let i=0;i<syms.length;i++) s += String.fromCharCode(DENSE_BASE + syms[i]); return s; };
+
+// Per-parity-part header for a Compact send: block(1) + row(1) + core length(2), all dense characters. Two
+// characters at 14 bits each address up to 2^28 — far beyond anything this app produces — against Base64
+// metadata's four characters at 6 bits (2^24); dense needs fewer header characters because its symbols
+// already carry more.
+const RS14_META = 4;
+function enc14(v, width){
+  if(v < 0 || v >= Math.pow(GF14_ORDER, width)) return null;
+  let s = "";
+  for(let i=width-1;i>=0;i--) s += String.fromCharCode(DENSE_BASE + ((v >>> (DENSE2_BITS*i)) & DENSE2_MASK));
+  return s;
+}
+// Bounded before the lookup, the same discipline dec64 needed fixing to have (a char code outside the
+// dense range must reject immediately, never fall through into a NaN that survives a `< 0` guard).
+function dec14(str){
+  let v = 0;
+  for(let i=0;i<str.length;i++){
+    const d = str.charCodeAt(i) - DENSE_BASE;
+    if(d < 0 || d > DENSE2_MASK) return -1;
+    v = v * GF14_ORDER + d;
+  }
+  return v;
+}
+// How many blocks a parity header can address, per codec: Base64's block index is one 6-bit character
+// (0..63); dense's is one 14-bit character (0..16383). Reusing the Base64 constant for dense would have
+// under-planned every large Compact send — exactly the #206-class defect where the planner models a
+// narrower encoder than the one that actually ships. In practice 16,384 blocks x 32 parts is far beyond
+// any image this app produces, so this mostly documents the true ceiling rather than ever being hit.
+const RS_BLOCK_CEILING = { b64: 64, dense: GF14_ORDER };
+
 // how many parity parts per block at each redundancy setting — always at least one, or the setting is a lie
 // "auto" is not a fraction — it is solved per send by planParity, so it carries a null here and every
 // caller routes through rsParityCount rather than reading the table directly.
@@ -886,12 +1017,16 @@ function recordLoss(lost, seen){
 // a block of fewer than two parts (nothing to rebuild from), and blocks past what the one-character block
 // index in the parity header can address. Getting this wrong meant quoting a protected probability for
 // parts that were shipping bare.
-function rsBlockLayout(total, kFor){
+// `ceiling` is how many blocks the parity header can address, and it differs by codec — Base64's block
+// index is one 6-bit character (RS_BLOCK_CEILING.b64 = 64), dense's is one 14-bit character
+// (RS_BLOCK_CEILING.dense = 16384). Defaults to the Base64 value so every pre-existing caller (and the
+// whole layout test suite) keeps behaving exactly as before without being touched.
+function rsBlockLayout(total, kFor, ceiling = RS_BLOCK_CEILING.b64){
   const out = [];
   for(let start=0; start<total; start+=RS_BLOCK){
     const n = Math.min(RS_BLOCK, total - start);
     if(n < 2){ out.push({ n, k: 0 }); break; }              // parityChunks breaks here too
-    const coded = (start / RS_BLOCK) <= 63;
+    const coded = (start / RS_BLOCK) < ceiling;
     out.push({ n, k: coded ? Math.max(0, Math.min(RS_HALF, kFor(n))) : 0 });
     if(!coded) break;                                       // and here
   }
@@ -916,13 +1051,13 @@ const uncodedParts = layout => layout.reduce((n, blk) => n + (blk.k ? 0 : blk.n)
 // the .txt as a file, not more insurance. The fixed levels were capped at 25% by construction; Auto
 // removed that ceiling for a reliability target and nothing replaced it.
 const RS_COST_CAP = 0.5;   // parity per block may not exceed half the block's data parts
-function planParity(total, target, post){
+function planParity(total, target, post, ceiling = RS_BLOCK_CEILING.b64){
   const { a, b } = post || lossPosterior();
   const hard = Math.min(RS_HALF, Math.max(1, Math.min(RS_BLOCK, total)));
   const kMax = Math.max(1, Math.min(hard, Math.ceil(Math.min(RS_BLOCK, total) * RS_COST_CAP)));
   let best = null;
   for(let k=0;k<=kMax;k++){
-    const layout = rsBlockLayout(total, () => k);
+    const layout = rsBlockLayout(total, () => k, ceiling);
     const p = imageProb(layout, a, b);
     if(!best || p > best.imageProb) best = { k, imageProb: p, layout };
     if(p >= target) return { k, imageProb: p, layout, blocks: layout.length, uncoded: uncodedParts(layout), met: true, capped: false };
@@ -1038,13 +1173,16 @@ async function unpack(text, password){
 /* ---------- chunking ---------- */
 function chunkify(b64, level = recoveryLevel){
   const sid = Array.from(crypto.getRandomValues(new Uint8Array(SID_LEN/2)), b => b.toString(16).padStart(2,'0')).join('');
+  const dense = textCodec === "dense";
   // the prefix length grows with the digit-count of index and total, so a chunk sized against a fixed
   // reserve can exceed msgLimit once the part count gets long — and a transport may split or truncate
   // that, silently losing data. Size `per` from chunkPrefixLen(), iterating until total stops growing.
-  // parity parts carry RS_META extra characters of header, so when recovery is on every part — data
-  // included, since shards must be equal length — is sized RS_META shorter. That is the cost of the
-  // feature and it is why it is off by default.
-  const hdr = (textCodec !== "dense" && level !== "off" && RS_LEVELS.hasOwnProperty(level) ? RS_META : 0);
+  // parity parts carry a metadata header's worth of extra characters, so when recovery is on every part —
+  // data included, since shards must be equal length — is sized that much shorter. That is the cost of
+  // the feature and it is why it is off by default. The header width differs by codec (RS_META vs
+  // RS14_META) because the two alphabets carry a different number of header fields per character.
+  const recoveryOn = level !== "off" && RS_LEVELS.hasOwnProperty(level);
+  const hdr = recoveryOn ? (dense ? RS14_META : RS_META) : 0;
   let per = Math.max(1, msgLimit - chunkPrefixLen(1) - hdr), total = Math.max(1, Math.ceil(b64.length / per));
   for(let k=0;k<4;k++){
     const p = Math.max(1, msgLimit - chunkPrefixLen(total) - hdr);
@@ -1053,23 +1191,24 @@ function chunkify(b64, level = recoveryLevel){
     per = p; total = t;
   }
   // Auto is solved here, against the part count this packing actually produced — planning from a
-  // guessed count would size the parity for a send that isn't the one going out.
-  // Recovery codes over GF(2^6), a field sized to match the Base64 alphabet so parity symbols ARE Base64
-  // characters. A dense payload's symbols are 12-bit, which needs GF(2^12) — a real change, not a tweak.
-  // Rather than ship an interaction that half works, dense sends carry no parity, and the UI says so.
-  if(textCodec === "dense") level = "off";
-  lastPlan = (level === "auto") ? planParity(total, RS_TARGET) : null;
+  // guessed count would size the parity for a send that isn't the one going out. The block-addressing
+  // ceiling passed in is per-codec: Base64's block index is one 6-bit character, dense's one 14-bit —
+  // reusing Base64's narrower ceiling for dense would under-plan large Compact sends.
+  lastPlan = (level === "auto") ? planParity(total, RS_TARGET, undefined, dense ? RS_BLOCK_CEILING.dense : RS_BLOCK_CEILING.b64) : null;
   // A distinct prefix for dense sends. The old data charset is [A-Za-z0-9+/=], so a build predating this
   // cannot match a dense chunk at all — it reports "no Carrier message found", which is a clean refusal
   // rather than a corrupt image. Sharing the prefix would have invited exactly that corruption.
   // PXD for v2. A pre-v2 build's regex matches PXT|PXC literally, so a v2 send produces ZERO matches —
   // "no Carrier message found", the clean refusal — rather than a partial match of the narrower v1
   // character class, which would have surfaced as a bogus "damaged" error.
-  const tag = textCodec === "dense" ? "PXD" : "PXT";
+  const tag = dense ? "PXD" : "PXT";
   const out = [];
   for(let i=0;i<total;i++)
     out.push(`${tag}/${sid}/${i+1}/${total}/` + b64.slice(i*per,(i+1)*per));
-  out.push(...parityChunks(b64, sid, total, per, level));
+  // Parity chunks MUST carry the same tag as the data chunks: reassemble decides the whole session's
+  // encoding from group[0]'s tag, and a paste can arrive in any order — if data were PXD and parity PXT,
+  // a parity part landing first would misdetect the entire send as Base64.
+  out.push(...(dense ? parityChunksDense(b64, sid, total, per, level, tag) : parityChunksB64(b64, sid, total, per, level, tag)));
   return out;
 }
 // Build the parity parts for a payload. They are ordinary chunks whose index runs PAST <total>, which
@@ -1077,7 +1216,7 @@ function chunkify(b64, level = recoveryLevel){
 // send it understands.
 //   payload: block(1) + row(1) + coreLength(4) + shard, all Base64 characters
 // The receiver reads `per` back as (payload length - RS_META), so it doesn't need to be transmitted.
-function parityChunks(b64, sid, total, per, level){
+function parityChunksB64(b64, sid, total, per, level, tag){
   const k = rsParityCount(Math.min(total, RS_BLOCK), level, lastPlan);
   if(!k || total < 2) return [];   // one part can't lose one part and still have anything to rebuild from
   // Coding runs over the payload with Base64 padding removed: '=' is not one of the 64 field elements.
@@ -1094,9 +1233,34 @@ function parityChunks(b64, sid, total, per, level){
     for(let i=0;i<n;i++) shards.push(b64ToSyms(core.slice((start+i)*per, (start+i+1)*per), per));
     const rows = rsEncode(shards, rsParityCount(n, level, lastPlan));
     const blk = start / RS_BLOCK;
-    if(blk > 63) break;   // block index must fit one Base64 character
+    if(blk >= RS_BLOCK_CEILING.b64) break;   // block index must fit one Base64 character
     rows.forEach((row, j)=>{
-      out.push(`PXT/${sid}/${total + 1 + seq}/${total}/` + B64A[blk] + B64A[j] + lenChars + symsToB64(row));
+      out.push(`${tag}/${sid}/${total + 1 + seq}/${total}/` + B64A[blk] + B64A[j] + lenChars + symsToB64(row));
+      seq++;
+    });
+  }
+  return out;
+}
+// The Compact equivalent of parityChunksB64, over GF(2^14) instead of GF(2^6). Structurally identical —
+// same block loop, same "refuse rather than mis-state" posture — but genuinely simpler in one respect:
+// dense text has no Base64-style '=' padding to strip, so there is no padding-boundary bookkeeping at all.
+function parityChunksDense(text, sid, total, per, level, tag){
+  const k = rsParityCount(Math.min(total, RS_BLOCK), level, lastPlan);
+  if(!k || total < 2) return [];
+  const lenChars = enc14(text.length, 2);
+  if(lenChars === null) return [];   // beyond what 2 dense characters can address — skip parity, never mis-state it
+  const out = [];
+  let seq = 0;
+  for(let start=0; start<total; start+=RS_BLOCK){
+    const n = Math.min(RS_BLOCK, total - start);
+    if(n < 2) break;
+    const shards = [];
+    for(let i=0;i<n;i++) shards.push(denseToSyms(text.slice((start+i)*per, (start+i+1)*per), per));
+    const rows = RS14.encode(shards, rsParityCount(n, level, lastPlan));
+    const blk = start / RS_BLOCK;
+    if(blk >= RS_BLOCK_CEILING.dense) break;   // block index must fit one dense character (16,384 of them)
+    rows.forEach((row, j)=>{
+      out.push(`${tag}/${sid}/${total + 1 + seq}/${total}/` + enc14(blk, 1) + enc14(j, 1) + lenChars + symsToDense(row));
       seq++;
     });
   }
@@ -1174,7 +1338,7 @@ function reassembleParse(text){
   // Rebuild whatever is missing before anything downstream looks at the result, so the progress line, the
   // Reveal button and doReveal all see one consistent picture: a recovered send is simply a complete one.
   let repaired = 0;
-  if(map.size < total && parityRaw.length) repaired = rsRepair(map, total, parityRaw);
+  if(map.size < total && parityRaw.length) repaired = rsRepair(map, total, parityRaw, isDense);
   const parityHave = parityRaw.length;
   // concatenate the present parts in index order (absent indices are simply skipped). NEVER iterate
   // 1..total: <total> comes straight from the pasted text, so a corrupt/oversized value like 999999999
@@ -1203,7 +1367,12 @@ function reassembleParse(text){
 // Fill holes in `map` (1-based part index -> payload text) from the parity parts. Mutates map; returns how
 // many parts were rebuilt. Every step is guarded: recovery is a best-effort bonus, and a malformed or
 // hostile parity part must leave the user exactly where they were, never worse.
-function rsRepair(map, total, parityRaw){
+// Dispatches on the encoding reassembleParse already determined from the chunk tag — a fact read off the
+// text, not a guess — to the matching field/alphabet implementation.
+function rsRepair(map, total, parityRaw, isDense){
+  return isDense ? rsRepairDense(map, total, parityRaw) : rsRepairB64(map, total, parityRaw);
+}
+function rsRepairB64(map, total, parityRaw){
   const byBlock = new Map();
   let coreLen = -1, per = -1;
   for(const raw of parityRaw){
@@ -1255,6 +1424,56 @@ function rsRepair(map, total, parityRaw){
       // only produced a payload one character too long, which decoded to a corrupt image.
       const padHere = Math.max(0, Math.min(startCh + per, paddedLen) - Math.max(startCh, coreLen));
       text += "=".repeat(padHere);
+      map.set(idx, text);
+      repaired++;
+    }
+  }
+  return repaired;
+}
+// The Compact equivalent of rsRepairB64, over GF(2^14). Same block-by-block structure and the same
+// "refuse rather than guess" posture at every step, but genuinely simpler in one respect: dense text has
+// no Base64-style '=' padding, so there is no padding-boundary bookkeeping at all — coreLen IS the payload
+// length, and a rebuilt shard needs only a straight trim, never a restored suffix.
+function rsRepairDense(map, total, parityRaw){
+  const byBlock = new Map();
+  let coreLen = -1, per = -1;
+  for(const raw of parityRaw){
+    if(raw.length <= RS14_META) continue;
+    const blk = dec14(raw.slice(0,1)), row = dec14(raw.slice(1,2)), len = dec14(raw.slice(2,4));
+    if(blk < 0 || row < 0 || len < 0 || row >= RS_HALF) continue;
+    // every parity part of a send states the same core length and shard size; a disagreement means parts
+    // from two different packings are mixed in the box, and guessing between them would corrupt the image
+    if(coreLen < 0){ coreLen = len; per = raw.length - RS14_META; }
+    else if(coreLen !== len || per !== raw.length - RS14_META) return 0;
+    let m = byBlock.get(blk);
+    if(!m){ m = new Map(); byBlock.set(blk, m); }
+    m.set(row, denseToSyms(raw.slice(RS14_META), per));
+  }
+  if(per <= 0 || coreLen <= 0) return 0;
+  // The stated length must reproduce the sender's part count, or this parity belongs to another payload.
+  // No padding correction needed — dense text has none, unlike the Base64 path this mirrors.
+  if(Math.ceil(coreLen / per) !== total) return 0;
+  let repaired = 0;
+  for(const [blk, parity] of byBlock){
+    const start = blk * RS_BLOCK;
+    const n = Math.min(RS_BLOCK, total - start);
+    if(n < 2 || start < 0 || start >= total) continue;
+    const present = new Map();
+    let holes = 0;
+    for(let i=0;i<n;i++){
+      const payload = map.get(start + i + 1);
+      if(payload === undefined){ holes++; continue; }
+      present.set(i, denseToSyms(payload, per));
+    }
+    if(!holes) continue;
+    let out = null;
+    try { out = RS14.decode(n, per, present, parity); } catch { out = null; }
+    if(!out) continue;   // not enough parity for this block — leave its holes for the user to chase
+    for(const [i, syms] of out){
+      const idx = start + i + 1;
+      const startCh = (idx - 1) * per;
+      // a rebuilt shard is always `per` symbols; trim it back to however much real payload this part covers
+      const text = symsToDense(syms).slice(0, Math.max(0, Math.min(per, coreLen - startCh)));
       map.set(idx, text);
       repaired++;
     }
@@ -1669,13 +1888,15 @@ function showPlan(){
   const level = recoveryLevel;
   // No recovery means there is no plan to report. Showing one anyway printed the NO-protection figure
   // under a heading that has meant "what your recovery bought you" since #201 — a true number in a place
-  // that made it mean the opposite. Compact suppresses recovery, so it suppresses the panel with it.
-  if(!total || level === "off" || textCodec === "dense"){ el.classList.add("hidden"); el.textContent = ""; return; }
+  // that made it mean the opposite.
+  if(!total || level === "off"){ el.classList.add("hidden"); el.textContent = ""; return; }
   // the DATA part count comes from the chunk header, not from #msgOut — that stat counts every message
   // the user has to send, parity included, which is the right thing to show there and the wrong input here
-  const m = /^PX[TCD]\/[0-9a-f]+\/\d+\/(\d+)\//.exec(lastChunks[0]);   // PXT or PXC — both carry <total>
+  const m = /^PX[TCD]\/[0-9a-f]+\/\d+\/(\d+)\//.exec(lastChunks[0]);   // PXT, PXC or PXD all carry <total>
   const dataParts = m ? +m[1] : total;
   const extra = total - dataParts;
+  // the addressable-block ceiling differs by codec — see RS_BLOCK_CEILING
+  const ceiling = textCodec === "dense" ? RS_BLOCK_CEILING.dense : RS_BLOCK_CEILING.b64;
   const post = lossPosterior();
   const pct = n => (n * 100).toFixed(n > 0.999 ? 2 : 1);
   // Quote the rate the planner is ACTUALLY using — the posterior mean — not the raw observed fraction.
@@ -1688,7 +1909,7 @@ function showPlan(){
     ? `an estimated ${pct(est)}% loss rate (${post.lost} of ${post.seen} part${post.seen!==1?"s":""} lost so far)`
     : `an assumed ${pct(LOSS_PRIOR_A / (LOSS_PRIOR_A + LOSS_PRIOR_B))}% loss rate — this device hasn't received a send yet`;
   if(level === "auto"){
-    const plan = lastPlan || planParity(dataParts, RS_TARGET, post);
+    const plan = lastPlan || planParity(dataParts, RS_TARGET, post, ceiling);
     const bare = plan.uncoded || 0;
     el.className = plan.met ? "note ok" : "note warn";
     el.textContent = plan.met
@@ -1698,7 +1919,7 @@ function showPlan(){
                 : " Insuring past this point costs more messages than the image itself — a smaller image, or sending the .txt as a file, beats buying more recovery.");
   } else {
     // a fixed level gets the same honest number, over the same real layout — its k varies with block size
-    const layout = rsBlockLayout(dataParts, n => rsParityCount(n, level));
+    const layout = rsBlockLayout(dataParts, n => rsParityCount(n, level), ceiling);
     const prob = imageProb(layout, post.a, post.b);
     const bare = uncodedParts(layout);
     el.className = prob >= RS_TARGET ? "note ok" : "note warn";
@@ -1737,15 +1958,10 @@ $("#lossReset").addEventListener("click", ()=>{
 function showCompact(){
   const el = $("#compactNote");
   const app = MSG_LIMITS[String(msgLimit)] || "this app";
-  // Compact and recovery are mutually exclusive — chunkify forces the level off, because the erasure
-  // code's field is sized to Base64. Say that in the control rather than leaving it set to something
-  // that will not happen: an enabled dropdown reading "Strong" over a send carrying no parity is the
-  // UI asserting something false.
-  const rec = $("#recovery");
-  rec.disabled = (textCodec === "dense");
-  rec.title = rec.disabled
-    ? "Unavailable while Compact is on — the recovery code is built around Base64 characters"
-    : "Adds extra parts so the recipient can rebuild ones that go missing, without asking you to resend";
+  // Recovery now works under Compact too (GF(2^14): a parity symbol IS a dense character, the same trick
+  // GF(2^6) does for Base64), so the control is never disabled here any more. It briefly was, before that
+  // field existed — leaving that comment as the reason a future edit shouldn't reintroduce the disable.
+  $("#recovery").title = "Adds extra parts so the recipient can rebuild ones that go missing, without asking you to resend";
   if(textCodec !== "dense"){
     // only advertise it where it would actually pay — never beside SMS, where it is a loss
     if(msgLimit >= 2000 && lastChunks.length > 1){
@@ -1761,7 +1977,7 @@ function showCompact(){
     el.textContent = `Compact makes ${app} worse, not better — a non-Latin character drops SMS from 160 characters per segment to 70. Turn it off for ${app}.`;
   } else {
     el.className = "note ok";
-    el.textContent = "Compact is on: 14 bits per character instead of 6 — 2.3x the density, under half the text. The recipient needs a Carrier that understands it, and recovery is unavailable while it's on.";
+    el.textContent = "Compact is on: 14 bits per character instead of 6 — 2.3x the density, under half the text. The recipient needs a Carrier that understands it.";
   }
   el.classList.remove("hidden");
 }

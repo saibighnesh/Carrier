@@ -22,14 +22,14 @@ Save the single `index.html` file and it works offline — on a plane, on a trai
 ## Features
 
 - **Single file** — one `index.html`, zero dependencies, no build step
-- **Compact encoding** — optionally packs 12 bits into each character instead of Base64's 6, roughly halving the message count on apps that count characters. Off by default; both sides need a Carrier that understands it
+- **Compact encoding** — optionally packs 14 bits into each character instead of Base64's 6, cutting the message count to 43% on apps that count characters. Off by default; both sides need a Carrier that understands it
 - **Smart compression** — auto-resizes and re-encodes (WebP → JPEG fallback) to hit a target size
 - **Auto-fit** — one click finds the best quality/dimension combo to land in a single message
 - **Multi-part chunking** — if the image is still too big, splits into numbered parts (`PXT/id/1/3`, `2/3`, `3/3`) that reassemble in any order
 - **Send-tracking** — a multi-part send marks off each part as it goes out (copied, or saved into a `.txt`). **Copy next message** hands you the one you haven't sent yet, **Copy remaining** dumps everything still outstanding in one paste, and progress shows in the tab title so you can check it from the chat app. If a setting changes mid-send, Carrier says so — the earlier parts belong to a different version and the recipient can't combine the two
 - **AES-256-GCM encryption** — optional password lock using browser-native Web Crypto (PBKDF2, 250k iterations)
 - **Damage detection** — unlocked messages carry a CRC-32, so a part mangled in transit is reported as damaged instead of showing up as a broken image (encrypted messages get this from GCM's authentication tag)
-- **Loss recovery (Reed-Solomon)** — optionally add parity parts so the recipient can *rebuild* parts that never arrived, instead of asking you to resend them. Off by default. **Auto** computes how much redundancy you actually need from the loss rate this device has measured; Light and Strong are fixed ~10% / ~25%
+- **Loss recovery (Reed-Solomon)** — optionally add parity parts so the recipient can *rebuild* parts that never arrived, instead of asking you to resend them. Works under both Base64 and Compact, over a field sized to match each. Off by default. **Auto** computes how much redundancy you actually need from the loss rate this device has measured; Light and Strong are fixed ~10% / ~25%
 - **Fully offline** — no network calls at all; works without internet after first load
 - **Reassembly progress** — the receive side counts parts as they land (`3/7 parts` in the tab title), names exactly what's missing, and **Copy what's missing** writes the sender a ready-to-send list
 - **Accessible** — keyboard navigable throughout, controls named by their visible labels, atomic screen-reader announcements for both progress lines, and `Esc` to start over or clear from anywhere in the panel
@@ -116,7 +116,7 @@ A leading symbol carries `byteLength mod 3` — the one fact the character count
 
 **Compatibility.** Compact sends use a `PXD/` prefix (v1 used `PXC/`, still decoded). A Carrier that predates this matches only `[A-Za-z0-9+/=]` and so finds *no* chunks at all — a clean "no Carrier message found" rather than a corrupt image. Both sides need a build that understands it.
 
-**Recovery is unavailable while Compact is on.** The erasure code works over GF(2⁶), a field sized so parity symbols *are* Base64 characters; 12-bit symbols need GF(2¹²), which is a real change rather than a tweak. Shipping a half-working interaction would be worse than the limitation.
+**Recovery works under Compact too**, over a second field sized to match — see below.
 
 ### Loss recovery
 
@@ -138,6 +138,10 @@ Receiver has 20 of 24 data parts + 6 parity
 The code works over **GF(2⁶)** rather than the usual GF(2⁸), and that choice is the whole trick: 64 field elements map exactly onto the 64 Base64 characters, so a parity symbol *is* a Base64 character. Parity parts ride in the ordinary chunk format at ordinary chunk size. GF(2⁸) would have forced parity back through Base64 at +33%.
 
 Coding uses a Cauchy matrix, every square submatrix of which is invertible — so **any** k surviving parts decode, not some privileged subset. It runs per block of 32 parts, because loss is bursty and a local code keeps recovery bounded.
+
+**Under Compact, the same trick runs over GF(2¹⁴).** A Compact character carries 14 bits, not 6, so a parity symbol built for the Base64 field can't ride a dense character — the two fields are different sizes, not just different encodings of the same one. GF(2¹⁴) was initially skipped ("a real change, not a tweak") and left as a stated limitation; it's now built, over a **verified** primitive polynomial (`0x4443` — searched and checked for full closure across all 16,383 non-zero elements, plus 500k+ sampled round-trip and distributivity checks, since a wrong polynomial would decode garbage only on the specific loss patterns that hit the gap). The Cauchy construction, the Gauss-Jordan solve, and the "refuse rather than guess" posture are shared between both fields through one small factory rather than duplicated — two independent copies of erasure-coding logic is exactly the shape of bug that has silently broken settings in this app before (a control that appears to work while quietly doing nothing).
+
+One consequence worth knowing: the parity header's block index is one character wide either way, but a dense character addresses 16,384 blocks against Base64's 64 — so the planner uses a different addressable-block ceiling per codec, and a large Compact send stays fully protected well past the point a same-sized Base64 send would start leaving blocks bare.
 
 ### How much redundancy? (Auto)
 
