@@ -1538,8 +1538,9 @@ async function refresh(){
   // derive the container size back out of the dense text rather than re-guessing it from the parts:
   // the encoder emits 1 header symbol plus ceil(8n/12), so this inverts exactly what was produced
   const b64Equiv = textCodec === "dense" ? b64CharCount(Math.floor((b64.length - 1) * DENSE2_BITS / 8)) : 0;
+  // state the real fraction, not a slogan: v2 is 6/14 = 43% of Base64, and "half" would overstate it
   const savedTag = (b64Equiv > b64.length)
-    ? ` <small>chars · half of ${b64Equiv.toLocaleString()} as Base64</small>`
+    ? ` <small>chars · ${Math.round(b64.length / b64Equiv * 100)}% of ${b64Equiv.toLocaleString()} as Base64</small>`
     : " <small>chars</small>";
   $("#charOut").innerHTML = `<span translate="no">${b64.length.toLocaleString()}</span>${savedTag}`;
   // name the encoding actually in use. This said "once Base64-encoded" unconditionally, which is simply
