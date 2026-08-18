@@ -32,7 +32,7 @@ const img = Uint8Array.from({length:2600},(_,i)=>(i*37+11)&0xff);
 await t("Auto emits the parity its own plan called for", async () => {
   store.clear(); setLimit(160);
   const b64 = await pack(img, "image/webp", "");
-  const cs = chunkify(b64, "auto");
+  const cs = await chunkify(b64, "auto");
   const total = totalOf(cs[0]);
   const parity = cs.length - total;
   const plan = getPlan();
@@ -48,7 +48,7 @@ await t("Auto emits the parity its own plan called for", async () => {
 await t("Auto's parity actually survives the loss it was sized for", async () => {
   store.clear(); setLimit(160);
   const b64 = await pack(img, "image/webp", "");
-  const cs = chunkify(b64, "auto");
+  const cs = await chunkify(b64, "auto");
   const total = totalOf(cs[0]);
   const k = getPlan().k;
   // destroy exactly k data parts inside the first block — the worst case the plan promises to survive
@@ -65,10 +65,10 @@ await t("Auto's parity actually survives the loss it was sized for", async () =>
 await t("a lossier measured history makes Auto provision more", async () => {
   store.clear(); setLimit(160);
   const b64 = await pack(img, "image/webp", "");
-  chunkify(b64, "auto");
+  await chunkify(b64, "auto");
   const clean = getPlan().k;
   for (let i = 0; i < 10; i++) recordLoss(4, 25);      // ~16% observed loss
-  chunkify(b64, "auto");
+  await chunkify(b64, "auto");
   const lossy = getPlan().k;
   assert.ok(lossy > clean, `expected more parity after observing loss: ${clean} -> ${lossy}`);
   console.log(`      (k rose ${clean} -> ${lossy} after observing ~16% loss)`);
@@ -77,10 +77,10 @@ await t("a lossier measured history makes Auto provision more", async () => {
 await t("the learning loop only counts sends that carried recovery", async () => {
   store.clear(); setLimit(160);
   const b64 = await pack(img, "image/webp", "");
-  const plain = chunkify(b64, "off");
+  const plain = await chunkify(b64, "off");
   const r1 = reassemble(plain.join("\n\n"));
   assert.equal(r1.hadParity, false, "a plain send must not look like evidence");
-  const withP = chunkify(b64, "strong");
+  const withP = await chunkify(b64, "strong");
   const r2 = reassemble(withP.join("\n\n"));
   assert.equal(r2.hadParity, true);
   assert.equal(r2.repaired, 0, "a complete send repairs nothing");
@@ -90,9 +90,9 @@ await t("Auto is not worse than Strong at the same measured loss", async () => {
   store.clear(); setLimit(160);
   for (let i = 0; i < 8; i++) recordLoss(2, 25);   // ~8% loss
   const b64 = await pack(img, "image/webp", "");
-  const a = chunkify(b64, "auto"), aPlan = getPlan();
+  const a = await chunkify(b64, "auto"), aPlan = getPlan();
   const aTotal = totalOf(a[0]), aParity = a.length - aTotal;
-  const s = chunkify(b64, "strong");
+  const s = await chunkify(b64, "strong");
   const sTotal = totalOf(s[0]), sParity = s.length - sTotal;
   console.log(`      (auto: ${aParity} parity, P=${(aPlan.imageProb*100).toFixed(2)}% | strong: ${sParity} parity)`);
   assert.ok(aPlan.imageProb >= 0.99 - 1e-9, "auto must meet its target");
@@ -101,7 +101,7 @@ await t("Auto is not worse than Strong at the same measured loss", async () => {
 await t("Off still emits nothing and leaves the payload untouched", async () => {
   store.clear(); setLimit(160);
   const b64 = await pack(img, "image/webp", "");
-  const cs = chunkify(b64, "off");
+  const cs = await chunkify(b64, "off");
   assert.equal(cs.length, totalOf(cs[0]));
   assert.equal(reassemble(cs.join("\n\n")).s, b64);
   assert.equal(getPlan(), null, "Off must not leave a stale plan behind");

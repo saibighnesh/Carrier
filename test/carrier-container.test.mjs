@@ -100,7 +100,7 @@ await t("encrypted roundtrip: flag, verified, and wrong-password rejection", asy
 await t("chunkify → reassemble roundtrips at SMS-sized limits, order-independent", async () => {
   setLimit(160);
   const b64 = await pack(img, "image/webp", "");
-  const chunks = chunkify(b64);
+  const chunks = await chunkify(b64);
   assert.ok(chunks.length > 30, `expected many parts, got ${chunks.length}`);
   for (const c of chunks) assert.ok(c.length <= 160, `chunk over the limit: ${c.length}`);
   const shuffled = [...chunks].reverse();
@@ -114,7 +114,7 @@ await t("chunkify → reassemble roundtrips at SMS-sized limits, order-independe
 
 await t("chunkify keeps every part under the limit at 6-digit part counts", async () => {
   setLimit(160);   // SMS: the smallest real limit, where a big payload pushes the part count to 6 digits
-  const chunks = chunkify("A".repeat(20_000_000));
+  const chunks = await chunkify("A".repeat(20_000_000));
   assert.ok(chunks.length > 99999, `expected 6-digit part count, got ${chunks.length}`);
   for (const c of chunks) assert.ok(c.length <= 160, `chunk over the limit: ${c.length} — "${c}"`);
   setLimit(60000);
@@ -124,7 +124,7 @@ console.log(`\n${pass} passed`);
 
 // --- memoization (issue #172) ---
 await t("reassemble returns the identical object for an unchanged string", async () => {
-  const chunks = chunkify(await pack(img, "image/webp", ""));
+  const chunks = await chunkify(await pack(img, "image/webp", ""));
   const text = chunks.join("\n");
   const a = reassemble(text);
   const b = reassemble(text);

@@ -70,28 +70,28 @@ await t("mul/inv are exact inverses, and multiplication is commutative", () => {
 
 const mkShards = (n, len, seed) => Array.from({length:n}, (_,i) => Uint16Array.from({length:len}, (_,b) => ((i*613 + b*211 + seed) & (GF14_ORDER-1))));
 
-await t("RS14: recovers a single loss from a single parity part", () => {
-  const data = mkShards(8, 15, 1), parity = RS14.encode(data, 2);
+await t("RS14: recovers a single loss from a single parity part", async () => {
+  const data = mkShards(8, 15, 1), parity = await RS14.encode(data, 2);
   const present = new Map(data.map((s,i)=>[i,s])); present.delete(4);
   const got = RS14.decode(8, 15, present, new Map([[1, parity[1]]]));
   assert.deepEqual([...got.get(4)], [...data[4]]);
 });
 
-await t("RS14: any subset of surviving parity rows decodes, not just the first", () => {
-  const data = mkShards(10, 12, 7), parity = RS14.encode(data, 4);
+await t("RS14: any subset of surviving parity rows decodes, not just the first", async () => {
+  const data = mkShards(10, 12, 7), parity = await RS14.encode(data, 4);
   const present = new Map(data.map((s,i)=>[i,s])); [2,6].forEach(i=>present.delete(i));
   const got = RS14.decode(10, 12, present, new Map([[1,parity[1]],[3,parity[3]]]));
   for (const i of [2,6]) assert.deepEqual([...got.get(i)], [...data[i]]);
 });
 
-await t("RS14: refuses rather than guessing when redundancy is short", () => {
-  const data = mkShards(8, 10, 3), parity = RS14.encode(data, 1);
+await t("RS14: refuses rather than guessing when redundancy is short", async () => {
+  const data = mkShards(8, 10, 3), parity = await RS14.encode(data, 1);
   const present = new Map(data.map((s,i)=>[i,s])); [1,5].forEach(i=>present.delete(i));
   assert.equal(RS14.decode(8, 10, present, new Map([[0,parity[0]]])), null);
 });
 
-await t("RS14: exhaustive-ish sweep, 32+4 code, every 4-loss pattern in the sample exact", () => {
-  const n=32, len=8, data = mkShards(n,len,19), parity = RS14.encode(data,4);
+await t("RS14: exhaustive-ish sweep, 32+4 code, every 4-loss pattern in the sample exact", async () => {
+  const n=32, len=8, data = mkShards(n,len,19), parity = await RS14.encode(data,4);
   let checked = 0;
   for (let a=0;a<n;a++) for (let b=a+1;b<n;b++) for (let c=b+1;c<n;c++) for (let d=c+1;d<n;d++) {
     if ((a*3+b*5+c*7+d) % 53 !== 0) continue;
@@ -129,7 +129,7 @@ const img = Uint8Array.from({length:9000}, (_,i) => (i*37+11) & 0xff);
 
 await t("Strong dense send: destroy 4 data parts, image rebuilds byte-for-byte, CRC intact", async () => {
   setLimit(160); setCodec("dense"); setLevel("strong");
-  const cs = chunkify(await pack(img, "image/webp", ""));
+  const cs = await chunkify(await pack(img, "image/webp", ""));
   const total = totalOf(cs[0]);
   assert.ok(cs.length > total, "must actually carry parity");
   const kept = cs.filter(c => ![3,7,11,19].includes(idxOf(c)));
@@ -143,7 +143,7 @@ await t("Strong dense send: destroy 4 data parts, image rebuilds byte-for-byte, 
 
 await t("destroying the last part exercises the no-padding trim path exactly", async () => {
   setLimit(160); setCodec("dense"); setLevel("strong");
-  const cs = chunkify(await pack(img, "image/webp", ""));
+  const cs = await chunkify(await pack(img, "image/webp", ""));
   const total = totalOf(cs[0]);
   const kept = cs.filter(c => idxOf(c) !== total);
   const r = reassemble(kept.join("\n\n"));
@@ -154,7 +154,7 @@ await t("destroying the last part exercises the no-padding trim path exactly", a
 
 await t("encrypted dense payloads recover too, and a wrong password still fails", async () => {
   setLimit(160); setCodec("dense"); setLevel("strong");
-  const cs = chunkify(await pack(img, "image/webp", "hunter2"));
+  const cs = await chunkify(await pack(img, "image/webp", "hunter2"));
   const kept = cs.filter(c => ![2,9].includes(idxOf(c)));
   const r = reassemble(kept.join("\n\n"));
   assert.ok(r.repaired >= 2);
@@ -165,7 +165,7 @@ await t("encrypted dense payloads recover too, and a wrong password still fails"
 
 await t("beyond the parity budget it degrades to the old behaviour, not to garbage", async () => {
   setLimit(160); setCodec("dense"); setLevel("light");
-  const cs = chunkify(await pack(img, "image/webp", ""));
+  const cs = await chunkify(await pack(img, "image/webp", ""));
   const total = totalOf(cs[0]);
   const k = cs.length - total;
   const doomed = Array.from({length: k + 3}, (_,i) => i + 2);
@@ -177,7 +177,7 @@ await t("beyond the parity budget it degrades to the old behaviour, not to garba
 
 await t("losing parity parts themselves is harmless", async () => {
   setLimit(160); setCodec("dense"); setLevel("strong");
-  const cs = chunkify(await pack(img, "image/webp", ""));
+  const cs = await chunkify(await pack(img, "image/webp", ""));
   const total = totalOf(cs[0]);
   const kept = cs.filter(c => idxOf(c) <= total || idxOf(c) % 2 === 0).filter(c => idxOf(c) !== 6);
   const r = reassemble(kept.join("\n\n"));
@@ -188,7 +188,7 @@ await t("losing parity parts themselves is harmless", async () => {
 
 await t("a mangled parity header cannot make a corrupt image pass as complete", async () => {
   setLimit(160); setCodec("dense"); setLevel("strong");
-  const cs = chunkify(await pack(img, "image/webp", ""));
+  const cs = await chunkify(await pack(img, "image/webp", ""));
   const total = totalOf(cs[0]);
   const mangled = cs.map(c => idxOf(c) > total
     ? c.replace(/\/([^/]*)$/, "/" + "一".repeat(20))
@@ -207,7 +207,7 @@ await t("a mangled parity header cannot make a corrupt image pass as complete", 
 
 await t("all chunks of a dense+recovery send share one tag, regardless of paste order", async () => {
   setLimit(160); setCodec("dense"); setLevel("strong");
-  const cs = chunkify(await pack(img, "image/webp", ""));
+  const cs = await chunkify(await pack(img, "image/webp", ""));
   const total = totalOf(cs[0]);
   assert.ok(cs.every(c => tagOf(c) === "PXD"), "data and parity must share the PXD tag");
   // paste PARITY first — reassemble's encoding detection reads group[0], so if tags ever diverged this
@@ -229,7 +229,7 @@ await t("a build with only the OLD (Base64-only) rsRepair degrades safely on a d
   // character immediately -> coreLen never gets set -> the old function returns 0. No corruption, just no
   // recovery: exactly the "clean refusal" posture this project has maintained at every format boundary.
   setLimit(160); setCodec("dense"); setLevel("strong");
-  const cs = chunkify(await pack(img, "image/webp", ""));
+  const cs = await chunkify(await pack(img, "image/webp", ""));
   const total = totalOf(cs[0]);
   const map = new Map();
   const parityRaw = [];
@@ -257,7 +257,7 @@ await t("Auto plans against the DENSE ceiling (16384 blocks), not Base64's (64)"
 await t("a real dense Auto send at this scale plans and ships consistently", async () => {
   setLimit(160); setCodec("dense"); setLevel("auto");
   const big = Uint8Array.from({length:70000}, (_,i) => (i*97+3)&0xff);
-  const cs = chunkify(await pack(big, "image/webp", ""));
+  const cs = await chunkify(await pack(big, "image/webp", ""));
   const plan = getPlan();
   assert.ok(plan, "auto must produce a plan for a dense send");
   assert.ok(plan.blocks >= 2, `expected a multi-block send, got ${plan.blocks}`);
@@ -268,7 +268,7 @@ await t("a real dense Auto send at this scale plans and ships consistently", asy
 await t("Off still emits nothing under dense, and the payload is unaltered", async () => {
   setLimit(160); setCodec("dense"); setLevel("off");
   const b64 = await pack(img, "image/webp", "");
-  const cs = chunkify(b64);
+  const cs = await chunkify(b64);
   const total = totalOf(cs[0]);
   assert.equal(cs.length, total, "Off must emit exactly the data parts");
   assert.equal(reassemble(cs.join("\n\n")).s, b64);

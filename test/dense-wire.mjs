@@ -31,7 +31,7 @@ const img = Uint8Array.from({length:9000},(_,i)=>(i*37+11)&0xff);
 await t("dense send round-trips end to end, image byte-identical", async () => {
   setLimit(60000); setCodec("dense");
   const txt = await pack(img, "image/webp", "");
-  const cs = chunkify(txt, "off");
+  const cs = await chunkify(txt, "off");
   assert.ok(cs.every(c => c.startsWith("PXD/")), "dense chunks must carry their own prefix");
   const r = reassemble(cs.join("\n\n"));
   assert.equal(r.missing.length, 0);
@@ -52,8 +52,8 @@ await t("dense cuts the character count to 3/7 on a real payload", async () => {
 await t("dense payloads split into fewer messages", async () => {
   setLimit(60000);
   const big = Uint8Array.from({length:200000},(_,i)=>(i*29+7)&0xff);
-  setCodec("b64");   const nB64 = chunkify(await pack(big,"image/webp",""), "off").length;
-  setCodec("dense"); const nDen = chunkify(await pack(big,"image/webp",""), "off").length;
+  setCodec("b64");   const nB64 = (await chunkify(await pack(big,"image/webp",""), "off")).length;
+  setCodec("dense"); const nDen = (await chunkify(await pack(big,"image/webp",""), "off")).length;
   assert.ok(nDen < nB64, `${nDen} not fewer than ${nB64}`);
   console.log(`      (200 KB at WhatsApp limit: ${nB64} messages -> ${nDen})`);
 });
@@ -61,7 +61,7 @@ await t("dense payloads split into fewer messages", async () => {
 await t("encrypted dense sends round-trip, and a wrong password still fails", async () => {
   setLimit(60000); setCodec("dense");
   const txt = await pack(img, "image/webp", "hunter2");
-  const r = reassemble(chunkify(txt, "off").join("\n\n"));
+  const r = reassemble((await chunkify(txt, "off")).join("\n\n"));
   const out = await unpack(r.s, "hunter2");
   assert.deepEqual(Uint8Array.from(out.img), img);
   await assert.rejects(() => unpack(r.s, "wrong"), /Wrong password/);
@@ -70,7 +70,7 @@ await t("encrypted dense sends round-trip, and a wrong password still fails", as
 await t("a Base64 send is untouched — same prefix, same text, byte for byte", async () => {
   setLimit(60000); setCodec("b64");
   const txt = await pack(img, "image/webp", "");
-  const cs = chunkify(txt, "off");
+  const cs = await chunkify(txt, "off");
   assert.ok(cs.every(c => c.startsWith("PXT/")));
   const r = reassemble(cs.join("\n\n"));
   assert.equal(r.s, txt);
@@ -79,7 +79,7 @@ await t("a Base64 send is untouched — same prefix, same text, byte for byte", 
 
 await t("an OLD receiver cannot misread a dense send — it matches nothing", async () => {
   setLimit(60000); setCodec("dense");
-  const cs = chunkify(await pack(img,"image/webp",""), "off");
+  const cs = await chunkify(await pack(img,"image/webp",""), "off");
   const legacy = /PXT\/([0-9a-f]+)\/(\d+)\/(\d+)\/((?:(?!PXT\/[0-9a-f]+\/\d+\/\d+\/)[A-Za-z0-9+/=])+)/g;
   assert.equal([...cs.join("\n\n").matchAll(legacy)].length, 0,
     "a pre-dense build must find no chunks at all, rather than a partial one");
@@ -87,8 +87,8 @@ await t("an OLD receiver cannot misread a dense send — it matches nothing", as
 
 await t("both encodings can sit in one box without contaminating each other", async () => {
   setLimit(60000);
-  setCodec("b64");   const a = chunkify(await pack(img,"image/webp",""), "off");
-  setCodec("dense"); const b = chunkify(await pack(img,"image/webp",""), "off");
+  setCodec("b64");   const a = await chunkify(await pack(img,"image/webp",""), "off");
+  setCodec("dense"); const b = await chunkify(await pack(img,"image/webp",""), "off");
   const r = reassemble([...a, ...b].join("\n\n"));
   assert.ok(r.multiSession >= 2, "must see two distinct sends");
   const out = await unpack(r.s, "");
@@ -101,7 +101,7 @@ await t("dense sends now carry real parity at every recovery level (GF(2^14))", 
   // and USE parity exactly like a Base64 one does.
   setLimit(160); setCodec("dense");
   for (const lvl of ["light","strong","auto"]) {
-    const cs = chunkify(await pack(img,"image/webp",""), lvl);
+    const cs = await chunkify(await pack(img,"image/webp",""), lvl);
     const total = +cs[0].match(/\/(\d+)\/[^/]*$/)[1];
     assert.ok(cs.length > total, `${lvl}: expected parity parts, got none`);
     assert.ok(cs.every(c => c.startsWith("PXD/")), `${lvl}: parity must share the data tag`);

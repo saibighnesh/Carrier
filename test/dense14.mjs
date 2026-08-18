@@ -106,7 +106,7 @@ await t("BACK-COMPAT 1: a v1 payload (old saved .txt) still decodes through unpa
 await t("BACK-COMPAT 2: a pre-v2 build finds ZERO chunks in a v2 send — clean refusal", async () => {
   setCodec("dense"); setLimit(4096);
   const img = Uint8Array.from({length:9000},(_,i)=>(i*29+7)&0xff);
-  const cs = chunkify(await pack(img, "image/webp", ""), "off");
+  const cs = await chunkify(await pack(img, "image/webp", ""), "off");
   assert.ok(cs.every(c => c.startsWith("PXD/")), "v2 chunks must carry the PXD tag");
   const oldRe = /(PXT|PXC)\/([0-9a-f]+)\/(\d+)\/(\d+)\/((?:(?!PX[TC]\/[0-9a-f]+\/\d+\/\d+\/)[A-Za-z0-9+/=一-巿])+)/g;
   assert.equal([...cs.join("\n\n").matchAll(oldRe)].length, 0, "old build must match nothing at all");
@@ -115,12 +115,12 @@ await t("BACK-COMPAT 2: a pre-v2 build finds ZERO chunks in a v2 send — clean 
 await t("full pipeline: v2 send round-trips, CRC intact; encrypted too; wrong password fails", async () => {
   setCodec("dense"); setLimit(4096);
   const img = Uint8Array.from({length:9000},(_,i)=>(i*29+7)&0xff);
-  const r = reassemble(chunkify(await pack(img,"image/webp",""), "off").join("\n\n"));
+  const r = reassemble((await chunkify(await pack(img,"image/webp",""), "off")).join("\n\n"));
   assert.equal(r.denseBits, DENSE2_BITS, "reassemble must report the v2 width");
   const out = await unpack(r.s, "");
   assert.deepEqual(Uint8Array.from(out.img), img);
   assert.equal(out.verified, true);
-  const r2 = reassemble(chunkify(await pack(img,"image/webp","pw"), "off").join("\n\n"));
+  const r2 = reassemble((await chunkify(await pack(img,"image/webp","pw"), "off")).join("\n\n"));
   assert.deepEqual(Uint8Array.from((await unpack(r2.s,"pw")).img), img);
   await assert.rejects(() => unpack(r2.s, "no"), /Wrong password/);
 });
@@ -132,7 +132,7 @@ await t("payloadBytes is exact for v2, and headerFlags reads v2 at all 7 residue
     const img = Uint8Array.from({length:n},(_,i)=>i&0xff);
     const txt = await pack(img, "image/webp", "");
     const truth = 5 + 1 + "image/webp".length + n + 4;
-    const r = reassemble(chunkify(txt, "off").join("\n\n"));
+    const r = reassemble((await chunkify(txt, "off")).join("\n\n"));
     assert.ok(Math.abs(payloadBytes(r) - truth) <= 2, `size at r=${truth%7}: ${payloadBytes(r)} vs ${truth}`);
     assert.equal(headerFlags(txt), FLAG_CRC32, `flags at residue ${truth%7}`);
   }

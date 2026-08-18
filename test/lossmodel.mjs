@@ -31,7 +31,7 @@ const reset = () => { store.clear(); countedSends.clear(); };
 
 await t("#208: revealing the same send repeatedly counts it exactly once", async () => {
   reset(); setLimit(160);
-  const cs = chunkify(await pack(img,"image/webp",""), "strong");
+  const cs = await chunkify(await pack(img,"image/webp",""), "strong");
   const r = reassemble(cs.filter(c=>![2,5].includes(idxOf(c))).join("\n\n"));
   assert.equal(r.repaired, 2);
   observeSend(r, 0);
@@ -45,7 +45,7 @@ await t("#208: two genuinely different sends both count", async () => {
   reset(); setLimit(160);
   for (const seed of [1, 2]) {
     const im = Uint8Array.from({length:2600},(_,i)=>(i*seed+3)&0xff);
-    const cs = chunkify(await pack(im,"image/webp",""), "strong");
+    const cs = await chunkify(await pack(im,"image/webp",""), "strong");
     observeSend(reassemble(cs.filter(c=>idxOf(c)!==3).join("\n\n")), 0);
   }
   const [L,N] = store.get("carrier_loss_160").split(",").map(Number);
@@ -55,7 +55,7 @@ await t("#208: two genuinely different sends both count", async () => {
 
 await t("#209: an unrecoverable send is counted as the failure it was", async () => {
   reset(); setLimit(160);
-  const cs = chunkify(await pack(img,"image/webp",""), "light");
+  const cs = await chunkify(await pack(img,"image/webp",""), "light");
   const total = +cs[0].match(/\/(\d+)\/[^/]*$/)[1];
   const k = cs.length - total;
   const doomed = Array.from({length: k + 3}, (_,i)=> i + 2);
@@ -70,7 +70,7 @@ await t("#209: an unrecoverable send is counted as the failure it was", async ()
 
 await t("#209: a send with no recovery is still not treated as evidence", async () => {
   reset(); setLimit(160);
-  const cs = chunkify(await pack(img,"image/webp",""), "off");
+  const cs = await chunkify(await pack(img,"image/webp",""), "off");
   const r = reassemble(cs.filter(c=>idxOf(c)!==3).join("\n\n"));
   observeSend(r, r.missing.length);
   assert.equal(store.get("carrier_loss_160"), undefined, "a parity-less send must teach nothing");
@@ -79,7 +79,7 @@ await t("#209: a send with no recovery is still not treated as evidence", async 
 await t("#210: evidence is kept per transport and does not leak", async () => {
   reset();
   setLimit(160);
-  const cs = chunkify(await pack(img,"image/webp",""), "strong");
+  const cs = await chunkify(await pack(img,"image/webp",""), "strong");
   observeSend(reassemble(cs.filter(c=>![2,5].includes(idxOf(c))).join("\n\n")), 0);
   const sms = lossPosterior();
   setLimit(60000);
@@ -124,7 +124,7 @@ await t("#211: parity never exceeds half the data parts in a real send", async (
   for (let i = 0; i < 20; i++) recordLossViaObserve();
   function recordLossViaObserve(){}
   store.set("carrier_loss_160", "60,200");             // 30% measured
-  const cs = chunkify(await pack(img,"image/webp",""), "auto");
+  const cs = await chunkify(await pack(img,"image/webp",""), "auto");
   const total = +cs[0].match(/\/(\d+)\/[^/]*$/)[1];
   const parity = cs.length - total;
   const perBlockCap = Math.ceil(Math.min(RS_BLOCK, total) * RS_COST_CAP);

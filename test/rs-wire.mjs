@@ -22,26 +22,27 @@ const src = [
 new Function(src)();
 const { chunkify, rsDecode, b64ToSyms, symsToB64, dec64, RS_META, setLimit } = globalThis.__w;
 
-let pass = 0; const t=(n,f)=>{f();console.log("  ok  "+n);pass++;};
+// async now — chunkify yields cooperatively (see index.html's yieldToMain), so every call needs awaiting
+let pass = 0; const t=async(n,f)=>{await f();console.log("  ok  "+n);pass++;};
 const B64A = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 const mkB64 = len => Array.from({length:len}, (_,i)=>B64A[(i*29+11)%64]).join("");
 
 const parse = c => { const m = c.match(/^PXT\/([0-9a-f]+)\/(\d+)\/(\d+)\/(.*)$/); return {sid:m[1], idx:+m[2], total:+m[3], data:m[4]}; };
 
-t("off emits no parity and leaves parts at full size", () => {
+await t("off emits no parity and leaves parts at full size", async () => {
   setLimit(160);
   const b64 = mkB64(1000);
-  const off = chunkify(b64, "off");
+  const off = await chunkify(b64, "off");
   assert.ok(off.every(c => parse(c).idx <= parse(c).total));
   assert.ok(off.every(c => c.length <= 160), "a part must never exceed the message limit");
   assert.equal(off.map(c=>parse(c).data).join(""), b64, "data path must be byte-identical to before");
 });
 
-t("light/strong emit parity past <total>, every part within the limit", () => {
+await t("light/strong emit parity past <total>, every part within the limit", async () => {
   setLimit(160);
   const b64 = mkB64(3000);
   for (const lvl of ["light","strong"]) {
-    const cs = chunkify(b64, lvl);
+    const cs = await chunkify(b64, lvl);
     const total = parse(cs[0]).total;
     const data = cs.filter(c=>parse(c).idx <= total), par = cs.filter(c=>parse(c).idx > total);
     assert.ok(par.length > 0, lvl+" produced no parity");
@@ -52,10 +53,10 @@ t("light/strong emit parity past <total>, every part within the limit", () => {
   }
 });
 
-t("an OLD receiver ignores parity: indices outside [1,total] are dropped", () => {
+await t("an OLD receiver ignores parity: indices outside [1,total] are dropped", async () => {
   setLimit(160);
   const b64 = mkB64(2000);
-  const cs = chunkify(b64, "strong");
+  const cs = await chunkify(b64, "strong");
   const total = parse(cs[0]).total;
   // replicate the legacy filter exactly
   const map = new Map();
@@ -65,10 +66,10 @@ t("an OLD receiver ignores parity: indices outside [1,total] are dropped", () =>
   assert.equal(s, b64, "legacy reassembly must yield the original payload untouched");
 });
 
-t("parity header decodes: block, row and core length", () => {
+await t("parity header decodes: block, row and core length", async () => {
   setLimit(160);
   const b64 = mkB64(1998) + "==";   // real Base64 is always a multiple of 4
-  const cs = chunkify(b64, "light");
+  const cs = await chunkify(b64, "light");
   const total = parse(cs[0]).total;
   const par = cs.filter(c=>parse(c).idx > total).map(c=>parse(c).data);
   const core = b64.replace(/=+$/,"");
@@ -80,10 +81,10 @@ t("parity header decodes: block, row and core length", () => {
   assert.equal(per, parse(cs[0]).data.length, "parity shard must match the data part size");
 });
 
-t("END TO END: drop parts, rebuild them from parity, get the payload back", () => {
+await t("END TO END: drop parts, rebuild them from parity, get the payload back", async () => {
   setLimit(160);
   const b64 = mkB64(3999) + "=";    // real Base64 is always a multiple of 4
-  const cs = chunkify(b64, "strong");
+  const cs = await chunkify(b64, "strong");
   const total = parse(cs[0]).total;
   const dataC = cs.filter(c=>parse(c).idx <= total), parC = cs.filter(c=>parse(c).idx > total);
   const core = b64.replace(/=+$/,"");
