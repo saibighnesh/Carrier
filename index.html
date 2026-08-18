@@ -643,6 +643,27 @@ function crc32(bytes){
 }
 
 /* ---------- Reed-Solomon erasure coding over GF(2^6) ---------- */
+// Cooperative yielding for the RS encode hot loop, used below and by the GF(2^14) factory further down.
+// rsEncode over a full-size block (WhatsApp's 60,000-char limit, k=32 for Strong recovery) is on the order
+// of tens of millions of field multiplications — enough to freeze the tab for a visible, unresponsive
+// stretch with recovery on. The alternative, moving this to a Web Worker, was considered and rejected for
+// this round: it would need chunkify's entire call chain to grow the same kind of staleness guard
+// `refresh()` already carries after other awaits, AND it would move the heaviest kernel outside what
+// `node test/run.mjs` can exercise — Node's worker_threads is a different API from the browser's Worker,
+// so the offloaded path could only be verified by browser automation, never by the committed suite. That
+// is a real loss of verifiability, not a detail. Yielding keeps the exact same code, on the same thread,
+// provably correct by the same tests — it only changes when control is handed back to the browser, never
+// what is computed.
+// Checked on elapsed wall time, not a fixed iteration count: a slow device and a fast one should both get
+// ~8ms (roughly half a 60fps frame) of uninterrupted work before yielding, not the same number of loop
+// iterations at very different real durations.
+let yieldDeadline = 0;
+async function yieldToMain(){
+  if(performance.now() < yieldDeadline) return;
+  await new Promise(r => setTimeout(r, 0));
+  yieldDeadline = performance.now() + 8;
+}
+
 // A lost part currently costs a round trip: the receiver names what's missing and the sender re-sends it.
 // Over a lossy pipe (SMS, a chat that drops long messages) that round trip is the slowest part of the job.
 // These parity parts let the receiver rebuild the missing ones locally, with no reply to the sender.
@@ -686,15 +707,18 @@ function rsMatrix(rows, n){
 const b64ToSyms = (str, len) => { const out = new Uint8Array(len); for(let i=0;i<str.length && i<len;i++){ const v = B64V[str.charCodeAt(i)]; out[i] = v < 0 ? 0 : v; } return out; };
 const symsToB64 = syms => { let s = ""; for(let i=0;i<syms.length;i++) s += B64A[syms[i]]; return s; };
 
-// parity row i = sum over data j of A[i][j] * shard_j, symbol by symbol
-function rsEncode(shards, k){
+// parity row i = sum over data j of A[i][j] * shard_j, symbol by symbol. Yields between shards (the `j`
+// loop) rather than inside the innermost `b` loop: a single shard contribution is a bounded, small unit of
+// work (at most one message's worth of characters) well under the yield budget, so checking any finer
+// would only add per-iteration overhead without changing how often an actual yield fires.
+async function rsEncode(shards, k){
   const n = shards.length, len = shards[0].length, A = rsMatrix(k, n), out = [];
   for(let i=0;i<k;i++){
     const p = new Uint8Array(len);
     for(let j=0;j<n;j++){
       const a = A[i][j], s = shards[j];
-      if(a === 0) continue;
-      for(let b=0;b<len;b++) p[b] ^= gfMul(a, s[b]);
+      if(a !== 0) for(let b=0;b<len;b++) p[b] ^= gfMul(a, s[b]);
+      await yieldToMain();
     }
     out.push(p);
   }
@@ -785,14 +809,19 @@ function gfField(mul, inv, half){
     }
     return A;
   }
-  function encode(shards, k){
+  // Async and yielding for the same reason rsEncode is: a dense block under Strong recovery is the same
+  // order of magnitude of field multiplications as the GF(2^6) case, just over 14-bit symbols instead of
+  // 6-bit. decode() stays synchronous — it runs on receive, in scope reassembled from a paste, and this
+  // round's yielding work is scoped to the send path (see the rsEncode comment for why offloading to a
+  // Worker was rejected rather than merely deferred).
+  async function encode(shards, k){
     const n = shards.length, len = shards[0].length, A = matrix(k, n), out = [];
     for(let i=0;i<k;i++){
       const p = new Uint16Array(len);
       for(let j=0;j<n;j++){
         const a = A[i][j], s = shards[j];
-        if(a === 0) continue;
-        for(let b=0;b<len;b++) p[b] ^= mul(a, s[b]);
+        if(a !== 0) for(let b=0;b<len;b++) p[b] ^= mul(a, s[b]);
+        await yieldToMain();
       }
       out.push(p);
     }
@@ -1171,7 +1200,7 @@ async function unpack(text, password){
 }
 
 /* ---------- chunking ---------- */
-function chunkify(b64, level = recoveryLevel){
+async function chunkify(b64, level = recoveryLevel){
   const sid = Array.from(crypto.getRandomValues(new Uint8Array(SID_LEN/2)), b => b.toString(16).padStart(2,'0')).join('');
   const dense = textCodec === "dense";
   // the prefix length grows with the digit-count of index and total, so a chunk sized against a fixed
@@ -1208,7 +1237,7 @@ function chunkify(b64, level = recoveryLevel){
   // Parity chunks MUST carry the same tag as the data chunks: reassemble decides the whole session's
   // encoding from group[0]'s tag, and a paste can arrive in any order — if data were PXD and parity PXT,
   // a parity part landing first would misdetect the entire send as Base64.
-  out.push(...(dense ? parityChunksDense(b64, sid, total, per, level, tag) : parityChunksB64(b64, sid, total, per, level, tag)));
+  out.push(...(dense ? await parityChunksDense(b64, sid, total, per, level, tag) : await parityChunksB64(b64, sid, total, per, level, tag)));
   return out;
 }
 // Build the parity parts for a payload. They are ordinary chunks whose index runs PAST <total>, which
@@ -1216,7 +1245,8 @@ function chunkify(b64, level = recoveryLevel){
 // send it understands.
 //   payload: block(1) + row(1) + coreLength(4) + shard, all Base64 characters
 // The receiver reads `per` back as (payload length - RS_META), so it doesn't need to be transmitted.
-function parityChunksB64(b64, sid, total, per, level, tag){
+// Async because rsEncode is: see its comment for why this yields rather than moving to a Worker.
+async function parityChunksB64(b64, sid, total, per, level, tag){
   const k = rsParityCount(Math.min(total, RS_BLOCK), level, lastPlan);
   if(!k || total < 2) return [];   // one part can't lose one part and still have anything to rebuild from
   // Coding runs over the payload with Base64 padding removed: '=' is not one of the 64 field elements.
@@ -1231,7 +1261,7 @@ function parityChunksB64(b64, sid, total, per, level, tag){
     if(n < 2) break;   // a trailing single-part block has nothing to protect
     const shards = [];
     for(let i=0;i<n;i++) shards.push(b64ToSyms(core.slice((start+i)*per, (start+i+1)*per), per));
-    const rows = rsEncode(shards, rsParityCount(n, level, lastPlan));
+    const rows = await rsEncode(shards, rsParityCount(n, level, lastPlan));
     const blk = start / RS_BLOCK;
     if(blk >= RS_BLOCK_CEILING.b64) break;   // block index must fit one Base64 character
     rows.forEach((row, j)=>{
@@ -1244,7 +1274,7 @@ function parityChunksB64(b64, sid, total, per, level, tag){
 // The Compact equivalent of parityChunksB64, over GF(2^14) instead of GF(2^6). Structurally identical —
 // same block loop, same "refuse rather than mis-state" posture — but genuinely simpler in one respect:
 // dense text has no Base64-style '=' padding to strip, so there is no padding-boundary bookkeeping at all.
-function parityChunksDense(text, sid, total, per, level, tag){
+async function parityChunksDense(text, sid, total, per, level, tag){
   const k = rsParityCount(Math.min(total, RS_BLOCK), level, lastPlan);
   if(!k || total < 2) return [];
   const lenChars = enc14(text.length, 2);
@@ -1256,7 +1286,7 @@ function parityChunksDense(text, sid, total, per, level, tag){
     if(n < 2) break;
     const shards = [];
     for(let i=0;i<n;i++) shards.push(denseToSyms(text.slice((start+i)*per, (start+i+1)*per), per));
-    const rows = RS14.encode(shards, rsParityCount(n, level, lastPlan));
+    const rows = await RS14.encode(shards, rsParityCount(n, level, lastPlan));
     const blk = start / RS_BLOCK;
     if(blk >= RS_BLOCK_CEILING.dense) break;   // block index must fit one dense character (16,384 of them)
     rows.forEach((row, j)=>{
@@ -1760,7 +1790,11 @@ async function refresh(){
   // be reused — and #180's warning then correctly says the send has to restart.
   const chunkKeyNow = chunkInputs(packKeyNow);
   if(chunkKey !== chunkKeyNow){
-    lastChunks = chunkify(b64);
+    // chunkify yields cooperatively when recovery is on (see yieldToMain) rather than blocking the tab for
+    // the full encode — which means Start Over can now run to completion WHILE this await is outstanding,
+    // same class of guard as the pack() await just above.
+    lastChunks = await chunkify(b64);
+    if(!srcImage) return;   // Start over ran during chunking — abandon this stale pass
     chunkKey = chunkKeyNow;
   }
   // stats
@@ -1982,32 +2016,73 @@ function showCompact(){
   el.classList.remove("hidden");
 }
 // build one chunk card element for message i (data lazily set as textContent, not innerHTML)
+// Single source of truth for what card i shows, consumed by both makeChunkCard (builds a new DOM node)
+// and updateChunkCard (patches an existing one in place, below). Two independent renderers computing the
+// same fields would be exactly the drift this project has been bitten by three times already (#196, #214,
+// #221) — one function decides WHAT a card shows, the other two only decide HOW to paint it.
+// A recovery part is not message 27 of 30 — it is recovery part 1 of 4, and the difference matters when
+// the send goes wrong: these are the ones the recipient can manage without, and the ones worth resending
+// last. Presenting them as ordinary messages hid that entirely.
+function chunkCardContent(c, i){
+  const dataParts = chunkDataCount(), total = lastChunks.length, isParity = i >= dataParts;
+  return {
+    isParity,
+    pillLabel: isParity
+      ? `RECOVERY ${i - dataParts + 1} / ${total - dataParts}`
+      : (dataParts === 1 ? "SINGLE MESSAGE" : `MESSAGE ${i+1} / ${dataParts}`),
+    pillTitle: isParity
+      ? `Recovery part ${i - dataParts + 1} of ${total - dataParts} — lets the recipient rebuild a message that goes missing`
+      : `Part ${i+1} of ${dataParts}`,
+    chars: `${c.length.toLocaleString()} chars`,
+    copyAriaLabel: `Copy message ${i+1} of ${total}`,
+    dataAriaLabel: `Message ${i+1} of ${total} content — use Copy button to copy`,
+    preview: c.length > CHUNK_PREVIEW ? c.slice(0, CHUNK_PREVIEW) + " …" : c,
+  };
+}
 function makeChunkCard(c, i){
   const el = document.createElement("div");
   el.className = "chunk";
   el.setAttribute("role","listitem");
-  const preview = c.length > CHUNK_PREVIEW ? c.slice(0, CHUNK_PREVIEW) + " …" : c;
-  // A recovery part is not message 27 of 30 — it is recovery part 1 of 4, and the difference matters when
-  // the send goes wrong: these are the ones the recipient can manage without, and the ones worth resending
-  // last. Presenting them as ordinary messages hid that entirely.
-  const dataParts = chunkDataCount();
-  const isParity = i >= dataParts;
-  const pillLabel = isParity
-    ? `RECOVERY ${i - dataParts + 1} / ${lastChunks.length - dataParts}`
-    : (dataParts === 1 ? "SINGLE MESSAGE" : `MESSAGE ${i+1} / ${dataParts}`);
+  const d = chunkCardContent(c, i);
   el.innerHTML =
-    `<div class="head"><span class="pill${isParity ? " pill--recovery" : ""}" title="${isParity
-        ? `Recovery part ${i - dataParts + 1} of ${lastChunks.length - dataParts} — lets the recipient rebuild a message that goes missing`
-        : `Part ${i+1} of ${dataParts}`}">${pillLabel}</span>
+    `<div class="head"><span class="pill${d.isParity ? " pill--recovery" : ""}" title="${d.pillTitle}">${d.pillLabel}</span>
      <span class="sentmark"></span>
-     <span style="font-family:var(--mono);font-size:10px;color:var(--faint);margin-right:auto;padding-left:10px">${c.length.toLocaleString()} chars</span>
-     <button type="button" class="copyone" data-i="${i}" aria-label="Copy message ${i+1} of ${lastChunks.length}" data-orig-label="Copy message ${i+1} of ${lastChunks.length}">Copy</button></div>
-     <div class="data" data-i="${i}" tabindex="0" role="group" translate="no" aria-label="Message ${i+1} of ${lastChunks.length} content — use Copy button to copy"></div>`;
-  el.querySelector(".data").textContent = preview;
+     <span class="chunk-chars" style="font-family:var(--mono);font-size:10px;color:var(--faint);margin-right:auto;padding-left:10px">${d.chars}</span>
+     <button type="button" class="copyone" data-i="${i}" aria-label="${d.copyAriaLabel}" data-orig-label="${d.copyAriaLabel}">Copy</button></div>
+     <div class="data" data-i="${i}" tabindex="0" role="group" translate="no" aria-label="${d.dataAriaLabel}"></div>`;
+  el.querySelector(".data").textContent = d.preview;
   return el;
 }
+// Patch an EXISTING card in place instead of rebuilding it — the common case during a quality/size drag,
+// where content changes every debounced tick (a new pack mints a new session id every time) but the
+// SHOWN CARD COUNT usually doesn't. The old code called box.innerHTML="" and re-parsed up to 200 HTML
+// strings on every 180ms tick regardless of whether the count changed; this only writes textContent and
+// attributes on nodes that already exist, which is where the real cost of the old path was. Reads from
+// the exact same chunkCardContent() makeChunkCard uses, so the two paths can never disagree about what a
+// card should show for the same (c, i) — only how the DOM gets there differs.
+function updateChunkCard(el, c, i){
+  const d = chunkCardContent(c, i);
+  const pill = el.querySelector(".pill");
+  pill.textContent = d.pillLabel;
+  pill.title = d.pillTitle;
+  pill.className = "pill" + (d.isParity ? " pill--recovery" : "");
+  el.querySelector(".chunk-chars").textContent = d.chars;
+  const btn = el.querySelector(".copyone");
+  btn.dataset.i = String(i);
+  btn.dataset.origLabel = d.copyAriaLabel;
+  // don't stomp an in-flight "Copied"/"Copy failed" flash — only refresh the resting label when at rest
+  if(btn.textContent === "Copy") btn.setAttribute("aria-label", d.copyAriaLabel);
+  const dataEl = el.querySelector(".data");
+  dataEl.dataset.i = String(i);
+  dataEl.setAttribute("aria-label", d.dataAriaLabel);
+  dataEl.textContent = d.preview;
+}
+// Shared across renders (not recreated per renderChunks call) so an in-flight "Copied ✓" flash on a card
+// that gets reused via updateChunkCard isn't orphaned by a fresh, empty WeakMap replacing the one its
+// timer was registered against.
+const copyoneTimers = new WeakMap();
 function renderChunks(){
-  const box = $("#chunks"); box.innerHTML = "";
+  const box = $("#chunks");
   // drop marks whose chunk text is no longer in the payload — a re-pack at a new quality/password
   // produces entirely different strings, so this clears the whole set in exactly the cases it should
   let dropped = 0;
@@ -2046,7 +2121,17 @@ function renderChunks(){
   box.setAttribute("aria-label", lastChunks.length > CHUNK_RENDER_CAP
     ? `${lastChunks.length} message chunks — showing the first ${CHUNK_RENDER_CAP}`
     : `${lastChunks.length} message chunk${lastChunks.length !== 1 ? "s" : ""}`);
-  for(let i=0;i<shown;i++) box.appendChild(makeChunkCard(lastChunks[i], i));
+  // Patch in place when the card COUNT hasn't changed since the last render — the common case while
+  // dragging quality/size, where content changes every debounced tick (a new pack mints a new session id
+  // every time) but how many parts are shown usually doesn't. Any count change (first render, growing,
+  // shrinking, or crossing the CHUNK_RENDER_CAP boundary) falls back to a full rebuild, which stays
+  // correct for every case update-in-place doesn't try to handle.
+  if(box.children.length === shown){
+    for(let i=0;i<shown;i++) updateChunkCard(box.children[i], lastChunks[i], i);
+  } else {
+    box.innerHTML = "";
+    for(let i=0;i<shown;i++) box.appendChild(makeChunkCard(lastChunks[i], i));
+  }
   // the "+N more" note lives OUTSIDE #chunks: a <p role="note"> is an illegal direct child of a role="list"
   const moreEl = $("#chunksMore");
   if(lastChunks.length > CHUNK_RENDER_CAP){
@@ -2056,8 +2141,7 @@ function renderChunks(){
   } else {
     moreEl.textContent = ""; moreEl.classList.add("hidden");
   }
-  const copyoneTimers = new WeakMap();
-  paintSent();   // cards are freshly built — re-apply whichever marks survived the prune above
+  paintSent();   // cards are current (built or patched) — re-apply whichever marks survived the prune above
   box.querySelectorAll(".copyone").forEach(b=>{
     b.onclick = async ()=>{
       const origLabel = b.dataset.origLabel;

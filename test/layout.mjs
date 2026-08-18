@@ -56,7 +56,7 @@ await t("#204: quoted probability equals the product over the REAL layout", asyn
   setLimit(160);
   const img = Uint8Array.from({length:4200},(_,i)=>(i*37+11)&0xff);
   const b64 = await pack(img, "image/webp", "");
-  const cs = chunkify(b64, "auto");
+  const cs = await chunkify(b64, "auto");
   const plan = getPlan();
   const { total, per } = emittedPerBlock(cs);
   const blocks = Math.ceil(total / RS_BLOCK);
@@ -102,7 +102,7 @@ await t("layout mirrors parityChunks for real sends across many sizes", async ()
     const img = Uint8Array.from({length:bytes},(_,i)=>(i*17+5)&0xff);
     const b64 = await pack(img, "image/webp", "");
     for (const lvl of ["light","strong"]) {
-      const cs = chunkify(b64, lvl);
+      const cs = await chunkify(b64, lvl);
       const { total, per } = emittedPerBlock(cs);
       const layout = rsBlockLayout(total, n => rsParityCount(n, lvl));
       layout.forEach((blk, b) => {

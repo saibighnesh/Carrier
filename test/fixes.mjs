@@ -5,7 +5,12 @@ import assert from "node:assert/strict";
 const HTML = fileURLToPath(new URL("../index.html", import.meta.url));
 const html = readFileSync(HTML, "utf8");
 const slice=(a,b)=>{const i=html.indexOf(a),j=html.indexOf(b);if(i<0||j<0)throw new Error("marker "+(i<0?a:b));return html.slice(i,j);};
-let pass = 0; const t=(n,f)=>{f();console.log("  ok  "+n);pass++;};
+// async now — chunkify yields cooperatively (see index.html's yieldToMain), so every call needs awaiting.
+// This also fixes a latent race in the file's one pre-existing async test: t() previously did not await
+// f(), so an async callback's assertions ran in the background after "N passed" had already printed —
+// harmless while nothing failed, but a failure there would have surfaced as an unattributed crash after
+// the summary line rather than a clean FAIL against the right test name.
+let pass = 0; const t=async(n,f)=>{await f();console.log("  ok  "+n);pass++;};
 
 // --- targetBytes must price the codec that will carry the text ---
 {
@@ -28,7 +33,7 @@ let pass = 0; const t=(n,f)=>{f();console.log("  ok  "+n);pass++;};
 }
 const { targetBytes, dec64, pack, chunkify, setCodec, setLimit, DENSE2_BITS } = globalThis.__F;
 
-t("auto-fit budget under Compact is 14/6 of the Base64 budget — not equal to it", () => {
+await t("auto-fit budget under Compact is 14/6 of the Base64 budget — not equal to it", () => {
   setLimit(60000);
   setCodec("b64");   const b = targetBytes();
   setCodec("dense"); const d = targetBytes();
@@ -38,11 +43,11 @@ t("auto-fit budget under Compact is 14/6 of the Base64 budget — not equal to i
   console.log(`      (b64 ${b} B, dense ${d} B per message)`);
 });
 
-t("a payload sized to the dense budget genuinely fits one message", async () => {
+await t("a payload sized to the dense budget genuinely fits one message", async () => {
   setLimit(4096); setCodec("dense");
   const budget = targetBytes() - (5 + 1 + 10 + 4);            // container overhead, unlocked
   const img = new Uint8Array(budget);
-  const cs = chunkify(await pack(img, "image/webp", ""), "off");
+  const cs = await chunkify(await pack(img, "image/webp", ""), "off");
   assert.equal(cs.length, 1, `budget-sized payload split into ${cs.length} messages`);
   assert.ok(cs[0].length <= 4096, "and stays inside the limit");
   // the OLD budget left this much on the table:
@@ -51,7 +56,7 @@ t("a payload sized to the dense budget genuinely fits one message", async () => 
   setCodec("b64");
 });
 
-t("dec64 rejects char codes past the table instead of producing NaN", () => {
+await t("dec64 rejects char codes past the table instead of producing NaN", () => {
   assert.equal(dec64("AAAA"), 0);
   assert.equal(dec64("//"), 4095);
   assert.equal(dec64("一"), -1, "a CJK char must be rejected, not NaN");
@@ -60,7 +65,7 @@ t("dec64 rejects char codes past the table instead of producing NaN", () => {
   assert.equal(dec64(String.fromCharCode(200)), -1);
 });
 
-t("the compression cache key exists and covers exactly what compressOnce consumes", () => {
+await t("the compression cache key exists and covers exactly what compressOnce consumes", () => {
   assert.match(html, /const imgKeyNow = `\$\{loadToken\}\|\$\{d\}\|\$\{q\}`/, "image cache keyed on source + dims + quality");
   assert.ok(html.includes("imgKey = null; imgCache = null;"), "must be invalidated on Start over");
   // and the pack cache must still sit downstream, keyed via the declared lists (the #221 invariant)

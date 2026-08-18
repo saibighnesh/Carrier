@@ -1,4 +1,4 @@
-// Full pipeline out of index.html: pack -> chunkify(+parity) -> destroy parts -> reassemble -> unpack.
+// Full pipeline out of index.html: pack -> await chunkify(+parity) -> destroy parts -> reassemble -> unpack.
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 const HTML = fileURLToPath(new URL("../index.html", import.meta.url));
@@ -28,7 +28,7 @@ const totalOf = c => +c.match(/^PXT\/[0-9a-f]+\/\d+\/(\d+)\//)[1];
 await t("Strong: destroy 4 data parts, image still rebuilds byte-for-byte", async () => {
   setLimit(160);
   const b64 = await pack(img, "image/webp", "");
-  const cs = chunkify(b64, "strong");
+  const cs = await chunkify(b64, "strong");
   const total = totalOf(cs[0]);
   const kept = cs.filter(c => ![3,7,11,19].includes(idxOf(c)));
   const r = reassemble(kept.join("\n\n"));
@@ -43,7 +43,7 @@ await t("Strong: destroy 4 data parts, image still rebuilds byte-for-byte", asyn
 await t("destroying the LAST part exercises the padding restore", async () => {
   setLimit(160);
   const b64 = await pack(img, "image/webp", "");
-  const cs = chunkify(b64, "strong");
+  const cs = await chunkify(b64, "strong");
   const total = totalOf(cs[0]);
   const kept = cs.filter(c => idxOf(c) !== total);
   const r = reassemble(kept.join("\n\n"));
@@ -57,7 +57,7 @@ await t("destroying the LAST part exercises the padding restore", async () => {
 await t("encrypted payloads recover too — coding is below the crypto", async () => {
   setLimit(160);
   const b64 = await pack(img, "image/webp", "hunter2");
-  const cs = chunkify(b64, "strong");
+  const cs = await chunkify(b64, "strong");
   const kept = cs.filter(c => ![2,9].includes(idxOf(c)));
   const r = reassemble(kept.join("\n\n"));
   assert.equal(r.repaired, 2);
@@ -69,7 +69,7 @@ await t("encrypted payloads recover too — coding is below the crypto", async (
 await t("beyond the parity budget it degrades to the old behaviour, not to garbage", async () => {
   setLimit(160);
   const b64 = await pack(img, "image/webp", "");
-  const cs = chunkify(b64, "light");
+  const cs = await chunkify(b64, "light");
   const total = totalOf(cs[0]);
   const k = cs.length - total;
   const doomed = Array.from({length: k + 3}, (_, i) => i + 2);
@@ -83,7 +83,7 @@ await t("beyond the parity budget it degrades to the old behaviour, not to garba
 await t("losing parity parts themselves is harmless", async () => {
   setLimit(160);
   const b64 = await pack(img, "image/webp", "");
-  const cs = chunkify(b64, "strong");
+  const cs = await chunkify(b64, "strong");
   const total = totalOf(cs[0]);
   const kept = cs.filter(c => idxOf(c) <= total || idxOf(c) % 2 === 0).filter(c => idxOf(c) !== 6);
   const r = reassemble(kept.join("\n\n"));
@@ -96,7 +96,7 @@ await t("losing parity parts themselves is harmless", async () => {
 await t("Off changes nothing: no parity, and the payload is unaltered", async () => {
   setLimit(160);
   const b64 = await pack(img, "image/webp", "");
-  const cs = chunkify(b64, "off");
+  const cs = await chunkify(b64, "off");
   const total = totalOf(cs[0]);
   assert.equal(cs.length, total, "Off must emit exactly the data parts");
   const r = reassemble(cs.join("\n\n"));
@@ -107,7 +107,7 @@ await t("Off changes nothing: no parity, and the payload is unaltered", async ()
 await t("garbage in the parity header can't corrupt a good send", async () => {
   setLimit(160);
   const b64 = await pack(img, "image/webp", "");
-  const cs = chunkify(b64, "strong");
+  const cs = await chunkify(b64, "strong");
   const total = totalOf(cs[0]);
   const mangled = cs.map(c => idxOf(c) > total ? c.replace(/\/([^/]*)$/, "/AAAAAAAAAAAAAAAAAAAA") : c);
   const kept = mangled.filter(c => idxOf(c) !== 4);
@@ -129,7 +129,7 @@ await t("recovers when the final part is Base64 padding alone", async () => {
   for (let extra = 0; extra < 600 && covered < 3; extra++) {
     const im = Uint8Array.from({length: 900 + extra}, (_, i) => (i * 17 + 3) & 0xff);
     const b64 = await pack(im, "image/webp", "");
-    const cs = chunkify(b64, "strong");
+    const cs = await chunkify(b64, "strong");
     const total = totalOf(cs[0]);
     const core = b64.replace(/=+$/, "");
     const per = cs.filter(c => idxOf(c) > total)[0].replace(/^PXT\/[0-9a-f]+\/\d+\/\d+\//, "").length - 6;

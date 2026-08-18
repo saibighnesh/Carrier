@@ -32,7 +32,7 @@ await t("Base64 estimate stays accurate (no regression)", async () => {
   setLimit(60000); setCodec("b64");
   for (const n of [900, 9000, 90000]) {
     const img = Uint8Array.from({length:n},(_,i)=>(i*37)&0xff);
-    const r = reassemble(chunkify(await pack(img,"image/webp",""), "off").join("\n\n"));
+    const r = reassemble((await chunkify(await pack(img,"image/webp",""), "off")).join("\n\n"));
     const truth = containerBytes(n, "image/webp", false);
     const est = payloadBytes(r);
     assert.ok(Math.abs(est - truth) <= 3, `n=${n}: estimated ${est},truth ${truth}`);
@@ -44,7 +44,7 @@ await t("Compact estimate is now right — it was reporting half", async () => {
   setLimit(60000); setCodec("dense");
   for (const n of [900, 9000, 90000]) {
     const img = Uint8Array.from({length:n},(_,i)=>(i*37)&0xff);
-    const r = reassemble(chunkify(await pack(img,"image/webp",""), "off").join("\n\n"));
+    const r = reassemble((await chunkify(await pack(img,"image/webp",""), "off")).join("\n\n"));
     const truth = containerBytes(n, "image/webp", false);
     const est = payloadBytes(r);
     assert.equal(r.dense, true, "must be recognised as dense");
@@ -62,7 +62,7 @@ await t("encrypted payloads estimate correctly in both encodings", async () => {
   const img = Uint8Array.from({length:5000},(_,i)=>(i*13)&0xff);
   for (const codec of ["b64","dense"]) {
     setCodec(codec);
-    const r = reassemble(chunkify(await pack(img,"image/webp","pw"), "off").join("\n\n"));
+    const r = reassemble((await chunkify(await pack(img,"image/webp","pw"), "off")).join("\n\n"));
     const truth = containerBytes(5000, "image/webp", true);
     assert.ok(Math.abs(payloadBytes(r) - truth) <= 3, `${codec}: ${payloadBytes(r)} vs ${truth}`);
   }
@@ -70,7 +70,7 @@ await t("encrypted payloads estimate correctly in both encodings", async () => {
 
 await t("the dense flag comes from the prefix, not from the sender's setting", async () => {
   setLimit(60000);
-  setCodec("dense"); const d = chunkify(await pack(Uint8Array.from({length:600},(_,i)=>i&0xff),"image/webp",""), "off");
+  setCodec("dense"); const d = await chunkify(await pack(Uint8Array.from({length:600},(_,i)=>i&0xff),"image/webp",""), "off");
   setCodec("b64");   // receiver's own setting is the opposite of the sender's
   const r = reassemble(d.join("\n\n"));
   assert.equal(r.dense, true, "must follow the text, not the local setting");
@@ -79,7 +79,7 @@ await t("the dense flag comes from the prefix, not from the sender's setting", a
 await t("a partial dense paste projects the finished size correctly", async () => {
   setLimit(4096); setCodec("dense");
   const img = Uint8Array.from({length:32000},(_,i)=>(i*29)&0xff);   // v2 is denser — needs a bigger payload to split into >=4 parts
-  const cs = chunkify(await pack(img,"image/webp",""), "off");
+  const cs = await chunkify(await pack(img,"image/webp",""), "off");
   assert.ok(cs.length >= 4, `need several parts, got ${cs.length}`);
   const r = reassemble(cs.slice(0, 2).join("\n\n"));
   const projected = Math.floor(payloadBytes(r) * (r.total / r.have));
@@ -91,7 +91,7 @@ await t("a partial dense paste projects the finished size correctly", async () =
   assert.ok(projected >= truth, `projection must not under-state: ${projected} < ${truth}`);
   assert.ok(projected - truth <= onePart, `over by ${projected - truth} B, more than one part (${onePart} B)`);
   setCodec("b64");
-  const cs2 = chunkify(await pack(img,"image/webp",""), "off");
+  const cs2 = await chunkify(await pack(img,"image/webp",""), "off");
   const r2 = reassemble(cs2.slice(0, 2).join("\n\n"));
   const proj2 = Math.floor(payloadBytes(r2) * (r2.total / r2.have));
   assert.ok(proj2 >= truth, "Base64 over-states in the same direction — not encoding-specific");
