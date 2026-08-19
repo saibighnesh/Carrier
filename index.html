@@ -2587,7 +2587,9 @@ $("#saveTxt").addEventListener("click", ()=>{
   const compactNote = textCodec === "dense"
     ? " These use Carrier's Compact encoding, so they need a version of Carrier that understands it — an older one will report finding no message at all."
     : "";
-  const header = `# Carrier — ${n} message${n!==1?"s":""} for ${appName}, saved ${savedOn}.${recoveryNote}${compactNote} Paste every line below into Carrier's Receive tab (order doesn't matter) to rebuild the image.\n\n`;
+  // stamp the version in the same header, not just the footer — this file may get forwarded or opened
+  // months later on a different machine, far from whatever tab it was saved from.
+  const header = `# Carrier v${APP_VERSION} — ${n} message${n!==1?"s":""} for ${appName}, saved ${savedOn}.${recoveryNote}${compactNote} Paste every line below into Carrier's Receive tab (order doesn't matter) to rebuild the image.\n\n`;
   const blob = new Blob([header + lastChunks.join("\n\n")], {type:"text/plain"});
   // reclaim the *previous* save's URL now rather than on a fixed timer: a timer set too short frees the
   // blob before a lingering "Always ask where to save" dialog reads it, producing a 0-byte/truncated
