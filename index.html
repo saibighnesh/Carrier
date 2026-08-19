@@ -407,10 +407,15 @@
   No servers, no tracking, no uploads. Save this file and it works on a plane. &copy; <span id="year">2026</span> Sai Bighnesh &mdash;
   <a href="https://github.com/saibighnesh/Carrier" target="_blank" rel="noopener noreferrer" aria-label="Carrier source code on GitHub (opens in new tab)" title="View the Carrier source on GitHub (opens in a new tab)">source on GitHub</a>,
   <a href="https://github.com/saibighnesh/Carrier/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" aria-label="MIT license (opens in new tab)" title="Read the MIT license (opens in a new tab)">MIT licensed</a>
+  &mdash; <span id="appVersion" title="Both sides of a send need a Carrier build that understands the same wire format — check this if recovery or Compact isn't working for one of you">v0</span>
 </footer>
 
 <script>
 "use strict";
+// Bump on any change to the wire format (chunk header, container layout, dense encoding) — this is the
+// one thing that lets two people stuck on "recovery isn't working" or "it says no message found" tell
+// whether they're just running different Carrier builds.
+const APP_VERSION = "1.0";
 let msgLimit = 60000;             // chars per message for the chosen chat app (user-selectable)
 let recoveryLevel = "off";        // Reed-Solomon redundancy: off | light | strong (see rsParityCount)
 let textCodec = "b64";            // wire text encoding: b64 (universal) | dense (14 bits/char on the wire, opt-in)
@@ -2582,7 +2587,9 @@ $("#saveTxt").addEventListener("click", ()=>{
   const compactNote = textCodec === "dense"
     ? " These use Carrier's Compact encoding, so they need a version of Carrier that understands it — an older one will report finding no message at all."
     : "";
-  const header = `# Carrier — ${n} message${n!==1?"s":""} for ${appName}, saved ${savedOn}.${recoveryNote}${compactNote} Paste every line below into Carrier's Receive tab (order doesn't matter) to rebuild the image.\n\n`;
+  // stamp the version in the same header, not just the footer — this file may get forwarded or opened
+  // months later on a different machine, far from whatever tab it was saved from.
+  const header = `# Carrier v${APP_VERSION} — ${n} message${n!==1?"s":""} for ${appName}, saved ${savedOn}.${recoveryNote}${compactNote} Paste every line below into Carrier's Receive tab (order doesn't matter) to rebuild the image.\n\n`;
   const blob = new Blob([header + lastChunks.join("\n\n")], {type:"text/plain"});
   // reclaim the *previous* save's URL now rather than on a fixed timer: a timer set too short frees the
   // blob before a lingering "Always ask where to save" dialog reads it, producing a 0-byte/truncated
@@ -3327,6 +3334,7 @@ if(lsGet("carrier_mode") === "recv") $("#tab-recv").click();
 
 /* keep the footer copyright year current (never regress below the 2026 first-published year) */
 $("#year").textContent = Math.max(2026, new Date().getFullYear());
+$("#appVersion").textContent = `v${APP_VERSION}`;
 </script>
 </body>
 </html>
