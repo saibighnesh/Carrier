@@ -323,13 +323,15 @@
       <div class="meter" id="meter">
         <div class="track" id="meterTrack" role="progressbar" aria-label="Message size" aria-roledescription="message size meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" title="How full one message is — over 100% splits into multiple parts"><div class="fill" id="meterFill"></div></div>
       </div>
-      <div class="stats" role="region" aria-label="Compression statistics">
+      <!-- aria-live + aria-atomic sit on the whole .stats region, not on each .stat individually — refresh()
+           updates Compressed/As text/Messages together on every quality/size change, so one shared live
+           region reads them as a single coherent announcement ("Compressed 42 KB 800×600, As text 12,400
+           chars, Messages 1") instead of three overlapping, independently-interrupting announcements. -->
+      <div class="stats" role="region" aria-label="Compression statistics" aria-live="polite" aria-atomic="true">
         <div class="stat"><div class="k" title="Original image pixel dimensions">Original</div><div class="v" id="origOut" translate="no">—</div></div>
-        <!-- aria-live + aria-atomic sit on the whole .stat (not just the value) so each announcement reads
-             the label with its value ("Compressed 42 KB 800×600"), never a context-free bare number -->
-        <div class="stat" aria-live="polite" aria-atomic="true"><div class="k" title="Compressed image size and pixel dimensions">Compressed</div><div class="v" id="sizeOut">—</div></div>
-        <div class="stat" aria-live="polite" aria-atomic="true"><div class="k" title="Total characters of text to send">As text</div><div class="v" id="charOut">—</div></div>
-        <div class="stat" aria-live="polite" aria-atomic="true"><div class="k" title="Number of chat messages needed">Messages</div><div class="v" id="msgOut" translate="no">—</div></div>
+        <div class="stat"><div class="k" title="Compressed image size and pixel dimensions">Compressed</div><div class="v" id="sizeOut">—</div></div>
+        <div class="stat"><div class="k" title="Total characters of text to send">As text</div><div class="v" id="charOut">—</div></div>
+        <div class="stat"><div class="k" title="Number of chat messages needed">Messages</div><div class="v" id="msgOut" translate="no">—</div></div>
       </div>
       <p class="note" id="fitNote" role="status"></p>
       <p class="note warn hidden" id="alphaNote" role="status"></p>
