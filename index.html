@@ -1592,7 +1592,12 @@ async function compressOnce(maxDim, quality){
   const blob = await encodeCanvas(cv, quality/100);
   return Object.assign(new Uint8Array(await blob.arrayBuffer()), {_w: cv._w, _h: cv._h});
 }
-async function autoFit(){
+// onProgress(d, i, total), called before each candidate encode — reports which dimension rung is being
+// tried and where the binary search is within it (i/total, 1-based). Deliberately NOT wired to aria-live:
+// up to 42 calls in a few seconds would be exactly the overlapping-announcement noise #232 just fixed for
+// the stats region. This is a sighted-progress affordance on the button's own text; aria-busy already
+// tells a screen reader user the button is working, which is the right amount of information there.
+async function autoFit(onProgress){
   const dims = [1280,1024,768,512,384,256];
   // the packed payload is bigger than the raw image blob: MAGIC(4)+flags(1) + mimeLen(1)+mime + , when a
   // password is set, salt(16)+iv(12)+GCM tag(16)=44. Comparing the raw blob to targetBytes() ignored all
@@ -1608,6 +1613,7 @@ async function autoFit(){
     let lo = 0.25, hi = 0.92, pick = null;
     for(let i=0;i<7;i++){
       const q = (lo+hi)/2;
+      if(onProgress) onProgress(d, i+1, 7);
       const blob = await encodeCanvas(cv, q);
       if(!srcImage) return null;   // abandoned during the encode await
       // FLOOR, not round: the search parks q right at the budget edge, so rounding UP would make refresh
@@ -2408,7 +2414,7 @@ $("#autofit").addEventListener("click", async ()=>{
   // precisely so a password typed mid-fit is accounted for.
   setTuneDisabled(true);
   try{
-    const best = await autoFit();
+    const best = await autoFit((d, i, total) => { btn.textContent = `Fitting… ${d}px (${i}/${total})`; });
     if(!best || !srcImage) return;   // Start over ran during the fit — autoFit abandoned; don't touch the (now hidden) panel
     const hitFallback = best.fallback === true;   // real success at {25,256} no longer masquerades as the fallback
     clearTimeout(debounce);
