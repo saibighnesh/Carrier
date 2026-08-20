@@ -21,7 +21,7 @@ Save the single `index.html` file and it works offline — on a plane, on a trai
 
 ## Features
 
-- **Single file** — one `index.html`, zero dependencies, no build step
+- **Single file** — one `index.html`, zero dependencies, no build step. The footer shows which version you're running, and a saved `.txt` stamps its own — the fact that settles "which one of us is out of date" in one glance instead of a guess
 - **Compact encoding** — optionally packs 14 bits into each character instead of Base64's 6, cutting the message count to 43% on apps that count characters. Off by default; both sides need a Carrier that understands it
 - **Smart compression** — auto-resizes and re-encodes (WebP → JPEG fallback) to hit a target size
 - **Auto-fit** — one click finds the best quality/dimension combo to land in a single message
@@ -32,7 +32,7 @@ Save the single `index.html` file and it works offline — on a plane, on a trai
 - **Loss recovery (Reed-Solomon)** — optionally add parity parts so the recipient can *rebuild* parts that never arrived, instead of asking you to resend them. Works under both Base64 and Compact, over a field sized to match each. Off by default. **Auto** computes how much redundancy you actually need from the loss rate this device has measured; Light and Strong are fixed ~10% / ~25%
 - **Fully offline** — no network calls at all; works without internet after first load
 - **Reassembly progress** — the receive side counts parts as they land (`3/7 parts` in the tab title), names exactly what's missing, and **Copy what's missing** writes the sender a ready-to-send list
-- **Accessible** — keyboard navigable throughout, controls named by their visible labels, atomic screen-reader announcements for both progress lines, and `Esc` to start over or clear from anywhere in the panel
+- **Accessible** — a skip-to-main-content link for keyboard users, keyboard navigable throughout, controls named by their visible labels, one coherent live-region announcement for the compression stats rather than three overlapping ones, and `Esc` to start over or clear from anywhere in the panel
 - **Degrades honestly** — where the browser blocks a capability (clipboard, pop-ups, Web Crypto on a non-secure page) Carrier names it and points at the way through, instead of failing mutely or blaming the image
 
 ---
