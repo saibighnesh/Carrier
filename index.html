@@ -2430,6 +2430,13 @@ $("#autofit").addEventListener("click", async ()=>{
     if(hitFallback){
       fitNote.className = "note warn";
       fitNote.textContent = "Image too large to fit in one message at any quality. Using minimum settings — recipient may see visible compression.";
+    } else {
+      // the meter/stats update visually either way, but a screen-reader user hears nothing once aria-busy
+      // clears unless something is actually said here — fitNote is role="status", an implicit live region,
+      // so this is the one announcement a non-sighted user gets that the fit succeeded and what it landed on.
+      const n = lastChunks.length;
+      fitNote.className = "note ok";
+      fitNote.textContent = `Fit at ${best.d}px, quality ${best.q} — ${n===1 ? "now fits in 1 message." : `now ${n} messages.`}`;
     }
   } catch(err) {
     fitNote.className = "note err";
