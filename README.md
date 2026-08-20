@@ -21,7 +21,7 @@ Save the single `index.html` file and it works offline — on a plane, on a trai
 
 ## Features
 
-- **Single file** — one `index.html`, zero dependencies, no build step
+- **Single file** — one `index.html`, zero dependencies, no build step. The footer shows which version you're running, and a saved `.txt` stamps its own — the fact that settles "which one of us is out of date" in one glance instead of a guess
 - **Compact encoding** — optionally packs 14 bits into each character instead of Base64's 6, cutting the message count to 43% on apps that count characters. Off by default; both sides need a Carrier that understands it
 - **Smart compression** — auto-resizes and re-encodes (WebP → JPEG fallback) to hit a target size
 - **Auto-fit** — one click finds the best quality/dimension combo to land in a single message
