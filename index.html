@@ -93,7 +93,7 @@
   .row{display:flex;align-items:center;gap:12px;margin:14px 0}
   .row label{font-size:13px;color:var(--muted);min-width:74px}
   input[type=range]{flex:1;accent-color:var(--send)}
-  select,input[type=password],textarea{
+  select,input[type=password],input[type=number],textarea{
     background:var(--bg);color:var(--ink);border:1px solid var(--line);caret-color:var(--send);
     border-radius:8px;padding:9px 11px;font-family:var(--sans);font-size:14px;width:100%;max-width:100%
   }
@@ -283,9 +283,16 @@
               <option value="4000">Slack (4k)</option>
               <option value="2000">Discord (2k)</option>
               <option value="160">SMS (160)</option>
+              <option value="custom">Custom…</option>
             </select>
-            <span id="chatLimitHint" class="sr-only">Sets the per-message character limit for your chat app. Smaller limits split into more parts.</span>
+            <span id="chatLimitHint" class="sr-only">Sets the per-message character limit for your chat app. Smaller limits split into more parts. Pick Custom for an app not in this list.</span>
           </div>
+          <div class="row hidden" id="chatLimitCustomRow">
+            <label for="chatLimitCustom">Custom limit</label>
+            <input type="number" id="chatLimitCustom" min="20" max="200000" step="1" inputmode="numeric" autocomplete="off" aria-describedby="chatLimitCustomHint" placeholder="e.g. 8000">
+            <span id="chatLimitCustomHint" class="sr-only">Characters per message for an app not in the list above. Not saved between visits — pick a listed app instead if you want this remembered.</span>
+          </div>
+          <p class="note warn hidden" id="chatLimitCustomErr" role="status"></p>
           <div class="row">
             <label for="compact">Compact</label>
             <select id="compact" autocomplete="off" aria-describedby="compactHint" title="Packs 14 bits into each character instead of Base64's 6 — less than half the text — but only where the app counts characters">
@@ -2298,7 +2305,38 @@ function flushPersist(){
 $("#quality").addEventListener("input", e=>{ const v = e.target.value; setQuality(v); queuePersist("carrier_quality", v); queueRefresh(); });
 $("#maxdim").addEventListener("change", e=>{ queuePersist("carrier_maxdim", e.target.value); syncPresets(); queueRefresh(); });
 // switching chat app changes the per-message char budget → re-chunk and redraw the meter/stats
-$("#chatLimit").addEventListener("change", e=>{ msgLimit = +e.target.value; queuePersist("carrier_msglimit", e.target.value); queueRefresh(); });
+const CUSTOM_LIMIT_MIN = 20, CUSTOM_LIMIT_MAX = 200000;
+// Custom is deliberately session-only — not persisted. Restoring it on load would mean either trusting
+// an arbitrary localStorage number forever (no MSG_LIMITS entry to validate it against, unlike every
+// preset) or building a second validated-restore path just for this one option. Every appName/appTag call
+// site already falls back safely for an msgLimit with no MSG_LIMITS entry (that's what makes this whole
+// feature low-risk to add), so forgetting it on reload costs the user re-typing a number, not correctness.
+function applyCustomLimit(){
+  const raw = $("#chatLimitCustom").value.trim();
+  const err = $("#chatLimitCustomErr");
+  if(raw === ""){ err.classList.add("hidden"); return; }
+  const n = parseInt(raw, 10);
+  if(!Number.isInteger(n) || String(n) !== raw || n < CUSTOM_LIMIT_MIN || n > CUSTOM_LIMIT_MAX){
+    err.textContent = `Enter a whole number between ${CUSTOM_LIMIT_MIN} and ${CUSTOM_LIMIT_MAX.toLocaleString()}.`;
+    err.classList.remove("hidden");
+    return;
+  }
+  err.classList.add("hidden");
+  msgLimit = n;
+  queueRefresh();
+}
+$("#chatLimit").addEventListener("change", e=>{
+  const custom = e.target.value === "custom";
+  $("#chatLimitCustomRow").classList.toggle("hidden", !custom);
+  if(custom){ $("#chatLimitCustom").focus(); applyCustomLimit(); return; }
+  $("#chatLimitCustomErr").classList.add("hidden");
+  msgLimit = +e.target.value; queuePersist("carrier_msglimit", e.target.value); queueRefresh();
+});
+let customLimitDebounce;
+$("#chatLimitCustom").addEventListener("input", ()=>{
+  clearTimeout(customLimitDebounce);
+  customLimitDebounce = setTimeout(applyCustomLimit, 180);   // same debounce as every other tune control
+});
 // changing redundancy re-chunks (and resizes every part), so it goes through the same debounce
 $("#recovery").addEventListener("change", e=>{ recoveryLevel = e.target.value; queuePersist("carrier_recovery", e.target.value); queueRefresh(); });
 $("#compact").addEventListener("change", e=>{ textCodec = e.target.value; queuePersist("carrier_codec", e.target.value); queueRefresh(); });
@@ -2395,7 +2433,7 @@ document.querySelectorAll(".preset").forEach(b=>{
 // NOT #startOver: autoFit checks srcImage between every encode and abandons cleanly when it goes null,
 // so Start over is the working cancel for a long fit (42 encodes on a big image is several seconds).
 // Disabling it would take away the only way out.
-const TUNE_CONTROLS = ["#quality", "#maxdim", "#chatLimit"];
+const TUNE_CONTROLS = ["#quality", "#maxdim", "#chatLimit", "#chatLimitCustom"];
 function setTuneDisabled(off){
   TUNE_CONTROLS.forEach(sel => { $(sel).disabled = off; });
   document.querySelectorAll(".preset").forEach(b => { b.disabled = off; });
