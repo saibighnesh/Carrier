@@ -2311,18 +2311,26 @@ const CUSTOM_LIMIT_MIN = 20, CUSTOM_LIMIT_MAX = 200000;
 // preset) or building a second validated-restore path just for this one option. Every appName/appTag call
 // site already falls back safely for an msgLimit with no MSG_LIMITS entry (that's what makes this whole
 // feature low-risk to add), so forgetting it on reload costs the user re-typing a number, not correctness.
-function applyCustomLimit(){
-  const raw = $("#chatLimitCustom").value.trim();
-  const err = $("#chatLimitCustomErr");
-  if(raw === ""){ err.classList.add("hidden"); return; }
+// Pure: given the raw text from the custom-limit field, decides whether it's empty (nothing typed —
+// not yet an error), a valid whole number in range, or invalid. String(n) !== raw is doing real work,
+// not belt-and-suspenders: parseInt alone would accept "12.5" (-> 12) and "1e3" (-> 1) as if they were
+// clean integers. Kept DOM-free so it's testable the same way targetBytes/dec64/chunkCardContent are.
+function parseCustomLimit(raw){
+  raw = raw.trim();
+  if(raw === "") return {empty:true};
   const n = parseInt(raw, 10);
   if(!Number.isInteger(n) || String(n) !== raw || n < CUSTOM_LIMIT_MIN || n > CUSTOM_LIMIT_MAX){
-    err.textContent = `Enter a whole number between ${CUSTOM_LIMIT_MIN} and ${CUSTOM_LIMIT_MAX.toLocaleString()}.`;
-    err.classList.remove("hidden");
-    return;
+    return {empty:false, ok:false, error:`Enter a whole number between ${CUSTOM_LIMIT_MIN} and ${CUSTOM_LIMIT_MAX.toLocaleString()}.`};
   }
+  return {empty:false, ok:true, value:n};
+}
+function applyCustomLimit(){
+  const result = parseCustomLimit($("#chatLimitCustom").value);
+  const err = $("#chatLimitCustomErr");
+  if(result.empty){ err.classList.add("hidden"); return; }
+  if(!result.ok){ err.textContent = result.error; err.classList.remove("hidden"); return; }
   err.classList.add("hidden");
-  msgLimit = n;
+  msgLimit = result.value;
   queueRefresh();
 }
 $("#chatLimit").addEventListener("change", e=>{
