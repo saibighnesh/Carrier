@@ -97,6 +97,13 @@
     background:var(--bg);color:var(--ink);border:1px solid var(--line);caret-color:var(--send);
     border-radius:8px;padding:9px 11px;font-family:var(--sans);font-size:14px;width:100%;max-width:100%
   }
+  /* the native up/down spinner is drawn by the browser in light-mode colors regardless of the input's own
+     styling — no other numeric control here uses one (quality is a range slider), so dropping it entirely
+     is more consistent than trying to restyle a UA-drawn element to match the dark palette */
+  input[type=number]{appearance:textfield;-moz-appearance:textfield}
+  input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{
+    -webkit-appearance:none;margin:0
+  }
   .recv input,.recv textarea{caret-color:var(--recv)}
   .pwwrap{position:relative}
   .pwwrap input{padding-right:66px}
