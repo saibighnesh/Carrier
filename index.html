@@ -2482,16 +2482,19 @@ $("#autofit").addEventListener("click", async ()=>{
       queuePersist("carrier_maxdim", String(best.d));
     }
     await refresh();
+    // named once here, not per-branch, so the fallback and success messages below can't drift apart on
+    // whether they mention the app at all — matching refresh()'s own "Fits in a single WhatsApp message. ✓"
+    const app = MSG_LIMITS[String(msgLimit)] || "this app";
     if(hitFallback){
       fitNote.className = "note warn";
-      fitNote.textContent = "Image too large to fit in one message at any quality. Using minimum settings — recipient may see visible compression.";
+      fitNote.textContent = `Image too large to fit in a single ${app} message at any quality. Using minimum settings — recipient may see visible compression.`;
     } else {
       // the meter/stats update visually either way, but a screen-reader user hears nothing once aria-busy
       // clears unless something is actually said here — fitNote is role="status", an implicit live region,
       // so this is the one announcement a non-sighted user gets that the fit succeeded and what it landed on.
       const n = lastChunks.length;
       fitNote.className = "note ok";
-      fitNote.textContent = `Fit at ${best.d}px, quality ${best.q} — ${n===1 ? "now fits in 1 message." : `now ${n} messages.`}`;
+      fitNote.textContent = `Fit at ${best.d}px, quality ${best.q} — ${n===1 ? `now fits in a single ${app} message.` : `now ${n} ${app} messages.`}`;
     }
   } catch(err) {
     fitNote.className = "note err";
