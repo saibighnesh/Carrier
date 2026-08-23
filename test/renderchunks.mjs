@@ -100,6 +100,12 @@ t("copy/data aria-labels count against the TOTAL (data + recovery), matching the
   assert.match(d.dataAriaLabel, /Message 1 of 5 content/);
 });
 
+t("copyTitle is a hover-tooltip sentence naming the same 1-based/total pair as copyAriaLabel", () => {
+  setChunks(mkList(3, 2));
+  const d = chunkCardContent(globalThis.__CC.lastChunks[4], 4);   // a recovery part — total-based numbering still applies
+  assert.equal(d.copyTitle, "Copies message 5 of 5 to the clipboard");
+});
+
 t("chars reflects the actual chunk text length, not the preview length", () => {
   const chunk = "PXT/aa/1/1/" + "y".repeat(500);
   setChunks([chunk]);

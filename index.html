@@ -2067,6 +2067,7 @@ function chunkCardContent(c, i){
       : `Part ${i+1} of ${dataParts}`,
     chars: `${c.length.toLocaleString()} chars`,
     copyAriaLabel: `Copy message ${i+1} of ${total}`,
+    copyTitle: `Copies message ${i+1} of ${total} to the clipboard`,
     dataAriaLabel: `Message ${i+1} of ${total} content — use Copy button to copy`,
     preview: c.length > CHUNK_PREVIEW ? c.slice(0, CHUNK_PREVIEW) + " …" : c,
   };
@@ -2080,7 +2081,7 @@ function makeChunkCard(c, i){
     `<div class="head"><span class="pill${d.isParity ? " pill--recovery" : ""}" title="${d.pillTitle}">${d.pillLabel}</span>
      <span class="sentmark"></span>
      <span class="chunk-chars" style="font-family:var(--mono);font-size:10px;color:var(--faint);margin-right:auto;padding-left:10px">${d.chars}</span>
-     <button type="button" class="copyone" data-i="${i}" aria-label="${d.copyAriaLabel}" data-orig-label="${d.copyAriaLabel}">Copy</button></div>
+     <button type="button" class="copyone" data-i="${i}" aria-label="${d.copyAriaLabel}" data-orig-label="${d.copyAriaLabel}" title="${d.copyTitle}">Copy</button></div>
      <div class="data" data-i="${i}" tabindex="0" role="group" translate="no" aria-label="${d.dataAriaLabel}"></div>`;
   el.querySelector(".data").textContent = d.preview;
   return el;
@@ -2102,6 +2103,7 @@ function updateChunkCard(el, c, i){
   const btn = el.querySelector(".copyone");
   btn.dataset.i = String(i);
   btn.dataset.origLabel = d.copyAriaLabel;
+  btn.title = d.copyTitle;   // a hover tooltip, never shown mid-flash — safe to always refresh, unlike aria-label below
   // don't stomp an in-flight "Copied"/"Copy failed" flash — only refresh the resting label when at rest
   if(btn.textContent === "Copy") btn.setAttribute("aria-label", d.copyAriaLabel);
   const dataEl = el.querySelector(".data");
