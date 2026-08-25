@@ -461,6 +461,13 @@ const ALLOWED_IMG = new Set(["image/webp","image/jpeg","image/png","image/gif","
 const MAGIC = [0x50,0x58,0x54,0x31]; // "PXT1"
 
 const $ = s => document.querySelector(s);
+// The Chat app select can show "Custom…" while msgLimit still holds whatever preset number was active
+// before switching — applyCustomLimit only updates msgLimit once a valid number is typed, so an empty or
+// invalid custom field leaves the OLD limit in force. Every one of the 8 call sites below used to look
+// msgLimit up in MSG_LIMITS regardless, so the UI could say "Custom…" while every message on screen kept
+// naming the previous preset app. Checking the select's own value first is the single source of truth for
+// "is custom currently selected," independent of what msgLimit numerically still is.
+const activeAppName = fallback => $("#chatLimit").value === "custom" ? fallback : (MSG_LIMITS[String(msgLimit)] || fallback);
 // safe localStorage: merely *accessing* localStorage throws SecurityError when storage is disabled,
 // cookies are blocked, or the page is opened from file:// on some browsers — and setItem throws on
 // quota-0 (Safari Private Browsing). Unwrapped, that killed the rest of this <script> at load. These
