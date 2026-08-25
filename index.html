@@ -1699,7 +1699,7 @@ function updateSendTitle(){
     :                  `all ${total} sent ✓`;
   // when it splits into multiple parts, name the target app so a user juggling several Carrier tabs can
   // tell which chat each one is being sized for
-  const appTag = total > 1 ? ` · ${MSG_LIMITS[String(msgLimit)] || "this app"}` : "";
+  const appTag = total > 1 ? ` · ${activeAppName("this app")}` : "";
   const lockPrefix = $("#pass").value ? "🔒 " : "";   // mark a locked send in the tab title
   document.title = `${lockPrefix}${fname} · ${msgLabel}${appTag} — Carrier`;
 }
@@ -1868,7 +1868,7 @@ async function refresh(){
     : `≈ ${fmtKB(b64.length)} of text once Base64-encoded`;
   $("#msgOut").textContent = lastChunks.length;
   const dataCount = chunkDataCount(), parityCount = lastChunks.length - dataCount;
-  const appName = MSG_LIMITS[String(msgLimit)] || "chat";
+  const appName = activeAppName("chat");
   // the headline number is everything the user has to paste; the breakdown says how much of it is the
   // image and how much is insurance, which is the figure they need to judge the recovery setting
   $("#msgOut").title = parityCount > 0
@@ -1889,7 +1889,7 @@ async function refresh(){
   meter.classList.toggle("over", lastChunks.length > 1);
   meter.classList.toggle("near", lastChunks.length === 1 && ratio > 0.9);   // amber warning as a single message fills up, before it splits
   const note = $("#fitNote");
-  const app = MSG_LIMITS[String(msgLimit)] || "this app";
+  const app = activeAppName("this app");
   $("#meterTrack").title = `How full one ${app} message is — over 100% splits into multiple parts`;   // name the app the limit is for
   $("#meterTrack").setAttribute("aria-label", `${app} message size`);   // name the app for screen readers too, not just the tooltip
   if(lastChunks.length === 1){
@@ -2017,7 +2017,7 @@ function showLossHistory(){
   const el = $("#lossNote"), txt = $("#lossText");
   if(!post.seen){ el.classList.add("hidden"); txt.textContent = ""; return; }
   const rate = (post.a / (post.a + post.b) * 100).toFixed(1);
-  txt.textContent = `${MSG_LIMITS[String(msgLimit)] || "This app"}: ${post.lost} of ${post.seen} parts lost so far, so recovery plans for about ${rate}%.`;
+  txt.textContent = `${activeAppName("This app")}: ${post.lost} of ${post.seen} parts lost so far, so recovery plans for about ${rate}%.`;
   el.classList.remove("hidden");
 }
 $("#lossReset").addEventListener("click", ()=>{
@@ -2030,7 +2030,7 @@ $("#lossReset").addEventListener("click", ()=>{
 // counts a message. Say which side of that line the user is on rather than leaving them to find out.
 function showCompact(){
   const el = $("#compactNote");
-  const app = MSG_LIMITS[String(msgLimit)] || "this app";
+  const app = activeAppName("this app");
   // Recovery now works under Compact too (GF(2^14): a parity symbol IS a dense character, the same trick
   // GF(2^6) does for Base64), so the control is never disabled here any more. It briefly was, before that
   // field existed — leaving that comment as the reason a future edit shouldn't reintroduce the disable.
@@ -2491,7 +2491,7 @@ $("#autofit").addEventListener("click", async ()=>{
     await refresh();
     // named once here, not per-branch, so the fallback and success messages below can't drift apart on
     // whether they mention the app at all — matching refresh()'s own "Fits in a single WhatsApp message. ✓"
-    const app = MSG_LIMITS[String(msgLimit)] || "this app";
+    const app = activeAppName("this app");
     if(hitFallback){
       fitNote.className = "note warn";
       fitNote.textContent = `Image too large to fit in a single ${app} message at any quality. Using minimum settings — recipient may see visible compression.`;
@@ -2657,7 +2657,7 @@ $("#saveTxt").addEventListener("click", ()=>{
   if(!lastChunks.length) return;
   // prepend a human-readable header so a saved backup is self-documenting. The Receive parser only
   // matches "PXT/…" chunks (reassemble's regex), so this comment line is ignored on load — safe to include.
-  const appName = MSG_LIMITS[String(msgLimit)] || "your chat app";
+  const appName = activeAppName("your chat app");
   const n = lastChunks.length;
   const savedOn = localDate();   // YYYY-MM-DD in the user's own timezone — a backup should record when it was made
   // record the recovery split in the backup. A saved .txt is read months later, often by someone deciding
@@ -2681,7 +2681,7 @@ $("#saveTxt").addEventListener("click", ()=>{
   const url = URL.createObjectURL(blob);
   lastTxtUrl = url;
   const base = (srcImage && srcImage._name ? srcImage._name.replace(/\.[^.]+$/, "") : "carrier").replace(/[^\w.-]+/g, "_").slice(0, 40) || "carrier";
-  const app = (MSG_LIMITS[String(msgLimit)] || "").toLowerCase().replace(/[^a-z0-9]+/g, "");   // record which app's per-message limit these chunks fit
+  const app = activeAppName("").toLowerCase().replace(/[^a-z0-9]+/g, "");   // record which app's per-message limit these chunks fit
   const appTag = app ? `-${app}` : "";
   // record the encoding in the name too. The header already explains it, but a folder listing doesn't
   // show headers — and a Compact backup is the one that will fail confusingly on an older Carrier, so it
