@@ -47,6 +47,20 @@ t("negative values are rejected at every width", () => {
   assert.equal(enc64(-1, 4), null);
 });
 
+t("non-integer values are NOT rejected — the guard only checks range, not Number.isInteger", () => {
+  // the bitwise `>>` used to build the output string truncates toward zero, so a fractional value
+  // silently produces the exact same output as its integer part — never hit by any real caller (every
+  // one passes an integer block/row index or length), but worth pinning down as documented behavior
+  // rather than an unverified assumption
+  assert.equal(enc64(5.5, 1), enc64(5, 1));
+  assert.equal(enc64(5.9, 1), enc64(5, 1));
+});
+
+t("NaN slips past the range guard entirely and encodes as 0, rather than being rejected", () => {
+  // NaN < 0 and NaN >= ceiling are both false, so the guard's early return never fires; NaN >> 0 is 0
+  assert.equal(enc64(NaN, 1), enc64(0, 1));
+});
+
 t("wider widths round-trip and pad with leading 'A' (zero), matching dec64's big-endian read", () => {
   assert.equal(enc64(0, 4), "AAAA");
   assert.equal(dec64(enc64(0, 4)), 0);
