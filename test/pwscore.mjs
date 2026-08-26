@@ -53,4 +53,15 @@ t("the score never exceeds 4 even past every threshold with full variety", () =>
   assert.equal(pwScore(long), 4);
 });
 
+t("v.length counts UTF-16 code units, not visual characters — emoji inflate the length silently", () => {
+  // each lock emoji is a surrogate pair (2 UTF-16 code units), so 8 emoji is 8 VISIBLE characters to a
+  // user but v.length reports 16 — crossing every length threshold (8/12/16) a full bracket early. Only
+  // the symbol class matches (no lower/upper/digit), so variety stays 1 — no bonus, but len alone reaches 3
+  const e4 = "🔒🔒🔒🔒", e8 = "🔒🔒🔒🔒🔒🔒🔒🔒";
+  assert.equal(e4.length, 8, "4 emoji read as 8 UTF-16 code units, not 4");
+  assert.equal(pwScore(e4), 1);
+  assert.equal(e8.length, 16, "8 emoji read as 16 UTF-16 code units, not 8");
+  assert.equal(pwScore(e8), 3, "scores as if it were a 16-character password, though only 8 were typed");
+});
+
 console.log(`\n${pass} passed`);
