@@ -74,4 +74,14 @@ await t("flushPersist with nothing pending is a safe no-op", async () => {
   assert.equal(store.size, 0);
 });
 
+await t("queuePersist(key, undefined) writes the literal string \"undefined\", not a no-op or a throw", async () => {
+  // lsSet's String(v) coercion turns a missing value into the 10-character string "undefined" rather
+  // than skipping the write — never hit by any current call site (every one always passes a real value),
+  // but a real, surprising failure mode worth pinning down rather than leaving as an unverified assumption
+  store.clear();
+  queuePersist("k", undefined);
+  flushPersist();
+  assert.equal(store.get("k"), "undefined");
+});
+
 console.log(`\n${pass} passed`);
