@@ -23,6 +23,15 @@ t("empty input is neither valid nor an error — nothing typed yet", () => {
   assert.deepEqual(parseCustomLimit("   "), {empty:true}, "whitespace-only trims to empty");
 });
 
+t("incidental leading/trailing whitespace around a valid number still parses — a common copy-paste case", () => {
+  // raw.trim() reassigns BEFORE the String(n) !== raw comparison, so " 500 " -> "500" and the round-trip
+  // check compares against the already-trimmed string, not the original — this is why it works
+  const r = parseCustomLimit(" 500 ");
+  assert.equal(r.ok, true);
+  assert.equal(r.value, 500);
+  assert.deepEqual(parseCustomLimit("\t8000\n"), {empty:false, ok:true, value:8000}, "tabs and newlines trim the same way spaces do");
+});
+
 t("the exact boundary values are valid", () => {
   assert.equal(parseCustomLimit(String(CUSTOM_LIMIT_MIN)).ok, true);
   assert.equal(parseCustomLimit(String(CUSTOM_LIMIT_MIN)).value, CUSTOM_LIMIT_MIN);
