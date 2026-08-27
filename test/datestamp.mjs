@@ -54,4 +54,13 @@ t("midnight: hour 0 zero-pads like any other single digit", () => {
   assert.equal(localStamp(d), "2026-06-15-00-00-00");
 });
 
+t("an Invalid Date is not rejected — every field reads NaN, and pad2 leaves it as the literal string \"NaN\"", () => {
+  // pad2's String(n).padStart(2,"0") is a no-op here: "NaN" is already 3 characters, longer than the
+  // 2-char pad target, so padStart does nothing. Every real call site uses the bare new Date() default,
+  // always valid, so this is unreachable in practice — but worth pinning down as verified behavior
+  const bad = new Date("not a real date");
+  assert.ok(Number.isNaN(bad.getFullYear()), "test precondition: an Invalid Date's fields are all NaN");
+  assert.equal(localDate(bad), "NaN-NaN-NaN");
+});
+
 console.log(`\n${pass} passed`);
