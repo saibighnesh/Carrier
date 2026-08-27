@@ -46,4 +46,13 @@ t("matches the hand-copied stub formula every other test file uses — the drift
   }
 });
 
+t("a negative total is not rejected — the minus sign counts as a character, one digit-width too many", () => {
+  // String(-5).length is 2, not 1 — the leading "-" occupies a character position the formula counts the
+  // same as a real digit, so a negative total is treated as if it had one more digit than its magnitude
+  // actually has. total is always lastChunks.length in practice, never negative, so unreachable — but
+  // worth pinning down as verified behavior
+  assert.equal(String(-5).length, 2, "test precondition: the minus sign is a character");
+  assert.equal(chunkPrefixLen(-5), 17, "same width as a real 2-digit total, not the 1-digit width its magnitude would suggest");
+});
+
 console.log(`\n${pass} passed`);
