@@ -47,6 +47,12 @@ t("two separate long runs", () => {
   assert.equal(formatParts([1, 2, 3, 10, 11, 12, 13]), "1–3, 10–13");
 });
 
+t("two adjacent pairs with a gap between them — a distinct shape from a single pair or a run", () => {
+  // neither pair reaches the 3-consecutive threshold to collapse into a range, and the gap (2 to 4)
+  // keeps them from merging into each other — every element stays a separate list entry
+  assert.equal(formatParts([1, 2, 4, 5]), "1, 2, 4, 5");
+});
+
 t("a run at the very end of the list", () => {
   assert.equal(formatParts([1, 20, 21, 22]), "1, 20–22");
 });
