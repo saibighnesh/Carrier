@@ -36,6 +36,14 @@ t("one bit past an even boundary rounds up to a whole extra character", () => {
   assert.equal(dense2CharCount(1), 2);
 });
 
+t("a negative byteLen is not rejected — it silently returns the same as zero bytes", () => {
+  // Math.ceil(-8/14) rounds UP (toward +infinity) to -0, which is 0 in every numeric comparison — not an
+  // error and not a negative result. byteLen is always a real .length/.byteLength in practice, never
+  // negative, so this is unreachable, but worth pinning down as verified behavior rather than assuming
+  assert.equal(dense2CharCount(-1), dense2CharCount(0));
+  assert.equal(dense2CharCount(-1), 1);
+});
+
 t("a realistic payload size matches an independently hand-computed count, not a re-derivation of the formula", () => {
   // 45000 * 8 = 360000 bits; 360000 / 14 = 25714.2857...; ceil -> 25715; +1 header = 25716
   assert.equal(dense2CharCount(45000), 25716);
