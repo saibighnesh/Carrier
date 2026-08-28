@@ -3103,13 +3103,22 @@ function loadTextFile(file){
     rn.className = "note err"; rn.textContent = "That's not a text file — load the .txt you saved from Carrier.";
     return;
   }
-  if(file.size > TXT_MAX){
+  // gate on decoded characters, not encoded bytes: Compact text is CJK, 3 UTF-8 bytes per character, so a
+  // byte-size check here (unlike everywhere else TXT_MAX is enforced, which counts .length) would reject a
+  // valid Compact save under the character cap. A generous byte ceiling still guards against reading a
+  // pathological file into memory before that real check runs.
+  if(file.size > TXT_MAX * 4){
     rn.className = "note err"; rn.textContent = "That file is too big to be a Carrier message (over 8 MB).";
     return;
   }
   const reader = new FileReader();
   reader.onload = ()=>{
-    $("#inbox").value = String(reader.result || "").trim();
+    const text = String(reader.result || "").trim();
+    if(text.length > TXT_MAX){
+      rn.className = "note err"; rn.textContent = "That file is too big to be a Carrier message (over 8 MB).";
+      return;
+    }
+    $("#inbox").value = text;
     clearTimeout(progDebounce); updateProgress();
     clearReveal();
     rn.className = "note ok"; rn.textContent = `Loaded ${file.name}.`;
@@ -3134,6 +3143,7 @@ async function doReveal(){
   if(revealing) return;
   revealing = true;
   let abandoned = false;   // set if we bail after the await because the inbox changed under us
+  let snapshot;   // hoisted so the catch block can re-check it against a post-await inbox, same as the success path
   const revBtn = $("#reveal");
   revBtn.textContent = "Revealing…"; revBtn.setAttribute("aria-busy","true");
   const note = $("#rNote"); note.className = "note"; note.textContent = "";
@@ -3142,7 +3152,7 @@ async function doReveal(){
     if(!r){ note.className="note err"; note.textContent="No Carrier message found in the box above."; return; }
     if(r.missing.length){ note.className="note err";
       note.textContent = `Missing part${r.missing.length>1?"s":""} ${formatParts(r.missing)}${r.missingTrunc?", …":""} — paste the remaining message(s) first.`; return; }
-    const snapshot = r.s;   // the exact payload we're about to decrypt
+    snapshot = r.s;   // the exact payload we're about to decrypt
     const { mime, img, verified } = await unpack(r.s, $("#rpass").value);   // raw value — must match the sender's exactly, whitespace included
     // a locked reveal awaits 250k-round PBKDF2 (~1-2 s on a phone). If the user edited the inbox or left
     // Receive mode during that window, this result now describes a stale message — showing it would put a
@@ -3232,7 +3242,15 @@ async function doReveal(){
     // recovered image is revoked/replaced (line ~1153), so it's still valid and on-screen. Do NOT call
     // clearReveal here — that would tear down a good image on a bad guess (e.g. a wrong second password).
     // Just report the error; recovered is untouched, so nothing dangles at a dead URL either.
-    note.className="note err"; note.textContent = err instanceof Error ? err.message : String(err);
+    // unpack()'s own await (PBKDF2, ~1-2s) can reject after the inbox already changed underneath it — the
+    // success path re-reassembles and bails for exactly this reason, so a rejection deserves the same check
+    // rather than describing an error about content that's no longer in the box.
+    const now = snapshot !== undefined ? reassemble($("#inbox").value) : null;
+    if(snapshot !== undefined && (!now || now.s !== snapshot || $("#recv").classList.contains("hidden"))){
+      abandoned = true;
+    } else {
+      note.className="note err"; note.textContent = err instanceof Error ? err.message : String(err);
+    }
   }
   finally {
     revealing = false; revBtn.textContent = "Reveal image"; revBtn.removeAttribute("aria-busy");
