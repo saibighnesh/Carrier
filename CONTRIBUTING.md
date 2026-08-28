@@ -10,7 +10,7 @@ The wire format (chunking, AES-256-GCM, CRC-32, Reed-Solomon recovery, Compact e
 node test/run.mjs
 ```
 
-This runs every suite in `test/*.mjs` and exits non-zero on failure. CI runs the same command on every push and pull request to `main` (see [`.github/workflows/test.yml`](.github/workflows/test.yml)).
+This runs every suite in `test/*.mjs` and exits non-zero on failure. CI runs the same command automatically, but only on pushes/PRs that touch `index.html` or `test/**` (see [`.github/workflows/test.yml`](.github/workflows/test.yml)) — a docs-only PR like this one won't trigger a run, so run it locally before opening one regardless.
 
 Add a new `test/<name>.mjs` file for new logic — `run.mjs` picks up any `.mjs` file in the directory automatically, so there's nothing else to wire up.
 
