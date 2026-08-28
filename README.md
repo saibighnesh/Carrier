@@ -11,6 +11,19 @@ Save the single `index.html` file and it works offline — on a plane, on a trai
 
 ---
 
+## Contents
+
+- [Demo](#demo)
+- [Features](#features)
+- [How to Use](#how-to-use)
+- [How It Works](#how-it-works)
+- [Tech Stack](#tech-stack)
+- [Security Notes](#security-notes)
+- [Development](#development)
+- [License](#license)
+
+---
+
 ## Demo
 
 | Step | What happens |
