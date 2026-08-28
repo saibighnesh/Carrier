@@ -1,5 +1,7 @@
 # 📨 Carrier
 
+[![Test](https://github.com/saibighnesh/Carrier/actions/workflows/test.yml/badge.svg)](https://github.com/saibighnesh/Carrier/actions/workflows/test.yml)
+
 > Send a picture through a text-only chat.
 
 Carrier compresses an image, encodes it as plain text, and lets you paste it into any messenger — even one that blocks photos entirely (like in-flight Wi-Fi chat). The recipient pastes it back and the image reappears. Optionally encrypt it with a password.
@@ -206,6 +208,18 @@ The CRC-32 is **appended**, not prepended, so an older Carrier build reads `flag
 - **Passphrase length** — both password fields cap at 128 characters and Carrier tells you when you hit it. The cap is deliberately fixed: raising it would mean a newer sender and an older receiver deriving different keys from the same passphrase
 - **Secure context** — password locking needs `crypto.subtle`, so open the file directly or serve it over `https://`. On a plain `http://` page the password fields are disabled and say why; unencrypted send and receive still work
 - **Scope** — this is convenience privacy for everyday use, not a substitute for audited secure-messaging tools like Signal
+
+---
+
+## Development
+
+No build step for the app itself, but the wire format (chunking, encryption, Reed-Solomon recovery, Compact encoding) is covered by a plain-Node test suite in `test/`:
+
+```
+node test/run.mjs
+```
+
+Runs every `test/*.mjs` suite and exits non-zero on any failure. CI runs the same command on every push and pull request against `main`.
 
 ---
 
