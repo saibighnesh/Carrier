@@ -3110,7 +3110,7 @@ function loadTextFile(file){
   // valid Compact save under the character cap. A generous byte ceiling still guards against reading a
   // pathological file into memory before that real check runs.
   if(file.size > TXT_MAX * 4){
-    rn.className = "note err"; rn.textContent = "That file is too big to be a Carrier message (over 8 MB).";
+    rn.className = "note err"; rn.textContent = "That file is too big to be a Carrier message (over 32 MB).";
     return;
   }
   const reader = new FileReader();
