@@ -3161,7 +3161,10 @@ async function doReveal(){
     // Receive mode during that window, this result now describes a stale message — showing it would put a
     // different image on screen than the "Ready to reveal" progress line (and, mid mode-switch, leak a live
     // blob + wrong title into Send). Re-reassemble and bail if the winning payload changed or we left Receive.
-    const now = reassemble($("#inbox").value);
+    // Guard the re-scan the same way updateProgress/maybeAutoReveal guard theirs: a huge paste landed during
+    // the await can't be the snapshot we decrypted, so skip the expensive regex scan and just treat it as stale.
+    const inboxNow = $("#inbox").value;
+    const now = inboxNow.length > TXT_MAX ? null : reassemble(inboxNow);
     if(!now || now.s !== snapshot || $("#recv").classList.contains("hidden")){ abandoned = true; return; }
     const claimed = mime || "image/webp";
     // the mime is attacker-controlled (it comes straight from the decoded payload). Never build a blob
@@ -3247,9 +3250,12 @@ async function doReveal(){
     // Just report the error; recovered is untouched, so nothing dangles at a dead URL either.
     // unpack()'s own await (PBKDF2, ~1-2s) can reject after the inbox already changed underneath it — the
     // success path re-reassembles and bails for exactly this reason, so a rejection deserves the same check
-    // rather than describing an error about content that's no longer in the box.
-    const now = snapshot !== undefined ? reassemble($("#inbox").value) : null;
-    if(snapshot !== undefined && (!now || now.s !== snapshot || $("#recv").classList.contains("hidden"))){
+    // rather than describing an error about content that's no longer in the box. Same TXT_MAX guard as the
+    // success path: don't run the regex scan over a huge paste that landed during the await.
+    const inboxNow = $("#inbox").value;
+    const overLen = inboxNow.length > TXT_MAX;
+    const now = (snapshot !== undefined && !overLen) ? reassemble(inboxNow) : null;
+    if(snapshot !== undefined && (overLen || !now || now.s !== snapshot || $("#recv").classList.contains("hidden"))){
       abandoned = true;
     } else {
       note.className="note err"; note.textContent = err instanceof Error ? err.message : String(err);
