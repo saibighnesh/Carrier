@@ -3094,8 +3094,10 @@ $("#clearInbox").addEventListener("click", resetReceive);
 
 // load a saved Carrier .txt file into the inbox (via button or drag-drop onto the textarea)
 const txtFile = $("#txtFile");
+let txtLoadToken = 0;   // bumped per call so a slower, older read can't clobber a newer one's result on landing
 function loadTextFile(file){
   if(!file) return;
+  const myToken = ++txtLoadToken;
   const rn = $("#rNote");
   // when the OS reports a type it must be text/*; when it reports none (extensionless files), require a .txt name
   const looksText = file.type ? file.type.startsWith("text/") : /\.txt$/i.test(file.name);
@@ -3113,6 +3115,7 @@ function loadTextFile(file){
   }
   const reader = new FileReader();
   reader.onload = ()=>{
+    if(myToken !== txtLoadToken) return;   // a newer load started after this one — don't clobber it with a stale result
     const text = String(reader.result || "").trim();
     if(text.length > TXT_MAX){
       rn.className = "note err"; rn.textContent = "That file is too big to be a Carrier message (over 8 MB).";
@@ -3124,7 +3127,7 @@ function loadTextFile(file){
     rn.className = "note ok"; rn.textContent = `Loaded ${file.name}.`;
     maybeAutoReveal();   // complete + unlocked → reveal straight from the loaded file
   };
-  reader.onerror = ()=>{ rn.className = "note err"; rn.textContent = "Couldn't read that file."; };
+  reader.onerror = ()=>{ if(myToken === txtLoadToken){ rn.className = "note err"; rn.textContent = "Couldn't read that file."; } };
   reader.readAsText(file);
 }
 $("#loadTxt").addEventListener("click", ()=>txtFile.click());
