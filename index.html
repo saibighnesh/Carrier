@@ -1853,9 +1853,11 @@ async function refresh(){
   // With Compact on, show what it saved against the Base64 the user would otherwise be pasting. The
   // character count alone is only meaningful next to the number it replaced — "6,352 chars" means
   // nothing on its own, "half of 12,704" is the entire point of the setting.
-  // derive the container size back out of the dense text rather than re-guessing it from the parts:
-  // the encoder emits 1 header symbol plus ceil(8n/12), so this inverts exactly what was produced
-  const b64Equiv = textCodec === "dense" ? b64CharCount(Math.floor((b64.length - 1) * DENSE2_BITS / 8)) : 0;
+  // derive the container size back out of the dense text rather than re-guessing it from the parts. The
+  // char-count-only inverse is genuinely ambiguous (see D2_PAY above — r=2,3 collide and r=4,5 collide), so
+  // guessing from ceil(8n/14) alone silently recovers the wrong n for 4 of every 7 byte lengths. The header
+  // symbol resolves that exactly (it carries n mod 7), and dense2ToBytes() already does — reuse it.
+  const b64Equiv = textCodec === "dense" ? b64CharCount(dense2ToBytes(b64).length) : 0;
   // state the real fraction, not a slogan: v2 is 6/14 = 43% of Base64, and "half" would overstate it
   const savedTag = (b64Equiv > b64.length)
     ? ` <small>chars · ${Math.round(b64.length / b64Equiv * 100)}% of ${b64Equiv.toLocaleString()} as Base64</small>`
@@ -3111,7 +3113,7 @@ function loadTextFile(file){
   // valid Compact save under the character cap. A generous byte ceiling still guards against reading a
   // pathological file into memory before that real check runs.
   if(file.size > TXT_MAX * 4){
-    rn.className = "note err"; rn.textContent = "That file is too big to be a Carrier message (over 32 MB).";
+    rn.className = "note err"; rn.textContent = `That file is too big to be a Carrier message (over ${TXT_MAX * 4 / 1048576} MB).`;
     return;
   }
   const reader = new FileReader();
