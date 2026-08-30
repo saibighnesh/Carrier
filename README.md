@@ -56,7 +56,7 @@ Save the single `index.html` file and it works offline — on a plane, on a trai
 
 ### Send
 1. Open `index.html` in any modern browser
-2. Drop or click to choose an image (JPG, PNG, WebP, GIF)
+2. Drop or click to choose an image (JPG, PNG, WebP, GIF, AVIF — BMP, HEIC and HEIF also work if your browser can decode them)
 3. Adjust **Quality** and **Max size**, or click **⚡ Auto-fit to 1 message**. If the pipe is unreliable, set **Recovery** so the recipient can rebuild lost parts
 4. Optionally set a password under **Lock it**
 5. Copy the text and paste into your chat — if it split into parts, **Copy next message** walks you through them one at a time and marks off what you've already sent (`Ctrl/Cmd+Enter` does the same from the keyboard)
