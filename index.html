@@ -1076,10 +1076,15 @@ function recordLoss(lost, seen){
 }
 
 // The block layout the encoder will ACTUALLY produce. The planner has to model the send that ships, not an
-// idealised one, so this mirrors parityChunks exactly — including both cases where it declines to code:
-// a block of fewer than two parts (nothing to rebuild from), and blocks past what the one-character block
-// index in the parity header can address. Getting this wrong meant quoting a protected probability for
-// parts that were shipping bare.
+// idealised one, so every block chunkify() will emit as data must appear here — coded or not. Two cases
+// decline to code a block: fewer than two parts in it (nothing to rebuild from — chunkify never emits parity
+// for that trailing remainder either), and blocks past what the one-character block index in the parity
+// header can address. Only the first case ends the layout early (it's always the last, trailing block); the
+// second must NOT stop enumeration — parityChunks() stops emitting parity chunks past the ceiling (nothing
+// left to compute), but the data chunks for every later block still ship, bare. Breaking here too used to
+// make the layout — and so the survival probability and "N parts left uncoded" count derived from it — quietly
+// drop every block past the ceiling instead of counting them as uncoded, overstating reliability on any send
+// long enough to cross it.
 // `ceiling` is how many blocks the parity header can address, and it differs by codec — Base64's block
 // index is one 6-bit character (RS_BLOCK_CEILING.b64 = 64), dense's is one 14-bit character
 // (RS_BLOCK_CEILING.dense = 16384). Defaults to the Base64 value so every pre-existing caller (and the
@@ -1088,10 +1093,9 @@ function rsBlockLayout(total, kFor, ceiling = RS_BLOCK_CEILING.b64){
   const out = [];
   for(let start=0; start<total; start+=RS_BLOCK){
     const n = Math.min(RS_BLOCK, total - start);
-    if(n < 2){ out.push({ n, k: 0 }); break; }              // parityChunks breaks here too
+    if(n < 2){ out.push({ n, k: 0 }); break; }              // always the trailing block — nothing follows it
     const coded = (start / RS_BLOCK) < ceiling;
     out.push({ n, k: coded ? Math.max(0, Math.min(RS_HALF, kFor(n))) : 0 });
-    if(!coded) break;                                       // and here
   }
   return out;
 }
@@ -1118,15 +1122,27 @@ function planParity(total, target, post, ceiling = RS_BLOCK_CEILING.b64){
   const { a, b } = post || lossPosterior();
   const hard = Math.min(RS_HALF, Math.max(1, Math.min(RS_BLOCK, total)));
   const kMax = Math.max(1, Math.min(hard, Math.ceil(Math.min(RS_BLOCK, total) * RS_COST_CAP)));
+  // Blocks past the ceiling are always uncoded (k=0) regardless of which k this search is trying — their
+  // probability contribution and part count don't change between iterations, so compute that tail once
+  // instead of re-walking it inside the k loop. Keeps this O(kMax * ceiling) instead of O(kMax * total/RS_BLOCK)
+  // once a send runs past the ceiling (reachable on a tight per-message limit like SMS on a large image).
+  const codedTotal = Math.min(total, ceiling * RS_BLOCK);
+  const tail = codedTotal < total ? rsBlockLayout(total - codedTotal, () => 0, 0) : [];
+  const tailProb = tail.length ? imageProb(tail, a, b) : 1;
+  const tailUncoded = uncodedParts(tail);
   let best = null;
   for(let k=0;k<=kMax;k++){
-    const layout = rsBlockLayout(total, () => k, ceiling);
-    const p = imageProb(layout, a, b);
-    if(!best || p > best.imageProb) best = { k, imageProb: p, layout };
-    if(p >= target) return { k, imageProb: p, layout, blocks: layout.length, uncoded: uncodedParts(layout), met: true, capped: false };
+    const codedLayout = rsBlockLayout(codedTotal, () => k, ceiling);
+    const p = imageProb(codedLayout, a, b) * tailProb;
+    if(!best || p > best.imageProb) best = { k, imageProb: p, codedLayout };
+    if(p >= target){
+      const layout = codedLayout.concat(tail);
+      return { k, imageProb: p, layout, blocks: layout.length, uncoded: uncodedParts(codedLayout) + tailUncoded, met: true, capped: false };
+    }
   }
   // target unreachable within the cost ceiling — stop at the ceiling and report what was achieved
-  return { ...best, blocks: best.layout.length, uncoded: uncodedParts(best.layout), met: false, capped: kMax < hard };
+  const layout = best.codedLayout.concat(tail);
+  return { k: best.k, imageProb: best.imageProb, layout, blocks: layout.length, uncoded: uncodedParts(best.codedLayout) + tailUncoded, met: false, capped: kMax < hard };
 }
 
 /* ---------- container (mime + image, optional encryption) ---------- */

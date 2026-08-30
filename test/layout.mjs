@@ -87,12 +87,15 @@ await t("#204: uniform-block assumption is gone — unequal blocks are priced se
 await t("#205: blocks past the addressable range count as unprotected", () => {
   const total = 66 * RS_BLOCK;                    // 66 blocks: 0..63 codable, 64 and 65 not
   const layout = rsBlockLayout(total, () => 4);
-  assert.equal(layout.length, 65, "must stop after the first uncodable block");
+  // every block chunkify() will actually emit as data must appear here, coded or not — the send that ships
+  // has 66 blocks, and the planner has to model all of them, not stop counting once parity runs out
+  assert.equal(layout.length, 66, "must enumerate every block the send actually ships, not stop at the first uncodable one");
   assert.equal(layout[63].k, 4, "block 63 is still addressable");
   assert.equal(layout[64].k, 0, "block 64 must be uncoded");
+  assert.equal(layout[65].k, 0, "block 65 must be uncoded too — it isn't dropped from the model");
   const p = planParity(total, 0.99, {a:1,b:49});
   assert.equal(p.met, false, "cannot honestly claim the target with bare blocks");
-  assert.ok(p.uncoded >= RS_BLOCK, `expected >=32 bare parts, got ${p.uncoded}`);
+  assert.equal(p.uncoded, 2 * RS_BLOCK, "both uncodable blocks (64 parts) must be counted, not just one (32)");
 });
 
 await t("layout mirrors parityChunks for real sends across many sizes", async () => {
