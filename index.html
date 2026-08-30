@@ -3043,7 +3043,7 @@ $("#pasteInbox").addEventListener("click", async ()=>{
     if(text.length > TXT_MAX){
       flashButton($("#pasteInbox"), "Too big", `Clipboard holds more than ${TXT_MAX/1048576} MB — too big to be a Carrier message`);
       $("#rNote").className = "note err";
-      $("#rNote").textContent = "That clipboard content is too big to be a Carrier message (over 8 MB). Nothing was pasted.";
+      $("#rNote").textContent = `That clipboard content is too big to be a Carrier message (over ${TXT_MAX/1048576} MB). Nothing was pasted.`;
       return;
     }
     if(!text){
@@ -3119,7 +3119,7 @@ function loadTextFile(file){
     if(myToken !== txtLoadToken) return;   // a newer load started after this one — don't clobber it with a stale result
     const text = String(reader.result || "").trim();
     if(text.length > TXT_MAX){
-      rn.className = "note err"; rn.textContent = "That file is too big to be a Carrier message (over 8 MB).";
+      rn.className = "note err"; rn.textContent = `That file is too big to be a Carrier message (over ${TXT_MAX/1048576} MB).`;
       return;
     }
     $("#inbox").value = text;
