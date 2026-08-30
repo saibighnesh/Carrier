@@ -1122,15 +1122,27 @@ function planParity(total, target, post, ceiling = RS_BLOCK_CEILING.b64){
   const { a, b } = post || lossPosterior();
   const hard = Math.min(RS_HALF, Math.max(1, Math.min(RS_BLOCK, total)));
   const kMax = Math.max(1, Math.min(hard, Math.ceil(Math.min(RS_BLOCK, total) * RS_COST_CAP)));
+  // Blocks past the ceiling are always uncoded (k=0) regardless of which k this search is trying — their
+  // probability contribution and part count don't change between iterations, so compute that tail once
+  // instead of re-walking it inside the k loop. Keeps this O(kMax * ceiling) instead of O(kMax * total/RS_BLOCK)
+  // once a send runs past the ceiling (reachable on a tight per-message limit like SMS on a large image).
+  const codedTotal = Math.min(total, ceiling * RS_BLOCK);
+  const tail = codedTotal < total ? rsBlockLayout(total - codedTotal, () => 0, 0) : [];
+  const tailProb = tail.length ? imageProb(tail, a, b) : 1;
+  const tailUncoded = uncodedParts(tail);
   let best = null;
   for(let k=0;k<=kMax;k++){
-    const layout = rsBlockLayout(total, () => k, ceiling);
-    const p = imageProb(layout, a, b);
-    if(!best || p > best.imageProb) best = { k, imageProb: p, layout };
-    if(p >= target) return { k, imageProb: p, layout, blocks: layout.length, uncoded: uncodedParts(layout), met: true, capped: false };
+    const codedLayout = rsBlockLayout(codedTotal, () => k, ceiling);
+    const p = imageProb(codedLayout, a, b) * tailProb;
+    if(!best || p > best.imageProb) best = { k, imageProb: p, codedLayout };
+    if(p >= target){
+      const layout = codedLayout.concat(tail);
+      return { k, imageProb: p, layout, blocks: layout.length, uncoded: uncodedParts(codedLayout) + tailUncoded, met: true, capped: false };
+    }
   }
   // target unreachable within the cost ceiling — stop at the ceiling and report what was achieved
-  return { ...best, blocks: best.layout.length, uncoded: uncodedParts(best.layout), met: false, capped: kMax < hard };
+  const layout = best.codedLayout.concat(tail);
+  return { k: best.k, imageProb: best.imageProb, layout, blocks: layout.length, uncoded: uncodedParts(best.codedLayout) + tailUncoded, met: false, capped: kMax < hard };
 }
 
 /* ---------- container (mime + image, optional encryption) ---------- */
