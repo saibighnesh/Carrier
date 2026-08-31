@@ -10,6 +10,7 @@ const src = [
   "let msgLimit = 60000; let recoveryLevel = 'off'; let textCodec = 'b64';",
   "const SID_LEN = 6;",
   "const chunkPrefixLen = total => 4 + SID_LEN + 3 + 2 * String(total).length;",
+  "const maxChunkIndexFor = (total, recoveryOn) => recoveryOn ? total * 2 : total;",
   "const crypto = globalThis.crypto;",
   // this range now also contains the GF(2^14) block added for Compact recovery; stub what it references
   // (this suite only exercises the original GF(2^6)/Base64 parity path, which is untouched)
@@ -115,6 +116,28 @@ await t("END TO END: drop parts, rebuild them from parity, get the payload back"
   while (out.length % 4) out += "=";
   assert.equal(out, b64, "rebuilt payload does not match the original");
   console.log(`      (${total} parts, ${parC.length} parity, ${kPerBlock}/block, lost 2 and 5)`);
+});
+
+await t("parity indices past a digit-width boundary still fit msgLimit", async () => {
+  // chunkPrefixLen(total) assumes every emitted index is no wider than total's own digit count — true for
+  // data chunks (index <= total) but not for parity chunks (index runs total+1..total+parityCount, which
+  // can be wider once total sits just under a power of ten). Sweep b64 lengths so `total` crosses 9->10 and
+  // 99->100 under recovery, and check every emitted chunk — data AND parity — actually fits.
+  setLimit(160);
+  let sawSingleToDouble = false, sawDoubleToTriple = false, lastTotal = 0;
+  for (let len = 700; len <= 14000; len += 40) {
+    const b64 = mkB64(len);
+    for (const lvl of ["light", "strong"]) {
+      const cs = await chunkify(b64, lvl);
+      assert.ok(cs.every(c => c.length <= 160), `${lvl} at len=${len}: a chunk exceeded msgLimit (total=${parse(cs[0]).total})`);
+    }
+    const total = parse((await chunkify(b64, "strong"))[0]).total;
+    if (lastTotal < 10 && total >= 10) sawSingleToDouble = true;
+    if (lastTotal < 100 && total >= 100) sawDoubleToTriple = true;
+    lastTotal = total;
+  }
+  assert.ok(sawSingleToDouble, "sweep never crossed the 9->10 digit boundary — test range needs widening");
+  assert.ok(sawDoubleToTriple, "sweep never crossed the 99->100 digit boundary — test range needs widening");
 });
 
 console.log(`\n${pass} passed`);

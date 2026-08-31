@@ -447,6 +447,15 @@ const SID_LEN = 6;   // chunkify's session id: 3 random bytes rendered as hex
 // per-message limit pushes the part count to six digits (prefix 25) — where the meter then read "under
 // the limit" for a payload that had already spilled into another part.
 const chunkPrefixLen = total => 4 + SID_LEN + 3 + 2 * String(total).length;
+// chunkPrefixLen()'s "index ≤ total" assumption holds for data chunks (index runs 1..total) but not for
+// parity chunks, whose index runs total+1..total+parityCount — past total, and so sometimes one digit
+// wider than it. Real parity per block is hard-capped at RS_COST_CAP (50%) of that block's data parts
+// (see planParity/rsParityCount), so parity across a whole send never exceeds total parts — doubling total
+// is therefore always a safe, simple upper bound on the widest index chunkPrefixLen needs to reserve room
+// for, regardless of level or block count. Without this, a send whose part count lands just under a
+// power-of-ten (e.g. total=9 with parity pushing indices into double digits) emitted parity chunks one
+// character over msgLimit — exactly what a fixed-reserve prefix was replaced to prevent for data chunks.
+const maxChunkIndexFor = (total, recoveryOn) => recoveryOn ? total * 2 : total;
 // bytes that fit one message = (chars available) x (bits each char carries) / 8, with a 4% safety margin.
 // This hardcoded Base64's ratio (6/8 x 0.96 = 0.72) even after Compact shipped 14-bit characters — so
 // "Auto-fit to 1 message" under Compact aimed at a budget 2.33x smaller than the real one and crushed
@@ -1260,9 +1269,9 @@ async function chunkify(b64, level = recoveryLevel){
   // RS14_META) because the two alphabets carry a different number of header fields per character.
   const recoveryOn = level !== "off" && RS_LEVELS.hasOwnProperty(level);
   const hdr = recoveryOn ? (dense ? RS14_META : RS_META) : 0;
-  let per = Math.max(1, msgLimit - chunkPrefixLen(1) - hdr), total = Math.max(1, Math.ceil(b64.length / per));
+  let per = Math.max(1, msgLimit - chunkPrefixLen(maxChunkIndexFor(1, recoveryOn)) - hdr), total = Math.max(1, Math.ceil(b64.length / per));
   for(let k=0;k<4;k++){
-    const p = Math.max(1, msgLimit - chunkPrefixLen(total) - hdr);
+    const p = Math.max(1, msgLimit - chunkPrefixLen(maxChunkIndexFor(total, recoveryOn)) - hdr);
     const t = Math.max(1, Math.ceil(b64.length / p));
     if(p === per && t === total) break;
     per = p; total = t;
