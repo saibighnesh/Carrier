@@ -1787,7 +1787,13 @@ function markSent(i){
   paintSent();
 }
 async function refresh(){
-  if(!srcImage) return;
+  // Send-panel visibility is as much a precondition as srcImage: every write below targets #send's DOM
+  // (thumbUrl/#thumb, #lockPanel, #outPanel, the stats), and mirrors the check updateSendTitle() already
+  // makes for the same reason. Re-checked after every await below, same as !srcImage — a caller that
+  // doesn't go through the debounce (autoFit's direct `await refresh()`) or a re-arm from the pendingRefresh
+  // path below can still land here after the user has switched to Receive, and writing into a hidden panel
+  // at that point only wastes work and leaks the thumbUrl this check exists to avoid minting.
+  if(!srcImage || $("#send").classList.contains("hidden")) return;
   if(refreshing){ pendingRefresh = true; return; }
   refreshing = true;
   try {
@@ -1804,7 +1810,7 @@ async function refresh(){
     srcMime = imgMimeCache;   // encodeCanvas sets this global as a side effect; restore it on a cache hit
   } else {
     img = await compressOnce(d, q);
-    if(!srcImage) return;   // Start over ran during compression — abandon this stale pass
+    if(!srcImage || $("#send").classList.contains("hidden")) return;   // Start over, or a mode switch, ran during compression — abandon this stale pass
     imgKey = imgKeyNow; imgCache = img; imgMimeCache = srcMime;
     // the preview only changes when the pixels do — rebuild it on a miss, never on a hit
     if(thumbUrl) URL.revokeObjectURL(thumbUrl);
@@ -1833,7 +1839,7 @@ async function refresh(){
     b64 = packB64;
   } else {
     b64 = await pack(img, srcMime, pw);
-    if(!srcImage) return;   // Start over ran during packing — don't repopulate the cleared UI
+    if(!srcImage || $("#send").classList.contains("hidden")) return;   // Start over, or a mode switch, ran during packing — don't repopulate the cleared/hidden UI
     packKey = packKeyNow; packB64 = b64;
   }
   // Chunking depends on msgLimit; packing does not. Keeping chunkify() inside the cache-miss branch made
@@ -1848,7 +1854,7 @@ async function refresh(){
     // the full encode — which means Start Over can now run to completion WHILE this await is outstanding,
     // same class of guard as the pack() await just above.
     lastChunks = await chunkify(b64);
-    if(!srcImage) return;   // Start over ran during chunking — abandon this stale pass
+    if(!srcImage || $("#send").classList.contains("hidden")) return;   // Start over, or a mode switch, ran during chunking — abandon this stale pass
     chunkKey = chunkKeyNow;
   }
   // stats
