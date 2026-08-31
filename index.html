@@ -1787,12 +1787,13 @@ function markSent(i){
   paintSent();
 }
 async function refresh(){
-  // Send-panel visibility is as much a precondition as srcImage: every write below targets #send's DOM
-  // (thumbUrl/#thumb, #lockPanel, #outPanel, the stats), and mirrors the check updateSendTitle() already
-  // makes for the same reason. Re-checked after every await below, same as !srcImage — a caller that
-  // doesn't go through the debounce (autoFit's direct `await refresh()`) or a re-arm from the pendingRefresh
-  // path below can still land here after the user has switched to Receive, and writing into a hidden panel
-  // at that point only wastes work and leaks the thumbUrl this check exists to avoid minting.
+  // Send-panel visibility is as much a precondition as srcImage — mirrors the check updateSendTitle()
+  // already makes for the same reason. A caller that doesn't go through the debounce (autoFit's direct
+  // `await refresh()`) or a re-arm from the pendingRefresh path below can land here after the user has
+  // switched to Receive; bailing immediately skips the whole compress/pack/chunk pass in that case. The
+  // caches below (imgKey/packKey/chunkKey) are deliberately NOT re-gated on this after their own awaits —
+  // only !srcImage (Start over) invalidates them — so a mode switch mid-pass still gets to keep whatever
+  // it already computed; only the DOM-writing tail (guarded separately, below) is skipped.
   if(!srcImage || $("#send").classList.contains("hidden")) return;
   if(refreshing){ pendingRefresh = true; return; }
   refreshing = true;
@@ -1810,7 +1811,7 @@ async function refresh(){
     srcMime = imgMimeCache;   // encodeCanvas sets this global as a side effect; restore it on a cache hit
   } else {
     img = await compressOnce(d, q);
-    if(!srcImage || $("#send").classList.contains("hidden")) return;   // Start over, or a mode switch, ran during compression — abandon this stale pass
+    if(!srcImage) return;   // Start over ran during compression — abandon this stale pass
     imgKey = imgKeyNow; imgCache = img; imgMimeCache = srcMime;
     // the preview only changes when the pixels do — rebuild it on a miss, never on a hit
     if(thumbUrl) URL.revokeObjectURL(thumbUrl);
@@ -1839,7 +1840,12 @@ async function refresh(){
     b64 = packB64;
   } else {
     b64 = await pack(img, srcMime, pw);
-    if(!srcImage || $("#send").classList.contains("hidden")) return;   // Start over, or a mode switch, ran during packing — don't repopulate the cleared/hidden UI
+    if(!srcImage) return;   // Start over ran during packing — don't repopulate the cleared UI.
+    // NOT gated on Send-panel visibility, unlike the guards around it: this only caches packKey/packB64
+    // (no DOM write happens here), and pack() is the one step expensive enough to matter — a password
+    // means a fresh 250k-round PBKDF2 derivation. Discarding this cache because the user switched to
+    // Receive mid-pack would force redoing that derivation on the very next switch back to Send, for no
+    // benefit (there's nothing to protect here that the tail guard below doesn't already cover).
     packKey = packKeyNow; packB64 = b64;
   }
   // Chunking depends on msgLimit; packing does not. Keeping chunkify() inside the cache-miss branch made
@@ -1854,9 +1860,16 @@ async function refresh(){
     // the full encode — which means Start Over can now run to completion WHILE this await is outstanding,
     // same class of guard as the pack() await just above.
     lastChunks = await chunkify(b64);
-    if(!srcImage || $("#send").classList.contains("hidden")) return;   // Start over, or a mode switch, ran during chunking — abandon this stale pass
+    if(!srcImage) return;   // Start over ran during chunking — abandon this stale pass. Not gated on Send
+    // visibility either, same reasoning as the pack() cache just above — this only caches chunkKey/lastChunks.
     chunkKey = chunkKeyNow;
   }
+  // Everything from here down writes into #send's DOM (stats, meter, notes, #lockPanel/#outPanel,
+  // updateSendTitle) — unlike the caching above, none of it is worth doing if the user has since switched
+  // to Receive (mirrors the precondition updateSendTitle() itself already checks). The entry guard at the
+  // top of this function catches most cases; this covers the one it can't — a mode switch landing while
+  // this call was already past it, mid-compress/pack/chunk.
+  if($("#send").classList.contains("hidden")) return;
   // stats
   const origBytes = srcImage._bytes || 0;
   // re-encoding an already-optimized small source to WebP can end up larger — don't print a
@@ -2500,7 +2513,11 @@ $("#autofit").addEventListener("click", async ()=>{
   setTuneDisabled(true);
   try{
     const best = await autoFit((d, i, total) => { btn.textContent = `Fitting… ${d}px (${i}/${total})`; });
-    if(!best || !srcImage) return;   // Start over ran during the fit — autoFit abandoned; don't touch the (now hidden) panel
+    // Start over, or a mode switch to Receive, during the fit — mode tabs stay clickable throughout (only
+    // TUNE_CONTROLS/.preset are frozen above), so this is reachable. Bail before mutating anything below:
+    // writing #maxdim/quality and persisting them would silently change the user's Send settings behind
+    // their back while they're looking at Receive and never asked for it.
+    if(!best || !srcImage || $("#send").classList.contains("hidden")) return;
     const hitFallback = best.fallback === true;   // real success at {25,256} no longer masquerades as the fallback
     clearTimeout(debounce);
     if(!await waitForIdle()) throw new Error("Timed out waiting for the current compression to finish.");
@@ -3427,10 +3444,10 @@ modeBtns.forEach((btn, idx)=>{
     const m = btn.dataset.m;
     lsSet("carrier_mode", m);
     // a slider/password edit made just before this click can leave a refresh() queued under the mode we're
-    // now leaving. refresh() only bails on !srcImage (Start over), not on mode visibility, so an uncancelled
-    // timer landing after this switch would recompress, mint a fresh thumbUrl, and never get it revoked —
-    // the mode-switch cleanup below already ran. Clear it here; line ~3439 re-queues one if we're entering
-    // Send with an image loaded, so a real pending edit still lands.
+    // now leaving. refresh() itself now bails on Send-panel visibility too (not just !srcImage), so an
+    // uncancelled timer landing after this switch is harmless — but it's still a whole compress/pack/chunk
+    // pass for nothing. Clear it here to skip that work entirely; the re-queue further down (when entering
+    // Send with an image loaded) still covers a real pending edit.
     clearTimeout(debounce);
     // re-mask any revealed password when leaving a mode — a plaintext secret must not persist on
     // screen across a Send↔Receive switch (the reveal is scoped to the field you're actively using)
