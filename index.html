@@ -440,8 +440,6 @@ let msgLimit = 60000;             // chars per message for the chosen chat app (
 let recoveryLevel = "off";        // Reed-Solomon redundancy: off | light | strong (see rsParityCount)
 let textCodec = "b64";            // wire text encoding: b64 (universal) | dense (14 bits/char on the wire, opt-in)
 const MSG_LIMITS = { 60000:"WhatsApp", 4096:"Telegram", 4000:"Slack", 2000:"Discord", 160:"SMS" };
-// bytes of compressed image that Base64-encode to fit one message: N bytes → ceil(N/3)*4 chars, so
-// N ≈ (limit − prefix) · 3/4; the 0.72 factor keeps a small safety margin under the raw ceiling
 const SID_LEN = 6;   // chunkify's session id: 3 random bytes rendered as hex
 // exact length of a chunk's "PXT/<sid>/<index>/<total>/" prefix. index ≤ total, so both numbers fit in
 // total's digit-count. Three call sites used to hardcode 24 for this: too generous at one message (the
