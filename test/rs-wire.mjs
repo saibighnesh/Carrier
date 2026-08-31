@@ -128,7 +128,7 @@ await t("parity indices past a digit-width boundary still fit msgLimit", async (
   for (let len = 700; len <= 14000; len += 40) {
     const b64 = mkB64(len);
     let strongTotal;
-    for (const lvl of ["light", "strong"]) {
+    for (const lvl of ["light", "strong", "auto"]) {
       const cs = await chunkify(b64, lvl);
       assert.ok(cs.every(c => c.length <= 160), `${lvl} at len=${len}: a chunk exceeded msgLimit (total=${parse(cs[0]).total})`);
       if (lvl === "strong") strongTotal = parse(cs[0]).total;
