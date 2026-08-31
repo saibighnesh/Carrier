@@ -2895,7 +2895,7 @@ function updateProgress(){
     if(!recovered && !$("#recv").classList.contains("hidden")) document.title = "Carrier — receive images";
     if($("#inbox").value.trim()) {
       p.className = "progress warn";
-      p.textContent = "No Carrier messages found in that text — each part starts with “PXT/”. Paste the messages exactly as you received them.";
+      p.textContent = "No Carrier messages found in that text — each part starts with “PXT/” (or “PXD/” for a Compact send). Paste the messages exactly as you received them.";
     }
     return;
   }
