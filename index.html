@@ -3420,6 +3420,12 @@ modeBtns.forEach((btn, idx)=>{
   btn.addEventListener("click", (e)=>{
     const m = btn.dataset.m;
     lsSet("carrier_mode", m);
+    // a slider/password edit made just before this click can leave a refresh() queued under the mode we're
+    // now leaving. refresh() only bails on !srcImage (Start over), not on mode visibility, so an uncancelled
+    // timer landing after this switch would recompress, mint a fresh thumbUrl, and never get it revoked —
+    // the mode-switch cleanup below already ran. Clear it here; line ~3439 re-queues one if we're entering
+    // Send with an image loaded, so a real pending edit still lands.
+    clearTimeout(debounce);
     // re-mask any revealed password when leaving a mode — a plaintext secret must not persist on
     // screen across a Send↔Receive switch (the reveal is scoped to the field you're actively using)
     maskPassword("pass"); maskPassword("rpass");
