@@ -460,6 +460,10 @@ const ALLOWED_IMG = new Set(["image/webp","image/jpeg","image/png","image/gif","
 const MAGIC = [0x50,0x58,0x54,0x31]; // "PXT1"
 
 const $ = s => document.querySelector(s);
+// whether the Send panel is the one currently on screen — checked at every point a Send-only async
+// pass (refresh, autoFit) needs to decide whether writing into it is still worth doing. One shared
+// definition so a future change to how modes are represented can't miss one of the several call sites.
+const sendHidden = () => $("#send").classList.contains("hidden");
 // The Chat app select can show "Custom…" while msgLimit still holds whatever preset number was active
 // before switching — applyCustomLimit only updates msgLimit once a valid number is typed, so an empty or
 // invalid custom field leaves the OLD limit in force. Every one of the 8 call sites below used to look
@@ -1681,6 +1685,12 @@ let packKey = null, packB64 = null;
 // last compressOnce() result — the canvas encode is the most expensive step in refresh() and its inputs
 // change far less often than refresh() runs
 let imgKey = null, imgCache = null, imgMimeCache = "image/webp";
+// which imgKey the CURRENT thumbUrl actually depicts — distinct from imgKey itself because minting a new
+// thumbUrl is skipped while Send is hidden (no point rebuilding a preview no one can see), so thumbKey can
+// lag imgKey even right after a cache miss. Whenever they differ AND Send is visible, the preview is stale
+// and gets rebuilt from imgCache — on the miss that caused it, or on a later cache HIT that arrives after
+// Send becomes visible again, which would otherwise never re-mint at all.
+let thumbKey = null;
 
 // EVERY input pack() consumes must be listed here, and every additional input chunkify() consumes must be
 // listed below. Omitting one does not fail loudly — it silently serves a cached payload while the panel
@@ -1702,7 +1712,7 @@ const nextUnsentIndex = () => lastChunks.findIndex(c => !sentChunks.has(c));
 // tab strip is the only place a user can see how far along the send is without switching back. Called
 // from refresh() (payload changed) and paintSent() (a part was sent), so the count never goes stale.
 function updateSendTitle(){
-  if(!srcImage || $("#send").classList.contains("hidden")) return;
+  if(!srcImage || sendHidden()) return;
   const fname = srcImage._name || "";
   const total = lastChunks.length;
   if(!fname || !total) return;
@@ -1794,7 +1804,7 @@ async function refresh(){
   // caches below (imgKey/packKey/chunkKey) are deliberately NOT re-gated on this after their own awaits —
   // only !srcImage (Start over) invalidates them — so a mode switch mid-pass still gets to keep whatever
   // it already computed; only the DOM-writing tail (guarded separately, below) is skipped.
-  if(!srcImage || $("#send").classList.contains("hidden")) return;
+  if(!srcImage || sendHidden()) return;
   if(refreshing){ pendingRefresh = true; return; }
   refreshing = true;
   try {
@@ -1813,12 +1823,17 @@ async function refresh(){
     img = await compressOnce(d, q);
     if(!srcImage) return;   // Start over ran during compression — abandon this stale pass
     imgKey = imgKeyNow; imgCache = img; imgMimeCache = srcMime;
-    // the preview only changes when the pixels do — rebuild it on a miss, never on a hit
+  }
+  // the preview only changes when the pixels do — rebuild it when thumbKey has fallen behind imgKey (a
+  // fresh miss above, or a hit that arrived after being skipped earlier while hidden), and only if there's
+  // a panel to show it in — no point minting a blob no one can see, or writing into a hidden #thumb.
+  if(thumbKey !== imgKey && !sendHidden()){
     if(thumbUrl) URL.revokeObjectURL(thumbUrl);
     const blob = new Blob([img], {type:srcMime});
     thumbUrl = URL.createObjectURL(blob);
     lastPreviewBytes = img; lastPreviewMime = srcMime;   // keep the bytes so a zoom can mint its own URL
     $("#thumb").src = thumbUrl;
+    thumbKey = imgKey;
   }
   // pack with current password to get true size — use the raw value (no trim): a password is an
   // exact secret, and trimming let an all-whitespace entry collapse to "" and ship UNENCRYPTED
@@ -1869,7 +1884,7 @@ async function refresh(){
   // to Receive (mirrors the precondition updateSendTitle() itself already checks). The entry guard at the
   // top of this function catches most cases; this covers the one it can't — a mode switch landing while
   // this call was already past it, mid-compress/pack/chunk.
-  if($("#send").classList.contains("hidden")) return;
+  if(sendHidden()) return;
   // stats
   const origBytes = srcImage._bytes || 0;
   // re-encoding an already-optimized small source to WebP can end up larger — don't print a
@@ -2517,10 +2532,11 @@ $("#autofit").addEventListener("click", async ()=>{
     // TUNE_CONTROLS/.preset are frozen above), so this is reachable. Bail before mutating anything below:
     // writing #maxdim/quality and persisting them would silently change the user's Send settings behind
     // their back while they're looking at Receive and never asked for it.
-    if(!best || !srcImage || $("#send").classList.contains("hidden")) return;
+    if(!best || !srcImage || sendHidden()) return;
     const hitFallback = best.fallback === true;   // real success at {25,256} no longer masquerades as the fallback
     clearTimeout(debounce);
     if(!await waitForIdle()) throw new Error("Timed out waiting for the current compression to finish.");
+    if(!srcImage || sendHidden()) return;   // re-check: waitForIdle() is itself an await gap the user could switch away during
     clearTimeout(debounce);
     $("#maxdim").value = String(best.d);
     setQuality(best.q);
@@ -2601,7 +2617,7 @@ $("#copyNext").addEventListener("click", async ()=>{
 // then, and silently re-copying part 1 would undo the user's place.
 document.addEventListener("keydown", e=>{
   if(e.key !== "Enter" || !(e.ctrlKey || e.metaKey)) return;
-  if($("#send").classList.contains("hidden") || !lastChunks.length) return;
+  if(sendHidden() || !lastChunks.length) return;
   // a single-message payload has no "next" — Copy all is the same action, and it gives real feedback
   const btn = lastChunks.length === 1 ? $("#copyAll") : $("#copyNext");
   if(btn.classList.contains("hidden")) return;
@@ -2751,7 +2767,7 @@ drop.addEventListener("drop", e=>{ const f=e.dataTransfer.files[0]; if(f) handle
 fileInput.addEventListener("change", e=>{ const f=e.target.files[0]; if(f) handleFile(f); else clearDropErr(); });
 // paste an image directly (Ctrl/Cmd+V) while in Send mode
 document.addEventListener("paste", e=>{
-  if($("#send").classList.contains("hidden")) return;      // only in Send mode
+  if(sendHidden()) return;      // only in Send mode
   // don't hijack paste while the user is typing into a field (e.g. password)
   const ae = document.activeElement;
   if(ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA" || ae.isContentEditable)) return;
@@ -2837,7 +2853,7 @@ function resetSend(){
   srcImage = null; lastChunks = [];
   sentChunks.clear(); staleSend = false; paintSent();   // the checklist belongs to the payload being cleared
   packKey = null; packB64 = null; chunkKey = null;
-  imgKey = null; imgCache = null;
+  imgKey = null; imgCache = null; thumbKey = null;
   $("#chunks").innerHTML = "";
   ["tunePanel","lockPanel","outPanel"].forEach(id => $("#"+id).classList.add("hidden"));
   $("#pass").value = ""; maskPassword("pass"); updatePwStrength(); pwTruncNote("pass", "passTrunc");
@@ -2866,7 +2882,7 @@ $("#startOver").addEventListener("click", resetSend);
 document.addEventListener("keydown", e=>{
   // ignore Esc while Auto-fit runs: the button self-disables (focus falls to <body>), so the BUTTON guard
   // below no longer suppresses Esc — without this, an Esc mid-fit would wipe the whole session
-  if(e.key !== "Escape" || $("#send").classList.contains("hidden") || !srcImage || $("#autofit").getAttribute("aria-busy") === "true") return;
+  if(e.key !== "Escape" || sendHidden() || !srcImage || $("#autofit").getAttribute("aria-busy") === "true") return;
   const ae = document.activeElement;
   // never hijack Esc from a control that has its own Escape meaning — a SELECT (close the dropdown) or
   // a BUTTON, as well as text fields; otherwise the dropdown-dismiss reflex would wipe the whole session
@@ -3419,7 +3435,8 @@ window.addEventListener("pagehide", ()=>{
 // received image so the user gets a working page instead of broken-image icons.
 window.addEventListener("pageshow", e=>{
   if(!e.persisted) return;   // a normal (non-bfcache) load already built everything fresh
-  thumbUrl = null;
+  thumbUrl = null; thumbKey = null;   // the blob is already freed but imgCache isn't — without resetting
+  // thumbKey too, a same-imgKey refresh() would see it as "still in sync" and never rebuild #thumb.src
   // a field left in "Show" (type=text) when the page was frozen restores in plaintext — re-mask both, so
   // Back-navigation can't leave a passphrase exposed on screen (every other secret-hiding transition re-masks)
   maskPassword("pass"); maskPassword("rpass");
@@ -3453,7 +3470,7 @@ modeBtns.forEach((btn, idx)=>{
     // screen across a Send↔Receive switch (the reveal is scoped to the field you're actively using)
     maskPassword("pass"); maskPassword("rpass");
     modeBtns.forEach(b=>{ b.setAttribute("aria-selected", b===btn); b.setAttribute("tabindex", b===btn ? "0" : "-1"); });
-    if(m === "recv" && thumbUrl){ URL.revokeObjectURL(thumbUrl); thumbUrl = null; }
+    if(m === "recv" && thumbUrl){ URL.revokeObjectURL(thumbUrl); thumbUrl = null; thumbKey = null; }   // thumbKey too — imgKey may be unchanged next visit, and thumbUrl no longer matches it
     // leaving Receive: tear the revealed image down fully via clearReveal so the result, its caption,
     // AND the "Received ✓" note all go — the note lives outside #result and otherwise stayed visible
     if(m === "send" && srcImage) queueRefresh();
