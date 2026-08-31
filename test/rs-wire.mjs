@@ -127,14 +127,15 @@ await t("parity indices past a digit-width boundary still fit msgLimit", async (
   let sawSingleToDouble = false, sawDoubleToTriple = false, lastTotal = 0;
   for (let len = 700; len <= 14000; len += 40) {
     const b64 = mkB64(len);
+    let strongTotal;
     for (const lvl of ["light", "strong"]) {
       const cs = await chunkify(b64, lvl);
       assert.ok(cs.every(c => c.length <= 160), `${lvl} at len=${len}: a chunk exceeded msgLimit (total=${parse(cs[0]).total})`);
+      if (lvl === "strong") strongTotal = parse(cs[0]).total;
     }
-    const total = parse((await chunkify(b64, "strong"))[0]).total;
-    if (lastTotal < 10 && total >= 10) sawSingleToDouble = true;
-    if (lastTotal < 100 && total >= 100) sawDoubleToTriple = true;
-    lastTotal = total;
+    if (lastTotal < 10 && strongTotal >= 10) sawSingleToDouble = true;
+    if (lastTotal < 100 && strongTotal >= 100) sawDoubleToTriple = true;
+    lastTotal = strongTotal;
   }
   assert.ok(sawSingleToDouble, "sweep never crossed the 9->10 digit boundary — test range needs widening");
   assert.ok(sawDoubleToTriple, "sweep never crossed the 99->100 digit boundary — test range needs widening");
