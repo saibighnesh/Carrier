@@ -2626,13 +2626,23 @@ $("#copyNext").addEventListener("click", async ()=>{
   if(i < 0) return;
   const btn = $("#copyNext");
   const text = lastChunks[i];
+  const chunksNow = lastChunks;   // snapshot for the post-await staleness check below — same reason as markSent's fix
   try{
     await writeToClipboard(text);
     markSent(text);   // repaints, and advances the button to the following part
-    // only the first CHUNK_RENDER_CAP parts have a card; beyond that there's nothing to scroll to
-    const card = $("#chunks").querySelector(`.data[data-i="${i}"]`);
-    if(card) card.closest(".chunk").scrollIntoView({behavior:scrollBehavior(),block:"nearest"});
-    flashButton(btn, `Copied ${i+1} ✓`, `Copied message ${i+1} of ${lastChunks.length}`, 1200);
+    if(lastChunks === chunksNow){
+      // the payload didn't change mid-copy — index i still means the same card/position it did above.
+      // Only the first CHUNK_RENDER_CAP parts have a card; beyond that there's nothing to scroll to.
+      const card = $("#chunks").querySelector(`.data[data-i="${i}"]`);
+      if(card) card.closest(".chunk").scrollIntoView({behavior:scrollBehavior(),block:"nearest"});
+      flashButton(btn, `Copied ${i+1} ✓`, `Copied message ${i+1} of ${chunksNow.length}`, 1200);
+    } else {
+      // a debounced repack landed while the copy was in flight — lastChunks now points at a different
+      // payload, so index i no longer names the card or total it did when we read it. The mark above is
+      // still correct (it used the snapshotted text, not i), but scrolling to card i or reporting "of N"
+      // here would point at and count the WRONG payload's parts — say only what's still true instead.
+      flashButton(btn, "Copied ✓", "Copied", 1200);
+    }
   }catch{
     flashButton(btn, "Copy failed", "Copy failed — clipboard access denied", 1200);
   }
