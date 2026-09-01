@@ -2670,7 +2670,14 @@ $("#resetSent").addEventListener("click", ()=>{
 // existing catch blocks as the last resort.
 const canCopy = () => !!(navigator.clipboard && navigator.clipboard.writeText) || document.queryCommandSupported?.("copy");
 async function writeToClipboard(text){
-  if(navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text);
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    try{ return await navigator.clipboard.writeText(text); }
+    // the API existing doesn't mean it works — a permissions-policy block, a document that briefly lost
+    // focus, or a user gesture requirement not met can all reject here. Fall through to execCommand rather
+    // than propagating, or the fallback below is only ever reached when the API is absent entirely — never
+    // when it's present but broken, which is exactly the case this file's own comment above promises covers.
+    catch{}
+  }
   // off-screen textarea + execCommand: deprecated, but the only write path an insecure context has
   const ta = document.createElement("textarea");
   ta.value = text;
