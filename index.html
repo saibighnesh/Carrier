@@ -1801,10 +1801,14 @@ function paintSent(){
   });
   updateSendTitle();   // keep the tab-strip count in step with the marks
 }
-// record that chunk i made it to the clipboard. Never marks on a failed copy — a mark the user didn't
-// earn would make them skip a part and ship an unassemblable message.
-function markSent(i){
-  const c = lastChunks[i];
+// record that a chunk made it to the clipboard. Takes the chunk TEXT itself, not an index into
+// lastChunks — every caller that copies asynchronously must snapshot what it actually sent before its
+// own await, since a debounced refresh() can reassign lastChunks to a new array (new session id) while
+// that await is outstanding. Re-deriving the chunk from a post-await index would mark whatever the NEW
+// array holds at that position — a payload that was never actually copied — instead of the one that was.
+// Never marks on a failed copy — a mark the user didn't earn would make them skip a part and ship an
+// unassemblable message.
+function markSent(c){
   if(c == null || sentChunks.has(c)) return;
   staleSend = false;   // the user has started sending THIS payload — the warning has done its job
   sentChunks.add(c);
@@ -2252,10 +2256,11 @@ function renderChunks(){
     b.onclick = async ()=>{
       const origLabel = b.dataset.origLabel;
       clearTimeout(copyoneTimers.get(b));
+      const text = lastChunks[+b.dataset.i];
       try{
-        await writeToClipboard(lastChunks[+b.dataset.i]);
+        await writeToClipboard(text);
         b.textContent = "Copied"; b.setAttribute("aria-label","Copied");
-        markSent(+b.dataset.i);
+        markSent(text);
       }catch{
         b.textContent = "Failed"; b.setAttribute("aria-label","Copy failed");
       }
@@ -2294,9 +2299,10 @@ $("#chunks").addEventListener("copy", e=>{
   if(!d) return;
   const i = +d.dataset.i;
   if(Number.isInteger(i) && lastChunks[i] != null && e.clipboardData){
-    e.clipboardData.setData("text/plain", lastChunks[i]);
+    const text = lastChunks[i];
+    e.clipboardData.setData("text/plain", text);
     e.preventDefault();
-    markSent(i);   // a hand-copied card counts the same as one copied by its button
+    markSent(text);   // a hand-copied card counts the same as one copied by its button
   }
 });
 
@@ -2593,13 +2599,18 @@ $("#copyAll").addEventListener("click", async ()=>{
   clearTimeout(copyAllTimer);
   copyAllBusy = true;   // suppress renderChunks() label overwrite during the feedback window
   const restore = ()=>{ copyAllBusy = false; b.textContent = copyAllLabel(); b.removeAttribute("aria-label"); };
+  // snapshot now, not after the await: a debounced refresh() reassigns lastChunks to a new array (new
+  // session id) on every repack, and if one lands while writeToClipboard is in flight, marking from the
+  // live lastChunks below would credit the NEW, never-copied payload instead of the one actually sent —
+  // same fix as #copyRest already applies, just missing here and in #copyNext/markSent until now.
+  const chunks = lastChunks;
   try{
-    await writeToClipboard(lastChunks.join("\n\n"));
-    for(const c of lastChunks) sentChunks.add(c);   // the whole payload is on the clipboard — mark it all
+    await writeToClipboard(chunks.join("\n\n"));
+    for(const c of chunks) sentChunks.add(c);   // the whole payload is on the clipboard — mark it all
     staleSend = false;
     paintSent();
-    b.textContent = lastChunks.length === 1 ? "Copied ✓" : "Copied all ✓";
-    b.setAttribute("aria-label", lastChunks.length === 1 ? "Copied the message" : `Copied all ${lastChunks.length} messages`);
+    b.textContent = chunks.length === 1 ? "Copied ✓" : "Copied all ✓";
+    b.setAttribute("aria-label", chunks.length === 1 ? "Copied the message" : `Copied all ${chunks.length} messages`);
     copyAllTimer = setTimeout(restore, 2000);
   }catch{
     b.textContent = "Copy failed"; b.setAttribute("aria-label","Copy failed — clipboard access denied");
@@ -2614,9 +2625,10 @@ $("#copyNext").addEventListener("click", async ()=>{
   const i = nextUnsentIndex();
   if(i < 0) return;
   const btn = $("#copyNext");
+  const text = lastChunks[i];
   try{
-    await writeToClipboard(lastChunks[i]);
-    markSent(i);   // repaints, and advances the button to the following part
+    await writeToClipboard(text);
+    markSent(text);   // repaints, and advances the button to the following part
     // only the first CHUNK_RENDER_CAP parts have a card; beyond that there's nothing to scroll to
     const card = $("#chunks").querySelector(`.data[data-i="${i}"]`);
     if(card) card.closest(".chunk").scrollIntoView({behavior:scrollBehavior(),block:"nearest"});
