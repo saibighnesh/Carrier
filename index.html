@@ -1801,13 +1801,35 @@ function paintSent(){
   });
   updateSendTitle();   // keep the tab-strip count in step with the marks
 }
-// record that chunk i made it to the clipboard. Never marks on a failed copy — a mark the user didn't
-// earn would make them skip a part and ship an unassemblable message.
-function markSent(i){
-  const c = lastChunks[i];
-  if(c == null || sentChunks.has(c)) return;
+// record that a chunk made it to the clipboard. Takes the chunk TEXT itself, not an index into
+// lastChunks — every caller that copies asynchronously must snapshot what it actually sent before its
+// own await, since a debounced refresh() can reassign lastChunks to a new array (new session id) while
+// that await is outstanding. Re-deriving the chunk from a post-await index would mark whatever the NEW
+// array holds at that position — a payload that was never actually copied — instead of the one that was.
+// The membership check below covers the copy itself resolving AFTER such a repack: without it, an
+// orphaned chunk from the old payload would still clear staleSend, silently hiding the "these are new
+// messages, resend from part 1" warning renderChunks() may have just raised for the payload actually on
+// screen — the exact failure this whole function exists to prevent, just reachable one step further out.
+// Never marks on a failed copy — a mark the user didn't earn would make them skip a part and ship an
+// unassemblable message.
+// Batch form, for #copyAll/#copyRest: one Set build + one paintSent() for the whole batch, not one per
+// chunk — looping markSent() over a large batch would redo the O(n) liveness scan and the O(n) paintSent()
+// once per chunk, needlessly O(n²) for a large multi-part send (SMS-limit sends run into the thousands).
+function markSentBatch(chunks){
+  const live = new Set(lastChunks);
+  const toMark = chunks.filter(c => c != null && !sentChunks.has(c) && live.has(c));
+  if(!toMark.length) return;
+  for(const c of toMark) sentChunks.add(c);
   staleSend = false;   // the user has started sending THIS payload — the warning has done its job
+  paintSent();
+}
+// Single-chunk form, for #copyNext/.copyone/the copy-event listener. Plain .includes() rather than routing
+// through markSentBatch: both are an O(n) scan either way for one chunk, but a fresh `new Set(lastChunks)`
+// on every per-click copy has real allocation cost a batch call doesn't, for no benefit at n=1.
+function markSent(c){
+  if(c == null || sentChunks.has(c) || !lastChunks.includes(c)) return;
   sentChunks.add(c);
+  staleSend = false;
   paintSent();
 }
 async function refresh(){
@@ -2252,10 +2274,11 @@ function renderChunks(){
     b.onclick = async ()=>{
       const origLabel = b.dataset.origLabel;
       clearTimeout(copyoneTimers.get(b));
+      const text = lastChunks[+b.dataset.i];
       try{
-        await writeToClipboard(lastChunks[+b.dataset.i]);
+        await writeToClipboard(text);
         b.textContent = "Copied"; b.setAttribute("aria-label","Copied");
-        markSent(+b.dataset.i);
+        markSent(text);
       }catch{
         b.textContent = "Failed"; b.setAttribute("aria-label","Copy failed");
       }
@@ -2294,9 +2317,10 @@ $("#chunks").addEventListener("copy", e=>{
   if(!d) return;
   const i = +d.dataset.i;
   if(Number.isInteger(i) && lastChunks[i] != null && e.clipboardData){
-    e.clipboardData.setData("text/plain", lastChunks[i]);
+    const text = lastChunks[i];
+    e.clipboardData.setData("text/plain", text);
     e.preventDefault();
-    markSent(i);   // a hand-copied card counts the same as one copied by its button
+    markSent(text);   // a hand-copied card counts the same as one copied by its button
   }
 });
 
@@ -2593,13 +2617,18 @@ $("#copyAll").addEventListener("click", async ()=>{
   clearTimeout(copyAllTimer);
   copyAllBusy = true;   // suppress renderChunks() label overwrite during the feedback window
   const restore = ()=>{ copyAllBusy = false; b.textContent = copyAllLabel(); b.removeAttribute("aria-label"); };
+  // snapshot now, not after the await: a debounced refresh() reassigns lastChunks to a new array (new
+  // session id) on every repack, and the clipboard text has to be what was true when the click happened.
+  // markSentBatch (below) separately re-checks each of these against the LIVE lastChunks before marking
+  // any of them or touching staleSend, in case a repack lands while writeToClipboard is in flight — the
+  // text sent is still this snapshot regardless, but crediting it as "sent" only makes sense if it's still
+  // the payload actually on screen.
+  const chunks = lastChunks;
   try{
-    await writeToClipboard(lastChunks.join("\n\n"));
-    for(const c of lastChunks) sentChunks.add(c);   // the whole payload is on the clipboard — mark it all
-    staleSend = false;
-    paintSent();
-    b.textContent = lastChunks.length === 1 ? "Copied ✓" : "Copied all ✓";
-    b.setAttribute("aria-label", lastChunks.length === 1 ? "Copied the message" : `Copied all ${lastChunks.length} messages`);
+    await writeToClipboard(chunks.join("\n\n"));
+    markSentBatch(chunks);   // the whole payload is on the clipboard — mark whichever of it is still live
+    b.textContent = chunks.length === 1 ? "Copied ✓" : "Copied all ✓";
+    b.setAttribute("aria-label", chunks.length === 1 ? "Copied the message" : `Copied all ${chunks.length} messages`);
     copyAllTimer = setTimeout(restore, 2000);
   }catch{
     b.textContent = "Copy failed"; b.setAttribute("aria-label","Copy failed — clipboard access denied");
@@ -2614,13 +2643,21 @@ $("#copyNext").addEventListener("click", async ()=>{
   const i = nextUnsentIndex();
   if(i < 0) return;
   const btn = $("#copyNext");
+  const text = lastChunks[i];
+  const chunksNow = lastChunks;   // snapshot for the post-await staleness check below — same reason as markSent's fix
   try{
-    await writeToClipboard(lastChunks[i]);
-    markSent(i);   // repaints, and advances the button to the following part
-    // only the first CHUNK_RENDER_CAP parts have a card; beyond that there's nothing to scroll to
-    const card = $("#chunks").querySelector(`.data[data-i="${i}"]`);
-    if(card) card.closest(".chunk").scrollIntoView({behavior:scrollBehavior(),block:"nearest"});
-    flashButton(btn, `Copied ${i+1} ✓`, `Copied message ${i+1} of ${lastChunks.length}`, 1200);
+    await writeToClipboard(text);
+    markSent(text);   // repaints, and advances the button to the following part — no-ops if a repack made `text` orphaned
+    // i and chunksNow.length describe the payload that was actually copied, so the flash text stays true
+    // regardless of what lastChunks points to now. The DOM scroll target is different: it queries the
+    // LIVE #chunks, which a mid-await repack may have rebuilt for a different payload — card i there would
+    // belong to that new payload, not the one just copied, so only scroll if nothing has changed underneath.
+    if(lastChunks === chunksNow){
+      // only the first CHUNK_RENDER_CAP parts have a card; beyond that there's nothing to scroll to
+      const card = $("#chunks").querySelector(`.data[data-i="${i}"]`);
+      if(card) card.closest(".chunk").scrollIntoView({behavior:scrollBehavior(),block:"nearest"});
+    }
+    flashButton(btn, `Copied ${i+1} ✓`, `Copied message ${i+1} of ${chunksNow.length}`, 1200);
   }catch{
     flashButton(btn, "Copy failed", "Copy failed — clipboard access denied", 1200);
   }
@@ -2647,9 +2684,7 @@ $("#copyRest").addEventListener("click", async ()=>{
   const btn = $("#copyRest");
   try{
     await writeToClipboard(rest.join("\n\n"));
-    for(const c of rest) sentChunks.add(c);
-    staleSend = false;
-    paintSent();   // hides this button — every part is sent now
+    markSentBatch(rest);   // hides this button if every part is still live and now sent
     flashButton(btn, `Copied ${rest.length} ✓`, `Copied the ${rest.length} remaining message${rest.length!==1?"s":""}`);
   }catch{
     flashButton(btn, "Copy failed", "Copy failed — clipboard access denied");
@@ -2670,7 +2705,14 @@ $("#resetSent").addEventListener("click", ()=>{
 // existing catch blocks as the last resort.
 const canCopy = () => !!(navigator.clipboard && navigator.clipboard.writeText) || document.queryCommandSupported?.("copy");
 async function writeToClipboard(text){
-  if(navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text);
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    try{ return await navigator.clipboard.writeText(text); }
+    // the API existing doesn't mean it works — a permissions-policy block, a document that briefly lost
+    // focus, or a user gesture requirement not met can all reject here. Fall through to execCommand rather
+    // than propagating, or the fallback below is only ever reached when the API is absent entirely — never
+    // when it's present but broken, which is exactly the case this file's own comment above promises covers.
+    catch{}
+  }
   // off-screen textarea + execCommand: deprecated, but the only write path an insecure context has
   const ta = document.createElement("textarea");
   ta.value = text;
