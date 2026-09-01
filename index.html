@@ -1806,14 +1806,25 @@ function paintSent(){
 // own await, since a debounced refresh() can reassign lastChunks to a new array (new session id) while
 // that await is outstanding. Re-deriving the chunk from a post-await index would mark whatever the NEW
 // array holds at that position — a payload that was never actually copied — instead of the one that was.
+// The membership check below covers the copy itself resolving AFTER such a repack: without it, an
+// orphaned chunk from the old payload would still clear staleSend, silently hiding the "these are new
+// messages, resend from part 1" warning renderChunks() may have just raised for the payload actually on
+// screen — the exact failure this whole function exists to prevent, just reachable one step further out.
 // Never marks on a failed copy — a mark the user didn't earn would make them skip a part and ship an
 // unassemblable message.
-function markSent(c){
-  if(c == null || sentChunks.has(c)) return;
+// Shared by every "mark these as sent" path — a single chunk (markSent, below) or a whole batch (#copyAll,
+// #copyRest). One membership check + one paintSent() per call, not one per chunk: looping markSent() over
+// a large batch would be O(n) membership checks each doing an O(n) scan, and paintSent() itself is O(n) —
+// needlessly O(n²) for a large multi-part send when it can be one Set build + one repaint instead.
+function markSentBatch(chunks){
+  const live = new Set(lastChunks);
+  const toMark = chunks.filter(c => c != null && !sentChunks.has(c) && live.has(c));
+  if(!toMark.length) return;
+  for(const c of toMark) sentChunks.add(c);
   staleSend = false;   // the user has started sending THIS payload — the warning has done its job
-  sentChunks.add(c);
   paintSent();
 }
+function markSent(c){ markSentBatch([c]); }
 async function refresh(){
   // Send-panel visibility is as much a precondition as srcImage — mirrors the check updateSendTitle()
   // already makes for the same reason. A caller that doesn't go through the debounce (autoFit's direct
@@ -2600,15 +2611,15 @@ $("#copyAll").addEventListener("click", async ()=>{
   copyAllBusy = true;   // suppress renderChunks() label overwrite during the feedback window
   const restore = ()=>{ copyAllBusy = false; b.textContent = copyAllLabel(); b.removeAttribute("aria-label"); };
   // snapshot now, not after the await: a debounced refresh() reassigns lastChunks to a new array (new
-  // session id) on every repack, and if one lands while writeToClipboard is in flight, marking from the
-  // live lastChunks below would credit the NEW, never-copied payload instead of the one actually sent —
-  // same fix as #copyRest already applies, just missing here and in #copyNext/markSent until now.
+  // session id) on every repack, and the clipboard text has to be what was true when the click happened.
+  // markSentBatch (below) separately re-checks each of these against the LIVE lastChunks before marking
+  // any of them or touching staleSend, in case a repack lands while writeToClipboard is in flight — the
+  // text sent is still this snapshot regardless, but crediting it as "sent" only makes sense if it's still
+  // the payload actually on screen.
   const chunks = lastChunks;
   try{
     await writeToClipboard(chunks.join("\n\n"));
-    for(const c of chunks) sentChunks.add(c);   // the whole payload is on the clipboard — mark it all
-    staleSend = false;
-    paintSent();
+    markSentBatch(chunks);   // the whole payload is on the clipboard — mark whichever of it is still live
     b.textContent = chunks.length === 1 ? "Copied ✓" : "Copied all ✓";
     b.setAttribute("aria-label", chunks.length === 1 ? "Copied the message" : `Copied all ${chunks.length} messages`);
     copyAllTimer = setTimeout(restore, 2000);
@@ -2629,20 +2640,17 @@ $("#copyNext").addEventListener("click", async ()=>{
   const chunksNow = lastChunks;   // snapshot for the post-await staleness check below — same reason as markSent's fix
   try{
     await writeToClipboard(text);
-    markSent(text);   // repaints, and advances the button to the following part
+    markSent(text);   // repaints, and advances the button to the following part — no-ops if a repack made `text` orphaned
+    // i and chunksNow.length describe the payload that was actually copied, so the flash text stays true
+    // regardless of what lastChunks points to now. The DOM scroll target is different: it queries the
+    // LIVE #chunks, which a mid-await repack may have rebuilt for a different payload — card i there would
+    // belong to that new payload, not the one just copied, so only scroll if nothing has changed underneath.
     if(lastChunks === chunksNow){
-      // the payload didn't change mid-copy — index i still means the same card/position it did above.
-      // Only the first CHUNK_RENDER_CAP parts have a card; beyond that there's nothing to scroll to.
+      // only the first CHUNK_RENDER_CAP parts have a card; beyond that there's nothing to scroll to
       const card = $("#chunks").querySelector(`.data[data-i="${i}"]`);
       if(card) card.closest(".chunk").scrollIntoView({behavior:scrollBehavior(),block:"nearest"});
-      flashButton(btn, `Copied ${i+1} ✓`, `Copied message ${i+1} of ${chunksNow.length}`, 1200);
-    } else {
-      // a debounced repack landed while the copy was in flight — lastChunks now points at a different
-      // payload, so index i no longer names the card or total it did when we read it. The mark above is
-      // still correct (it used the snapshotted text, not i), but scrolling to card i or reporting "of N"
-      // here would point at and count the WRONG payload's parts — say only what's still true instead.
-      flashButton(btn, "Copied ✓", "Copied", 1200);
     }
+    flashButton(btn, `Copied ${i+1} ✓`, `Copied message ${i+1} of ${chunksNow.length}`, 1200);
   }catch{
     flashButton(btn, "Copy failed", "Copy failed — clipboard access denied", 1200);
   }
@@ -2669,9 +2677,7 @@ $("#copyRest").addEventListener("click", async ()=>{
   const btn = $("#copyRest");
   try{
     await writeToClipboard(rest.join("\n\n"));
-    for(const c of rest) sentChunks.add(c);
-    staleSend = false;
-    paintSent();   // hides this button — every part is sent now
+    markSentBatch(rest);   // hides this button if every part is still live and now sent
     flashButton(btn, `Copied ${rest.length} ✓`, `Copied the ${rest.length} remaining message${rest.length!==1?"s":""}`);
   }catch{
     flashButton(btn, "Copy failed", "Copy failed — clipboard access denied");
