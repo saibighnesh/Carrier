@@ -2519,10 +2519,16 @@ document.querySelectorAll(".preset").forEach(b=>{
 });
 // the controls autoFit overwrites when it lands — disabled while it searches so a mid-fit change isn't
 // silently discarded. #autofit itself is handled separately (it also swaps its label and aria-busy).
+// #compact is here for a different reason: autoFit doesn't write it, but budget() (below) reads
+// textCodec live on every one of the up to 42 encode iterations, and Compact's 14 bits/char vs Base64's 6
+// swings the byte budget ~2.3x — unlike the password field, which IS deliberately left live because it
+// only ever adds a fixed per-payload overhead, not a different meaning for "budget" mid-search. Toggling
+// Compact mid-fit would validate later iterations against a budget inconsistent with earlier ones in the
+// same run, the exact silent-inconsistency class this freeze exists to prevent.
 // NOT #startOver: autoFit checks srcImage between every encode and abandons cleanly when it goes null,
 // so Start over is the working cancel for a long fit (42 encodes on a big image is several seconds).
 // Disabling it would take away the only way out.
-const TUNE_CONTROLS = ["#quality", "#maxdim", "#chatLimit", "#chatLimitCustom"];
+const TUNE_CONTROLS = ["#quality", "#maxdim", "#chatLimit", "#chatLimitCustom", "#compact"];
 function setTuneDisabled(off){
   TUNE_CONTROLS.forEach(sel => { $(sel).disabled = off; });
   document.querySelectorAll(".preset").forEach(b => { b.disabled = off; });
