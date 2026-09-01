@@ -1,8 +1,9 @@
-// chunkPrefixLen(total) is the exact length of a chunk's "PXT/<sid>/<index>/<total>/" prefix. Roughly a
-// dozen other test files hand-copy this exact formula as a stub ("4 + SID_LEN + 3 + 2 * String(total).length")
-// rather than extracting the real one from index.html — meaning if the real implementation ever drifted
-// from that copied formula, nothing would catch it, since every stub would just silently drift along with
-// it. This file tests the REAL function directly.
+// chunkPrefixLen(total) is the exact length of a chunk's "PXT/<sid>/<index>/<total>/" prefix, and
+// maxChunkIndexFor(total, recoveryOn) is the safe upper bound chunkify() reserves prefix width for when
+// parity chunks might push the widest index past total. Roughly a dozen other test files hand-copy both
+// exact formulas as stubs rather than extracting the real ones from index.html — meaning if either real
+// implementation ever drifted from its copied formula, nothing would catch it, since every stub would just
+// silently drift along with it. This file tests the REAL functions directly.
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
@@ -10,10 +11,10 @@ const HTML = fileURLToPath(new URL("../index.html", import.meta.url));
 const html = readFileSync(HTML, "utf8");
 const src = [
   html.slice(html.indexOf("const SID_LEN"), html.indexOf("const textBitsPerChar")),
-  "globalThis.__CPL = { chunkPrefixLen, SID_LEN };",
+  "globalThis.__CPL = { chunkPrefixLen, SID_LEN, maxChunkIndexFor };",
 ].join("\n");
 new Function(src)();
-const { chunkPrefixLen, SID_LEN } = globalThis.__CPL;
+const { chunkPrefixLen, SID_LEN, maxChunkIndexFor } = globalThis.__CPL;
 
 let pass = 0;
 const t = (n, f) => { f(); console.log("  ok  " + n); pass++; };
@@ -44,6 +45,21 @@ t("matches the hand-copied stub formula every other test file uses — the drift
   for(const total of [1, 9, 10, 99, 100, 4096, 60000, 999999]){
     assert.equal(chunkPrefixLen(total), stub(total), `drift detected at total=${total}`);
   }
+});
+
+t("maxChunkIndexFor matches the hand-copied stub every chunkify()-calling test file uses", () => {
+  // same drift risk as chunkPrefixLen above: ~14 test files hand-copy "recoveryOn ? total * 2 : total"
+  // as a stub instead of extracting the real function, because their sliced-in copy of chunkify() now
+  // calls it too (added alongside the parity-index-overflow fix). Pin the real function's behavior here
+  // so a future change to it doesn't silently drift out of sync with every stub at once.
+  const stub = (total, recoveryOn) => recoveryOn ? total * 2 : total;
+  for(const total of [1, 9, 10, 99, 100, 4096, 60000]){
+    for(const recoveryOn of [true, false]){
+      assert.equal(maxChunkIndexFor(total, recoveryOn), stub(total, recoveryOn), `drift detected at total=${total}, recoveryOn=${recoveryOn}`);
+    }
+  }
+  assert.equal(maxChunkIndexFor(9, false), 9, "recovery off: no padding, matches total exactly");
+  assert.equal(maxChunkIndexFor(9, true), 18, "recovery on: doubled, safely covering any real parity index");
 });
 
 t("a negative total is not rejected — the minus sign counts as a character, one digit-width too many", () => {

@@ -19,6 +19,7 @@ let pass = 0; const t=async(n,f)=>{await f();console.log("  ok  "+n);pass++;};
     "let msgLimit = 60000; let recoveryLevel='off'; let textCodec = 'b64';",
     "const SID_LEN = 6;",
     "const chunkPrefixLen = total => 4 + SID_LEN + 3 + 2 * String(total).length;",
+    "const maxChunkIndexFor = (total, recoveryOn) => recoveryOn ? total * 2 : total;",
     "const MAGIC=[0x50,0x58,0x54,0x31];",
     "const lsGet=k=>store.has(k)?store.get(k):null; const lsSet=(k,v)=>store.set(k,String(v)); const lsRemove=k=>store.delete(k);",
     html.slice(html.indexOf("const textBitsPerChar"), html.indexOf("const CHUNK_RENDER_CAP")),

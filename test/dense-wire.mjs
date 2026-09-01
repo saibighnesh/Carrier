@@ -10,6 +10,7 @@ const src = [
   "let msgLimit = 60000; let recoveryLevel = 'off'; let textCodec = 'b64';",
   "const SID_LEN = 6;",
   "const chunkPrefixLen = total => 4 + SID_LEN + 3 + 2 * String(total).length;",
+  "const maxChunkIndexFor = (total, recoveryOn) => recoveryOn ? total * 2 : total;",
   "const MAGIC=[0x50,0x58,0x54,0x31];",
   "const lsGet = k => store.has(k) ? store.get(k) : null;",
   "const lsSet = (k,v) => store.set(k,String(v));",
@@ -106,6 +107,30 @@ await t("dense sends now carry real parity at every recovery level (GF(2^14))", 
     assert.ok(cs.length > total, `${lvl}: expected parity parts, got none`);
     assert.ok(cs.every(c => c.startsWith("PXD/")), `${lvl}: parity must share the data tag`);
   }
+  setCodec("b64");
+});
+
+await t("dense parity indices past a digit-width boundary still fit msgLimit", async () => {
+  // Same concern as test/rs-wire.mjs's Base64 sweep, but for the dense/Compact codec, whose parity path
+  // uses a different header width (RS14_META vs RS_META) — nothing in this file exercised that before.
+  setLimit(160); setCodec("dense");
+  let sawSingleToDouble = false, sawDoubleToTriple = false, lastTotal = 0;
+  for (let len = 300; len <= 42000; len += 100) {
+    const bytes = Uint8Array.from({length: len}, (_,i) => (i*41+3) & 0xff);
+    let strongTotal;
+    for (const lvl of ["light", "strong", "auto"]) {
+      const txt = await pack(bytes, "image/webp", "");
+      const cs = await chunkify(txt, lvl);
+      const total = +cs[0].match(/\/(\d+)\/[^/]*$/)[1];
+      assert.ok(cs.every(c => c.length <= 160), `${lvl} at len=${len}: a chunk exceeded msgLimit (total=${total})`);
+      if (lvl === "strong") strongTotal = total;
+    }
+    if (lastTotal < 10 && strongTotal >= 10) sawSingleToDouble = true;
+    if (lastTotal < 100 && strongTotal >= 100) sawDoubleToTriple = true;
+    lastTotal = strongTotal;
+  }
+  assert.ok(sawSingleToDouble, "sweep never crossed the 9->10 digit boundary — test range needs widening");
+  assert.ok(sawDoubleToTriple, "sweep never crossed the 99->100 digit boundary — test range needs widening");
   setCodec("b64");
 });
 

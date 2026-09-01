@@ -10,6 +10,7 @@ const src = [
   "let msgLimit = 60000; let recoveryLevel = 'off'; let textCodec = 'b64';",
   "const SID_LEN = 6;",
   "const chunkPrefixLen = total => 4 + SID_LEN + 3 + 2 * String(total).length;",
+  "const maxChunkIndexFor = (total, recoveryOn) => recoveryOn ? total * 2 : total;",
   "const MAGIC = [0x50,0x58,0x54,0x31];",
   slice("/* ---------- byte <-> base64 ---------- */", "/* ---------- CRC-32"),
   slice("/* ---------- CRC-32", "/* ---------- Reed-Solomon"),

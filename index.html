@@ -447,6 +447,20 @@ const SID_LEN = 6;   // chunkify's session id: 3 random bytes rendered as hex
 // per-message limit pushes the part count to six digits (prefix 25) — where the meter then read "under
 // the limit" for a payload that had already spilled into another part.
 const chunkPrefixLen = total => 4 + SID_LEN + 3 + 2 * String(total).length;
+// chunkPrefixLen()'s "index ≤ total" assumption holds for data chunks (index runs 1..total) but not for
+// parity chunks, whose index runs total+1..total+parityCount — past total, and so sometimes one digit
+// wider than it. Doubling total is a safe upper bound on the widest index chunkPrefixLen needs to reserve
+// room for: "auto" applies ONE global k to every block regardless of that block's own size (rsParityCount's
+// "auto" branch reads only plan.k, never n), so RS_COST_CAP's 50% doesn't hold per block the way it looks
+// like it should — a lone small trailing block can carry the same k as a full 32-part block. Verified
+// empirically (stress-tested across >90k (limit, length, level, codec) combinations, plus by hand for the
+// worst realistic case — a 2-part trailing block, ~94% parity/total ratio, still under the 2x this reserves)
+// that total*2 holds under the CURRENT constants (RS_BLOCK=RS_HALF=32, RS_COST_CAP=0.5). It is NOT
+// structurally tied to them, though — if any of the three ever change, re-verify this bound before trusting
+// it; it isn't guaranteed to still hold. Without it, a send whose part count lands just under a power-of-ten
+// (e.g. total=9 with parity pushing indices into double digits) emitted parity chunks one character over
+// msgLimit — exactly what a fixed-reserve prefix was replaced to prevent for data chunks.
+const maxChunkIndexFor = (total, recoveryOn) => recoveryOn ? total * 2 : total;
 // bytes that fit one message = (chars available) x (bits each char carries) / 8, with a 4% safety margin.
 // This hardcoded Base64's ratio (6/8 x 0.96 = 0.72) even after Compact shipped 14-bit characters — so
 // "Auto-fit to 1 message" under Compact aimed at a budget 2.33x smaller than the real one and crushed
@@ -1260,9 +1274,9 @@ async function chunkify(b64, level = recoveryLevel){
   // RS14_META) because the two alphabets carry a different number of header fields per character.
   const recoveryOn = level !== "off" && RS_LEVELS.hasOwnProperty(level);
   const hdr = recoveryOn ? (dense ? RS14_META : RS_META) : 0;
-  let per = Math.max(1, msgLimit - chunkPrefixLen(1) - hdr), total = Math.max(1, Math.ceil(b64.length / per));
+  let per = Math.max(1, msgLimit - chunkPrefixLen(maxChunkIndexFor(1, recoveryOn)) - hdr), total = Math.max(1, Math.ceil(b64.length / per));
   for(let k=0;k<4;k++){
-    const p = Math.max(1, msgLimit - chunkPrefixLen(total) - hdr);
+    const p = Math.max(1, msgLimit - chunkPrefixLen(maxChunkIndexFor(total, recoveryOn)) - hdr);
     const t = Math.max(1, Math.ceil(b64.length / p));
     if(p === per && t === total) break;
     per = p; total = t;
