@@ -1812,10 +1812,9 @@ function paintSent(){
 // screen — the exact failure this whole function exists to prevent, just reachable one step further out.
 // Never marks on a failed copy — a mark the user didn't earn would make them skip a part and ship an
 // unassemblable message.
-// Shared by every "mark these as sent" path — a single chunk (markSent, below) or a whole batch (#copyAll,
-// #copyRest). One membership check + one paintSent() per call, not one per chunk: looping markSent() over
-// a large batch would be O(n) membership checks each doing an O(n) scan, and paintSent() itself is O(n) —
-// needlessly O(n²) for a large multi-part send when it can be one Set build + one repaint instead.
+// Batch form, for #copyAll/#copyRest: one Set build + one paintSent() for the whole batch, not one per
+// chunk — looping markSent() over a large batch would redo the O(n) liveness scan and the O(n) paintSent()
+// once per chunk, needlessly O(n²) for a large multi-part send (SMS-limit sends run into the thousands).
 function markSentBatch(chunks){
   const live = new Set(lastChunks);
   const toMark = chunks.filter(c => c != null && !sentChunks.has(c) && live.has(c));
@@ -1824,7 +1823,15 @@ function markSentBatch(chunks){
   staleSend = false;   // the user has started sending THIS payload — the warning has done its job
   paintSent();
 }
-function markSent(c){ markSentBatch([c]); }
+// Single-chunk form, for #copyNext/.copyone/the copy-event listener. Plain .includes() rather than routing
+// through markSentBatch: both are an O(n) scan either way for one chunk, but a fresh `new Set(lastChunks)`
+// on every per-click copy has real allocation cost a batch call doesn't, for no benefit at n=1.
+function markSent(c){
+  if(c == null || sentChunks.has(c) || !lastChunks.includes(c)) return;
+  sentChunks.add(c);
+  staleSend = false;
+  paintSent();
+}
 async function refresh(){
   // Send-panel visibility is as much a precondition as srcImage — mirrors the check updateSendTitle()
   // already makes for the same reason. A caller that doesn't go through the debounce (autoFit's direct
