@@ -1630,7 +1630,7 @@ function encodeCanvas(cv, q){
 // miss. Blob-URL images are same-origin, so the canvas is never tainted and getImageData can't throw.
 function detectAlpha(img){
   try{
-    const n = 128;
+    const n = 128;   // small enough that the sample + getImageData stays well under a millisecond, even on a huge source
     const w = Math.max(1, Math.min(n, img.naturalWidth)), h = Math.max(1, Math.min(n, img.naturalHeight));
     const cv = document.createElement("canvas");
     cv.width = w; cv.height = h;
