@@ -2420,18 +2420,25 @@ const CUSTOM_LIMIT_MIN = 20, CUSTOM_LIMIT_MAX = 200000;
 // not yet an error), a valid whole number in range, or invalid. String(n) !== raw is doing real work,
 // not belt-and-suspenders: parseInt alone would accept "12.5" (-> 12) and "1e3" (-> 1) as if they were
 // clean integers. Kept DOM-free so it's testable the same way targetBytes/dec64/chunkCardContent are.
+const customLimitErrorText = () => `Enter a whole number between ${CUSTOM_LIMIT_MIN} and ${CUSTOM_LIMIT_MAX.toLocaleString()}.`;
 function parseCustomLimit(raw){
   raw = raw.trim();
   if(raw === "") return {empty:true};
   const n = parseInt(raw, 10);
   if(!Number.isInteger(n) || String(n) !== raw || n < CUSTOM_LIMIT_MIN || n > CUSTOM_LIMIT_MAX){
-    return {empty:false, ok:false, error:`Enter a whole number between ${CUSTOM_LIMIT_MIN} and ${CUSTOM_LIMIT_MAX.toLocaleString()}.`};
+    return {empty:false, ok:false, error:customLimitErrorText()};
   }
   return {empty:false, ok:true, value:n};
 }
 function applyCustomLimit(){
-  const result = parseCustomLimit($("#chatLimitCustom").value);
-  const err = $("#chatLimitCustomErr");
+  const field = $("#chatLimitCustom"), err = $("#chatLimitCustomErr");
+  // type="number"'s .value reads back as "" whenever the typed text fails the field's number grammar
+  // (e.g. "1e", a bare "-", "20-") — the browser calls this badInput, not "empty". Checked here, ahead of
+  // parseCustomLimit, because from .value alone that state is indistinguishable from nothing typed yet, and
+  // was silently swallowed as "not an error" — msgLimit stayed at its previous value with zero feedback,
+  // even though the field visibly still shows whatever garbled text the user typed.
+  if(field.validity.badInput){ err.textContent = customLimitErrorText(); err.classList.remove("hidden"); return; }
+  const result = parseCustomLimit(field.value);
   if(result.empty){ err.classList.add("hidden"); return; }
   if(!result.ok){ err.textContent = result.error; err.classList.remove("hidden"); return; }
   err.classList.add("hidden");
@@ -3259,6 +3266,17 @@ $("#inbox").addEventListener("drop", e=>{
   const f = e.dataTransfer && e.dataTransfer.files[0];
   if(f){ e.preventDefault(); loadTextFile(f); }
 });
+// #drop and #inbox are the only two elements that know what to do with a dropped file — everywhere else
+// on the page has no listener at all, so a file released a few pixels outside either target (a common
+// miss — #drop especially isn't large) falls through to the browser's default action: navigating the tab
+// straight to the file, discarding this session's loaded image, typed password, and any receive-side
+// paste with zero confirmation. Page-wide fallback, gated on Files the same way #inbox's own listener is
+// (types may be empty during dragover in some browsers, hence the length check too) — a plain text drag
+// elsewhere on the page is left alone, since preventing that default has no equivalent safety reason.
+["dragover","drop"].forEach(ev=>document.addEventListener(ev, e=>{
+  const types = e.dataTransfer ? [...e.dataTransfer.types] : [];
+  if(!types.length || types.includes("Files")) e.preventDefault();
+}));
 
 async function doReveal(){
   if(revealing) return;

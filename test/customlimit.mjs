@@ -1,8 +1,9 @@
 // parseCustomLimit is the pure decision function behind the custom chat-limit field (#250) — this file
 // proves its three outcomes (empty / invalid / valid) at the exact boundaries that matter, DOM-free, the
 // same way targetBytes/dec64/chunkCardContent get tested. The DOM-wiring half (applyCustomLimit reading
-// #chatLimitCustom and writing #chatLimitCustomErr) is covered live via Playwright, same as every other
-// DOM-touching change in this project.
+// #chatLimitCustom and writing #chatLimitCustomErr) has no automated coverage — this project has no
+// DOM/browser test harness at all (every suite here extracts and tests pure-logic sections of index.html,
+// nothing that touches the live DOM) — so that half is verified by manual testing and code review instead.
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
