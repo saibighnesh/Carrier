@@ -3257,11 +3257,6 @@ function loadTextFile(file){
 }
 $("#loadTxt").addEventListener("click", ()=>txtFile.click());
 txtFile.addEventListener("change", e=>{ const f = e.target.files[0]; txtFile.value = ""; if(f) loadTextFile(f); });
-["dragover","dragenter"].forEach(ev=>$("#inbox").addEventListener(ev, e=>{
-  const types = e.dataTransfer ? [...e.dataTransfer.types] : [];
-  // preventDefault for a file drag (types may be empty during dragover on some browsers) so the drop lands here instead of the browser navigating to the file; leave pure-text drags to the textarea's native handling
-  if(!types.length || types.includes("Files")) e.preventDefault();
-}));
 $("#inbox").addEventListener("drop", e=>{
   const f = e.dataTransfer && e.dataTransfer.files[0];
   if(f){ e.preventDefault(); loadTextFile(f); }
@@ -3270,10 +3265,14 @@ $("#inbox").addEventListener("drop", e=>{
 // on the page has no listener at all, so a file released a few pixels outside either target (a common
 // miss — #drop especially isn't large) falls through to the browser's default action: navigating the tab
 // straight to the file, discarding this session's loaded image, typed password, and any receive-side
-// paste with zero confirmation. Page-wide fallback, gated on Files the same way #inbox's own listener is
-// (types may be empty during dragover in some browsers, hence the length check too) — a plain text drag
-// elsewhere on the page is left alone, since preventing that default has no equivalent safety reason.
-["dragover","drop"].forEach(ev=>document.addEventListener(ev, e=>{
+// paste with zero confirmation. dragover/dragenter bubble, so this single document-level listener also
+// covers #inbox's own dragover — a separate #inbox-scoped copy of the identical check would just run
+// twice on every dragover over it, for no behavioral difference. Gated on Files, not unconditional: a
+// plain text drag (e.g. between two fields) should keep working, not get silently eaten page-wide.
+// Imperfect on browsers where `types` is empty during dragover for BOTH file and text drags (a known gap,
+// not something this heuristic can resolve) — in that case a text drag is prevented too, same limitation
+// this code already accepted when it was scoped to #inbox alone, just wider now that it covers the page.
+["dragover","dragenter","drop"].forEach(ev=>document.addEventListener(ev, e=>{
   const types = e.dataTransfer ? [...e.dataTransfer.types] : [];
   if(!types.length || types.includes("Files")) e.preventDefault();
 }));
