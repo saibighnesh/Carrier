@@ -2420,18 +2420,25 @@ const CUSTOM_LIMIT_MIN = 20, CUSTOM_LIMIT_MAX = 200000;
 // not yet an error), a valid whole number in range, or invalid. String(n) !== raw is doing real work,
 // not belt-and-suspenders: parseInt alone would accept "12.5" (-> 12) and "1e3" (-> 1) as if they were
 // clean integers. Kept DOM-free so it's testable the same way targetBytes/dec64/chunkCardContent are.
+const customLimitErrorText = () => `Enter a whole number between ${CUSTOM_LIMIT_MIN} and ${CUSTOM_LIMIT_MAX.toLocaleString()}.`;
 function parseCustomLimit(raw){
   raw = raw.trim();
   if(raw === "") return {empty:true};
   const n = parseInt(raw, 10);
   if(!Number.isInteger(n) || String(n) !== raw || n < CUSTOM_LIMIT_MIN || n > CUSTOM_LIMIT_MAX){
-    return {empty:false, ok:false, error:`Enter a whole number between ${CUSTOM_LIMIT_MIN} and ${CUSTOM_LIMIT_MAX.toLocaleString()}.`};
+    return {empty:false, ok:false, error:customLimitErrorText()};
   }
   return {empty:false, ok:true, value:n};
 }
 function applyCustomLimit(){
-  const result = parseCustomLimit($("#chatLimitCustom").value);
-  const err = $("#chatLimitCustomErr");
+  const field = $("#chatLimitCustom"), err = $("#chatLimitCustomErr");
+  // type="number"'s .value reads back as "" whenever the typed text fails the field's number grammar
+  // (e.g. "1e", a bare "-", "20-") — the browser calls this badInput, not "empty". Checked here, ahead of
+  // parseCustomLimit, because from .value alone that state is indistinguishable from nothing typed yet, and
+  // was silently swallowed as "not an error" — msgLimit stayed at its previous value with zero feedback,
+  // even though the field visibly still shows whatever garbled text the user typed.
+  if(field.validity.badInput){ err.textContent = customLimitErrorText(); err.classList.remove("hidden"); return; }
+  const result = parseCustomLimit(field.value);
   if(result.empty){ err.classList.add("hidden"); return; }
   if(!result.ok){ err.textContent = result.error; err.classList.remove("hidden"); return; }
   err.classList.add("hidden");
@@ -2442,6 +2449,9 @@ $("#chatLimit").addEventListener("change", e=>{
   const custom = e.target.value === "custom";
   $("#chatLimitCustomRow").classList.toggle("hidden", !custom);
   if(custom){ $("#chatLimitCustom").focus(); applyCustomLimit(); return; }
+  clearTimeout(customLimitDebounce);   // switching away from Custom must cancel any pending validation —
+  // otherwise a badInput field's stale timer fires after this row is hidden and unconditionally re-shows
+  // the error, since applyCustomLimit's badInput check runs before the (now-moot) parseCustomLimit call
   $("#chatLimitCustomErr").classList.add("hidden");
   msgLimit = +e.target.value; queuePersist("carrier_msglimit", e.target.value); queueRefresh();
 });
@@ -3250,15 +3260,32 @@ function loadTextFile(file){
 }
 $("#loadTxt").addEventListener("click", ()=>txtFile.click());
 txtFile.addEventListener("change", e=>{ const f = e.target.files[0]; txtFile.value = ""; if(f) loadTextFile(f); });
-["dragover","dragenter"].forEach(ev=>$("#inbox").addEventListener(ev, e=>{
-  const types = e.dataTransfer ? [...e.dataTransfer.types] : [];
-  // preventDefault for a file drag (types may be empty during dragover on some browsers) so the drop lands here instead of the browser navigating to the file; leave pure-text drags to the textarea's native handling
-  if(!types.length || types.includes("Files")) e.preventDefault();
-}));
 $("#inbox").addEventListener("drop", e=>{
   const f = e.dataTransfer && e.dataTransfer.files[0];
   if(f){ e.preventDefault(); loadTextFile(f); }
 });
+// #drop and #inbox are the only two elements that know what to do with a dropped file — everywhere else
+// on the page has no listener at all, so a file released a few pixels outside either target (a common
+// miss — #drop especially isn't large) falls through to the browser's default action: navigating the tab
+// straight to the file, discarding this session's loaded image, typed password, and any receive-side
+// paste. This only stops that navigation — it does NOT surface an error the way showDropErr() does for
+// #drop itself: this fallback fires regardless of Send/Receive mode, and #dropErr lives inside the Send
+// panel, so writing to it from here could land in a hidden panel depending on which mode is active. A
+// silently-absorbed near-miss is still a large improvement over losing the whole session with no warning
+// at all, just not a fully-explained one — a real gap, left as one rather than bolted on half right.
+// dragover/dragenter bubble, so this single document-level listener also covers #inbox's own dragover — a
+// separate #inbox-scoped copy of the identical check would just run twice on every dragover over it, for
+// no behavioral difference. Gated on Files, not unconditional: a plain text drag (e.g. between two fields)
+// should keep working, not get silently eaten page-wide. Imperfect on browsers where `types` is empty
+// during dragover for BOTH file and text drags (a known gap, not something this heuristic can resolve) —
+// in that case a text drag is prevented too, same limitation this code already accepted when it was
+// scoped to #inbox alone, just wider now that it covers the page. `.types` is used directly (no spread
+// into a new array) since dragover/dragenter fire repeatedly through a whole drag gesture, page-wide now
+// instead of only over #inbox — allocating a throwaway copy on every one of those was needless.
+["dragover","dragenter","drop"].forEach(ev=>document.addEventListener(ev, e=>{
+  const types = e.dataTransfer && e.dataTransfer.types;
+  if(!types || !types.length || types.includes("Files")) e.preventDefault();
+}));
 
 async function doReveal(){
   if(revealing) return;
