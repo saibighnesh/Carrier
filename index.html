@@ -1927,8 +1927,12 @@ async function refresh(){
   // ">100% of original" under a stat labelled "Compressed"; say so honestly instead
   let pctOrig = "";
   if(origBytes){
-    const pct = Math.round(img.length / origBytes * 100);
-    pctOrig = pct < 100 ? ` · ${pct}% of original` : " · no smaller than original";
+    const smaller = img.length < origBytes;   // compare actual bytes, not the rounded percentage below —
+    // a 0.3% shrink (e.g. 997 of 1000 bytes) rounds to 100%, and `pct < 100` alone called that "no smaller
+    // than original" while claiming the opposite of what actually happened
+    const pct = Math.min(99, Math.round(img.length / origBytes * 100));   // capped at 99 so a real (if
+    // tiny) reduction never displays as "100% of original" — a contradiction of the "smaller" label itself
+    pctOrig = smaller ? ` · ${pct}% of original` : " · no smaller than original";
   }
   // scope translate=no to the numbers/units only, so page-translation can still render the prose
   // ("% of original", "chars") while never rewriting the digits, KB/MB, or the × separator
