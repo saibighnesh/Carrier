@@ -134,4 +134,29 @@ await t("#211: parity never exceeds half the data parts in a real send", async (
   console.log(`      (30% measured: ${total} data + ${parity} parity, cap ${perBlockCap}/block)`);
 });
 
+await t("countedSends is scoped per app, so a scoped reset doesn't affect other apps' dedup", async () => {
+  // #lossReset only clears the CURRENT app's stored posterior and (as of this fix) its countedSends
+  // entries — the same underlying bug this guards against: without app-scoping in the key, either the
+  // reset app could never re-count an already-seen send, or clearing the whole Set would let an
+  // untouched app's already-counted send double-count if revisited.
+  reset(); setLimit(160);
+  const cs = await chunkify(await pack(img,"image/webp",""), "strong");
+  const r = reassemble(cs.filter(c=>![2,5].includes(idxOf(c))).join("\n\n"));
+  observeSend(r, 0);   // counts under SMS (160)
+  const smsFirst = store.get("carrier_loss_160");
+  assert.ok(smsFirst);
+  setLimit(60000);
+  observeSend(r, 0);   // the SAME send, but now under WhatsApp — a different app, must count separately
+  assert.ok(store.get("carrier_loss_60000"), "the same send observed under a different app must count for that app too");
+  // simulate #lossReset for WhatsApp only
+  store.delete("carrier_loss_60000");
+  for(const key of [...countedSends]) if(key.startsWith("60000:")) countedSends.delete(key);
+  observeSend(r, 0);   // re-observe under WhatsApp after ITS reset — must count again
+  assert.ok(store.get("carrier_loss_60000"), "WhatsApp must accept new evidence after its own reset — this was the bug: an unscoped key never forgot it");
+  // SMS was never reset — re-observing the same send there must still be deduped
+  setLimit(160);
+  observeSend(r, 0);
+  assert.equal(store.get("carrier_loss_160"), smsFirst, "SMS's dedup must be untouched by WhatsApp's reset");
+});
+
 console.log(`\n${pass} passed`);
