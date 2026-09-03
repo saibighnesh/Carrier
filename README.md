@@ -232,7 +232,7 @@ No build step for the app itself, but the wire format (chunking, encryption, Ree
 node test/run.mjs
 ```
 
-Runs every `test/*.mjs` suite and exits non-zero on any failure. CI runs the same command automatically on pushes/PRs that touch `index.html` or `test/**`; docs-only changes don't trigger a run.
+Runs every `test/*.mjs` suite and exits non-zero on any failure. CI runs the same command automatically on pushes/PRs that touch `index.html` or `test/**`; docs-only changes don't trigger a run, and pushing again before a run finishes cancels the superseded one instead of queuing both to completion.
 
 ---
 
