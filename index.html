@@ -3074,8 +3074,13 @@ function updateProgress(){
     // they are waiting on 40 KB or 4 MB, and the size only appeared once the set was already complete —
     // by which point it answers nothing. Base64 decodes to 3/4 its length, and the parts are near-uniform,
     // so have/total scales the assembled bytes to a usable estimate.
-    const approxFull = fmtKB(Math.floor(payloadBytes(r) * (r.total / r.have)));
-    p.append("Got ", b(r.have), " of ", b(r.total), ` parts (${pct}%, ~${approxFull} in all) — still need part${r.missing.length>1?"s":""} ${formatParts(r.missing)}${r.missingTrunc?", …":""}.`);
+    // r.have can be 0 with r.total > 0 — every pasted chunk was a parity part (index > total, so never
+    // entered `map`) and rsRepair couldn't rebuild anything from them alone. payloadBytes(r) is then 0 and
+    // total/have is Infinity, so the size projection below would be 0 * Infinity = NaN ("~NaN MB in all")
+    // without this guard.
+    const approxFull = r.have ? fmtKB(Math.floor(payloadBytes(r) * (r.total / r.have))) : null;
+    const sizeNote = approxFull ? `, ~${approxFull} in all` : "";
+    p.append("Got ", b(r.have), " of ", b(r.total), ` parts (${pct}%${sizeNote}) — still need part${r.missing.length>1?"s":""} ${formatParts(r.missing)}${r.missingTrunc?", …":""}.`);
     // recovery ran and helped but couldn't close the gap: don't let the count imply those parts arrived
     if(r.repaired) p.append(` (${r.repaired} already rebuilt from recovery data.)`);
   }
