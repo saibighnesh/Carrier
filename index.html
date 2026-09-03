@@ -1061,21 +1061,27 @@ function lossPosterior(){
   }
   return { a: LOSS_PRIOR_A + lost, b: LOSS_PRIOR_B + (seen - lost), lost, seen };
 }
-// Observations already folded into the posterior, keyed by session id and part count. Without this, every
-// press of Reveal counted the SAME send again: three clicks on one 11-part send with 2 losses stored
-// 2,11 then 4,22 then 6,33. That doesn't surface as a visible error, it surfaces as a plausible one — the
-// estimated loss rate is permanently too high and Auto quietly over-buys parity on every later send.
+// Observations already folded into the posterior, keyed by app + session id + part count. Without the
+// dedup, every press of Reveal counted the SAME send again: three clicks on one 11-part send with 2 losses
+// stored 2,11 then 4,22 then 6,33. That doesn't surface as a visible error, it surfaces as a plausible one
+// — the estimated loss rate is permanently too high and Auto quietly over-buys parity on every later send.
+// The app is part of the key (not just sid+total) because #lossReset only clears the CURRENT app's stored
+// posterior — without app-scoping here, a reset-then-re-reveal of a send already counted for this app would
+// stay permanently excluded (the key never leaves the Set), while clearing the whole Set on reset would
+// instead let an unrelated, still-valid app's already-counted send double-count if revisited later. Scoping
+// the key lets #lossReset remove exactly the entries that belong to the app it's actually resetting.
 // In-memory only: a reload followed by re-pasting the same message will count it again, which is far rarer
 // than a second click and not worth persisting a growing set of keys to prevent.
 const countedSends = new Set();
-// Fold one send into the loss model, at most once. `unarrived` is the count of parts that never showed up
-// and are not coming without a resend — zero on the success path, the outstanding count on the failure one.
+// Fold one send into the loss model, at most once per app. `unarrived` is the count of parts that never
+// showed up and are not coming without a resend — zero on the success path, the outstanding count on the
+// failure one.
 function observeSend(r, unarrived){
   if(!r || !r.total || !r.sid) return;
   // only sends that carried recovery are evidence: without parity the receiver chases parts by hand and
   // reveals at zero missing, which would teach the model this pipe never loses anything
   if(!r.hadParity) return;
-  const key = `${r.sid}:${r.total}`;
+  const key = `${msgLimit}:${r.sid}:${r.total}`;
   if(countedSends.has(key)) return;
   countedSends.add(key);
   recordLoss(Math.min(r.total, (r.repaired || 0) + Math.max(0, unarrived)), r.total);
@@ -2113,6 +2119,13 @@ function showLossHistory(){
 }
 $("#lossReset").addEventListener("click", ()=>{
   lsRemove(lossKey());
+  // also forget which sends this app's posterior has already counted — otherwise a send observed before
+  // the reset (e.g. Reveal clicked once already) can never be folded back into the fresh posterior if the
+  // user reveals or copies-missing-parts on that same send again, silently defeating "plan from the
+  // default assumption again". Scoped to this app's prefix only — a different app's already-counted send
+  // must stay excluded from ITS still-valid posterior, or revisiting it later would double-count it.
+  const prefix = `${msgLimit}:`;
+  for(const key of countedSends) if(key.startsWith(prefix)) countedSends.delete(key);
   showLossHistory();
   if(srcImage) queueRefresh();   // the plan changes, so re-pack and re-price it
   $("#recovery").focus();        // this button hides itself — don't drop focus to <body>
