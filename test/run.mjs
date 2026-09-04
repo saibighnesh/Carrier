@@ -7,6 +7,8 @@ const suites = readdirSync(dir).filter(f => f.endsWith(".mjs") && f !== "run.mjs
 let failed = 0;
 for (const f of suites) {
   try {
+    // 4096 MB — the RS/GF(2^14) sweeps and large-image round-trip suites allocate several sizable
+    // Uint8Array/Uint16Array buffers per iteration; Node's default heap can OOM well before those finish.
     const out = execFileSync(process.execPath, ["--max-old-space-size=4096", dir + f], { encoding: "utf8", timeout: 120000 });
     const last = out.trim().split("\n").pop();
     console.log(`  ok    ${f.padEnd(28)} ${last}`);
