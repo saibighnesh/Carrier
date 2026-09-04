@@ -3335,6 +3335,12 @@ async function doReveal(){
   let abandoned = false;   // set if we bail after the await because the inbox changed under us
   let snapshot;   // hoisted so the catch block can re-check it against a post-await inbox, same as the success path
   const revBtn = $("#reveal");
+  // Set synchronously here, not left to whatever the next updateProgress() call happens to compute — this
+  // was three straight commits patching gaps in the same guard (title clobber, keyboard silent no-op,
+  // stuck note) because updateProgress() only runs on an inbox edit, and a reveal with no inbox activity
+  // during it (the common case: password already typed, just waiting on PBKDF2) left the button visually
+  // enabled — clickable and un-greyed — for its whole ~1-2s duration, contradicting this very comment block.
+  revBtn.disabled = true;
   revBtn.textContent = "Revealing…"; revBtn.setAttribute("aria-busy","true");
   const note = $("#rNote"); note.className = "note"; note.textContent = "";
   try{
