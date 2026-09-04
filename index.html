@@ -3059,7 +3059,10 @@ function updateProgress(){
     // password is needed rather than leaving them to guess why nothing appeared
     if(headerFlags(r.s) & FLAG_ENCRYPTED){
       p.append(" 🔒 Locked — enter the password below, then Reveal.");
-      $("#reveal").title = "Enter the password, then decrypt & reveal (Ctrl/Cmd+Enter)";   // refine the button hint for a locked message
+      // don't clobber the "reveal already in progress" title set above — this refines the hint for a
+      // locked message, but that's moot (and misleading, on a button that's currently disabled) while a
+      // previous reveal is still running
+      if(!revealing) $("#reveal").title = "Enter the password, then decrypt & reveal (Ctrl/Cmd+Enter)";   // refine the button hint for a locked message
       // an unlocked message reveals itself; a locked one stops dead until the password is typed, and the
       // field is below the fold on a phone. Put the caret there — but only on the transition into
       // "complete and locked", so it can't re-steal focus on every later keystroke, and only from an
@@ -3318,7 +3321,16 @@ $("#inbox").addEventListener("drop", e=>{
 }));
 
 async function doReveal(){
-  if(revealing) return;
+  if(revealing){
+    // the button itself is disabled while revealing (see updateProgress()), but both keyboard shortcuts —
+    // Enter in #rpass and Ctrl/Cmd+Enter anywhere in Receive — call doReveal() directly rather than
+    // #reveal.click(), specifically so they still surface doReveal()'s own diagnostics (missing parts, no
+    // message found) instead of just silently doing nothing when the button would be disabled for THOSE
+    // reasons. That same directness meant a re-entrant call while a previous reveal is still running fell
+    // through this guard with total silence — say so instead.
+    const note = $("#rNote"); note.className = "note warn"; note.textContent = "Still revealing the previous message — wait a moment and try again.";
+    return;
+  }
   revealing = true;
   let abandoned = false;   // set if we bail after the await because the inbox changed under us
   let snapshot;   // hoisted so the catch block can re-check it against a post-await inbox, same as the success path
