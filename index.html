@@ -3352,7 +3352,14 @@ async function doReveal(){
     // the await can't be the snapshot we decrypted, so skip the expensive regex scan and just treat it as stale.
     const inboxNow = $("#inbox").value;
     const now = inboxNow.length > TXT_MAX ? null : reassemble(inboxNow);
-    if(!now || now.s !== snapshot || $("#recv").classList.contains("hidden")){ abandoned = true; return; }
+    if(!now || now.s !== snapshot || $("#recv").classList.contains("hidden")){
+      // clear the note rather than leave it as-is: a re-entrant call (revealing was already true) may have
+      // written "Still revealing the previous message…" into it while THIS call was still awaiting — that
+      // claim is now false (this call is about to end) and nothing else was going to correct it, since
+      // maybeAutoReveal() below bails immediately on a locked message and updateProgress() in finally only
+      // touches #prog, a different element.
+      abandoned = true; note.className = "note"; note.textContent = ""; return;
+    }
     const claimed = mime || "image/webp";
     // the mime is attacker-controlled (it comes straight from the decoded payload). Never build a blob
     // the browser would render as a document — text/html or image/svg+xml opened in a new tab (the
@@ -3443,7 +3450,9 @@ async function doReveal(){
     const overLen = inboxNow.length > TXT_MAX;
     const now = (snapshot !== undefined && !overLen) ? reassemble(inboxNow) : null;
     if(snapshot !== undefined && (overLen || !now || now.s !== snapshot || $("#recv").classList.contains("hidden"))){
-      abandoned = true;
+      // same reasoning as the success path's abandonment branch: don't leave a re-entrant call's "Still
+      // revealing…" note stuck on screen describing a reveal that's now over.
+      abandoned = true; note.className = "note"; note.textContent = "";
     } else {
       note.className="note err"; note.textContent = err instanceof Error ? err.message : String(err);
     }
