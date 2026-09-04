@@ -2991,7 +2991,10 @@ function updateProgress(){
     p.className = "progress warn";
     p.textContent = `That's over ${TXT_MAX/1048576} MB of text — too big to be a Carrier message. Clear the box and paste just the Carrier parts.`;
     $("#reveal").disabled = true;
-    $("#reveal").title = "Paste a complete Carrier message first";   // don't leave the previous state's hint on a now-disabled button
+    // don't leave the previous state's hint on a now-disabled button — but if a reveal is actually still
+    // running, say THAT rather than a generic "paste a complete message" that has nothing to do with why
+    // it's disabled right now (matches the messaging every other disabled/title site in this function uses)
+    $("#reveal").title = revealing ? "A reveal is already in progress — wait for it to finish" : "Paste a complete Carrier message first";
     $("#copyMissing").classList.add("hidden");
     missingSnapshot = null;
     return;
@@ -3320,27 +3323,33 @@ $("#inbox").addEventListener("drop", e=>{
   if(!types || !types.length || types.includes("Files")) e.preventDefault();
 }));
 
+// The exact text of the re-entrant guard's transient note, below — checked before clearing it on
+// abandonment so that clear can't also wipe an unrelated, more recent message (a file drop, a clipboard
+// error) that happened to land in #rNote during the same await for a completely different reason.
+const REVEAL_BUSY_NOTE = "Still revealing the previous message — wait a moment and try again.";
 async function doReveal(){
   if(revealing){
-    // the button itself is disabled while revealing (see updateProgress()), but both keyboard shortcuts —
-    // Enter in #rpass and Ctrl/Cmd+Enter anywhere in Receive — call doReveal() directly rather than
-    // #reveal.click(), specifically so they still surface doReveal()'s own diagnostics (missing parts, no
-    // message found) instead of just silently doing nothing when the button would be disabled for THOSE
+    // the button itself is disabled while revealing (see below and updateProgress()), but both keyboard
+    // shortcuts — Enter in #rpass and Ctrl/Cmd+Enter anywhere in Receive — call doReveal() directly rather
+    // than #reveal.click(), specifically so they still surface doReveal()'s own diagnostics (missing parts,
+    // no message found) instead of just silently doing nothing when the button would be disabled for THOSE
     // reasons. That same directness meant a re-entrant call while a previous reveal is still running fell
     // through this guard with total silence — say so instead.
-    const note = $("#rNote"); note.className = "note warn"; note.textContent = "Still revealing the previous message — wait a moment and try again.";
+    const note = $("#rNote"); note.className = "note warn"; note.textContent = REVEAL_BUSY_NOTE;
     return;
   }
   revealing = true;
   let abandoned = false;   // set if we bail after the await because the inbox changed under us
   let snapshot;   // hoisted so the catch block can re-check it against a post-await inbox, same as the success path
   const revBtn = $("#reveal");
-  // Set synchronously here, not left to whatever the next updateProgress() call happens to compute — this
-  // was three straight commits patching gaps in the same guard (title clobber, keyboard silent no-op,
-  // stuck note) because updateProgress() only runs on an inbox edit, and a reveal with no inbox activity
-  // during it (the common case: password already typed, just waiting on PBKDF2) left the button visually
-  // enabled — clickable and un-greyed — for its whole ~1-2s duration, contradicting this very comment block.
-  revBtn.disabled = true;
+  // updateProgress() owns #reveal's disabled/title (it already reads `revealing`) — call it now rather
+  // than leaving the button in its previous state until the next unrelated inbox edit happens to trigger
+  // it. This was three straight commits patching gaps in the same guard (title clobber, keyboard silent
+  // no-op, stuck note) because a reveal with no inbox activity during it — the common case, password
+  // already typed, just waiting on PBKDF2 — left updateProgress() uncalled for the whole ~1-2s duration.
+  // Routing through the one function that already computes disabled+title together, instead of setting
+  // disabled here and title elsewhere, is what closes that gap for good instead of patching it again.
+  updateProgress();
   revBtn.textContent = "Revealing…"; revBtn.setAttribute("aria-busy","true");
   const note = $("#rNote"); note.className = "note"; note.textContent = "";
   try{
@@ -3359,12 +3368,14 @@ async function doReveal(){
     const inboxNow = $("#inbox").value;
     const now = inboxNow.length > TXT_MAX ? null : reassemble(inboxNow);
     if(!now || now.s !== snapshot || $("#recv").classList.contains("hidden")){
-      // clear the note rather than leave it as-is: a re-entrant call (revealing was already true) may have
-      // written "Still revealing the previous message…" into it while THIS call was still awaiting — that
-      // claim is now false (this call is about to end) and nothing else was going to correct it, since
-      // maybeAutoReveal() below bails immediately on a locked message and updateProgress() in finally only
-      // touches #prog, a different element.
-      abandoned = true; note.className = "note"; note.textContent = ""; return;
+      // Clear the note ONLY if it's still showing OUR re-entrant guard's own text — a re-entrant call
+      // (revealing was already true) may have written REVEAL_BUSY_NOTE into it while THIS call was still
+      // awaiting, and that claim is now false since this call is about to end. But #rNote isn't ours alone:
+      // loadTextFile()/#pasteInbox can legitimately write their own confirmation or error into it during
+      // the same window, and clearing unconditionally would silently erase THAT message instead — worse
+      // than leaving a moot one behind. Only touch it if nothing more recent has already taken it over.
+      if(note.textContent === REVEAL_BUSY_NOTE){ note.className = "note"; note.textContent = ""; }
+      abandoned = true; return;
     }
     const claimed = mime || "image/webp";
     // the mime is attacker-controlled (it comes straight from the decoded payload). Never build a blob
@@ -3456,9 +3467,11 @@ async function doReveal(){
     const overLen = inboxNow.length > TXT_MAX;
     const now = (snapshot !== undefined && !overLen) ? reassemble(inboxNow) : null;
     if(snapshot !== undefined && (overLen || !now || now.s !== snapshot || $("#recv").classList.contains("hidden"))){
-      // same reasoning as the success path's abandonment branch: don't leave a re-entrant call's "Still
-      // revealing…" note stuck on screen describing a reveal that's now over.
-      abandoned = true; note.className = "note"; note.textContent = "";
+      // same reasoning as the success path's abandonment branch: only clear #rNote if it's still showing
+      // OUR re-entrant guard's own text — don't wipe a more recent, unrelated message that arrived during
+      // the same await.
+      if(note.textContent === REVEAL_BUSY_NOTE){ note.className = "note"; note.textContent = ""; }
+      abandoned = true;
     } else {
       note.className="note err"; note.textContent = err instanceof Error ? err.message : String(err);
     }
