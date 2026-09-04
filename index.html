@@ -1659,6 +1659,10 @@ async function compressOnce(maxDim, quality){
 // tells a screen reader user the button is working, which is the right amount of information there.
 async function autoFit(onProgress){
   const dims = [1280,1024,768,512,384,256];
+  // Same staleness class refresh() guards against: Start over followed immediately by loading a
+  // different image reassigns srcImage, so `!srcImage` alone can't tell "abandoned, nothing loaded" from
+  // "abandoned, something else now loaded" — only the token distinguishes them.
+  const myToken = loadToken;
   // the packed payload is bigger than the raw image blob: MAGIC(4)+flags(1) + mimeLen(1)+mime + , when a
   // password is set, salt(16)+iv(12)+GCM tag(16)=44. Comparing the raw blob to targetBytes() ignored all
   // of it, so "Auto-fit to 1 message" could still split into 2 parts (mostly with a password, on small-
@@ -1668,14 +1672,14 @@ async function autoFit(onProgress){
   // (salt+iv+tag) versus what refresh() actually packs, quietly missing the one-message goal.
   const budget = () => targetBytes() - (5 + 1 + 10 + ($("#pass").value ? 44 : 4));   // 10 ≈ longest mime; pw adds salt+iv+tag, unlocked adds the CRC-32 trailer
   for(const d of dims){
-    if(!srcImage) return null;   // Start over / a new load ran mid-fit — abandon (don't deref null)
+    if(!srcImage || loadToken !== myToken) return null;   // Start over — or Start over followed by a new load — ran mid-fit — abandon (don't deref null, and don't measure against an image this fit was never for)
     const cv = drawScaled(srcImage, d);
     let lo = 0.25, hi = 0.92, pick = null;
     for(let i=0;i<7;i++){
       const q = (lo+hi)/2;
       if(onProgress) onProgress(d, i+1, 7);
       const blob = await encodeCanvas(cv, q);
-      if(!srcImage) return null;   // abandoned during the encode await
+      if(!srcImage || loadToken !== myToken) return null;   // abandoned during the encode await
       // FLOOR, not round: the search parks q right at the budget edge, so rounding UP would make refresh
       // re-encode at a higher quality than we measured to fit — pushing the payload past the budget and
       // back into 2 messages. Flooring guarantees the integer quality is ≤ the fractional q that fit.
@@ -1847,6 +1851,18 @@ async function refresh(){
   // only !srcImage (Start over) invalidates them — so a mode switch mid-pass still gets to keep whatever
   // it already computed; only the DOM-writing tail (guarded separately, below) is skipped.
   if(!srcImage || sendHidden()) return;
+  // Captured now, re-checked after every await below alongside !srcImage: Start over followed immediately
+  // by loading a DIFFERENT image bumps loadToken and reassigns srcImage to the new one, so `!srcImage`
+  // alone no longer catches a stale pass that started against the OLD image — it only catches "cleared and
+  // nothing loaded", not "cleared and something else loaded". Without this, a slow pass for the old image
+  // (a big photo with Strong recovery yields cooperatively for seconds) could finish AFTER the new image's
+  // own refresh() was already blocked behind `refreshing` and queued via pendingRefresh — writing the OLD
+  // image's thumbnail, chunks, and stats under the NEW image's already-displayed filename, momentarily
+  // making the copyable chunk text belong to the wrong image, until the queued pass self-corrects.
+  const myToken = loadToken;
+  // one check shared by every post-await recheck below, so a future added step can't copy just the
+  // `!srcImage` half and silently reintroduce the stale-pass bug this token exists to catch.
+  const stale = () => !srcImage || loadToken !== myToken;
   if(refreshing){ pendingRefresh = true; return; }
   refreshing = true;
   try {
@@ -1863,7 +1879,7 @@ async function refresh(){
     srcMime = imgMimeCache;   // encodeCanvas sets this global as a side effect; restore it on a cache hit
   } else {
     img = await compressOnce(d, q);
-    if(!srcImage) return;   // Start over ran during compression — abandon this stale pass
+    if(stale()) return;   // Start over — or Start over followed by a new load — ran during compression — abandon this stale pass
     imgKey = imgKeyNow; imgCache = img; imgMimeCache = srcMime;
   }
   // the preview only changes when the pixels do — rebuild it when thumbKey has fallen behind imgKey (a
@@ -1878,8 +1894,9 @@ async function refresh(){
     thumbKey = imgKey;
   }
   // pack with current password to get true size — use the raw value (no trim): a password is an
-  // exact secret, and trimming let an all-whitespace entry collapse to "" and ship UNENCRYPTED
-  const pw = $("#pass").value;
+  // exact secret, and trimming let an all-whitespace entry collapse to "" and ship UNENCRYPTED.
+  // pwValue() (see PW_MAX's comment) applies the same cap key derivation must never exceed.
+  const pw = pwValue("pass");
   // Reuse the previous pack when nothing that feeds it changed. refresh() runs on a mode switch and on a
   // bfcache restore, not only on a real edit, and every pack re-chunks under a NEW session id — with a
   // password it also re-encrypts under a new IV, so even the bytes differ. Without this cache, tabbing to
@@ -1897,7 +1914,7 @@ async function refresh(){
     b64 = packB64;
   } else {
     b64 = await pack(img, srcMime, pw);
-    if(!srcImage) return;   // Start over ran during packing — don't repopulate the cleared UI.
+    if(stale()) return;   // Start over — or Start over followed by a new load — ran during packing — don't repopulate the cleared UI, or a stale one, with this pass's result.
     // NOT gated on Send-panel visibility, unlike the guards around it: this only caches packKey/packB64
     // (no DOM write happens here), and pack() is the one step expensive enough to matter — a password
     // means a fresh 250k-round PBKDF2 derivation. Discarding this cache because the user switched to
@@ -1917,8 +1934,9 @@ async function refresh(){
     // the full encode — which means Start Over can now run to completion WHILE this await is outstanding,
     // same class of guard as the pack() await just above.
     lastChunks = await chunkify(b64);
-    if(!srcImage) return;   // Start over ran during chunking — abandon this stale pass. Not gated on Send
-    // visibility either, same reasoning as the pack() cache just above — this only caches chunkKey/lastChunks.
+    if(stale()) return;   // Start over — or Start over followed by a new load — ran during chunking —
+    // abandon this stale pass. Not gated on Send visibility either, same reasoning as the pack() cache
+    // just above — this only caches chunkKey/lastChunks.
     chunkKey = chunkKeyNow;
   }
   // Everything from here down writes into #send's DOM (stats, meter, notes, #lockPanel/#outPanel,
@@ -2024,7 +2042,7 @@ async function refresh(){
   } catch(err) {
     // debounced callers (queueRefresh → setTimeout) don't await refresh(), so without this catch a
     // compress/encode/pack rejection became a silent unhandled rejection — the stats just froze.
-    if(srcImage){   // still ignore failures from a pass abandoned by Start over
+    if(!stale()){   // still ignore failures from a pass abandoned by Start over — or by Start over followed by a new load, which changes srcImage back to truthy but not back to what THIS pass was for
       const note = $("#fitNote");
       note.className = "note err";
       note.textContent = "Couldn't compress that image: " + (err instanceof Error ? err.message : String(err));
@@ -2507,6 +2525,13 @@ const PW_MAX = 128;   // the maxlength on both password fields — effectively p
 // receiver on an older build truncates would fail decryption for two people who typed the same
 // passphrase. So say it instead. 128 characters is far past diminishing returns for PBKDF2 input; this
 // is about the user knowing what their secret actually is.
+// The truncation itself is enforced explicitly (every site that feeds a password field into key
+// derivation or its own strength display goes through this), not merely assumed from maxlength — a
+// password manager that autofills by assigning .value directly bypasses the browser's native typing/paste
+// truncation entirely, which would otherwise let the FULL untruncated string reach key derivation while
+// pwTruncNote (below) keeps insisting only 128 are used. One helper so a future call site can't read the
+// field directly and forget the slice.
+const pwValue = id => $("#"+id).value.slice(0, PW_MAX);
 function pwTruncNote(id, noteId){
   const inp = $("#"+id), n = $("#"+noteId);
   if(inp.value.length >= PW_MAX){
@@ -2522,7 +2547,10 @@ function pwTruncNote(id, noteId){
 $("#pass").addEventListener("input", ()=>pwTruncNote("pass", "passTrunc"));
 $("#rpass").addEventListener("input", ()=>pwTruncNote("rpass", "rpassTrunc"));
 function updatePwStrength(){
-  const v = $("#pass").value;
+  // sliced to PW_MAX for the same reason pack()'s own read is (see PW_MAX's comment): scoring characters
+  // past the point key derivation actually uses would show a strength the real key doesn't have — an
+  // autofilled 200-character passphrase reading "Strong" while only its first 128 characters are live
+  const v = pwValue("pass");
   const meter = $("#pwMeter"), label = $("#pwStrength");
   if(!v){ meter.className = "pwmeter hidden"; label.classList.add("hidden"); lastPwScore = 0; return; }
   const s = pwScore(v);
@@ -2586,6 +2614,9 @@ function setTuneDisabled(off){
 }
 $("#autofit").addEventListener("click", async ()=>{
   if(!srcImage) return;
+  // same staleness class as refresh()'s: a Start-over-then-new-load during the fit reassigns srcImage, so
+  // it alone can't distinguish "abandoned, nothing loaded" from "abandoned, a DIFFERENT image now loaded"
+  const myToken = loadToken;
   const btn = $("#autofit");
   btn.disabled = true;
   btn.textContent = "Fitting…";
@@ -2603,11 +2634,11 @@ $("#autofit").addEventListener("click", async ()=>{
     // TUNE_CONTROLS/.preset are frozen above), so this is reachable. Bail before mutating anything below:
     // writing #maxdim/quality and persisting them would silently change the user's Send settings behind
     // their back while they're looking at Receive and never asked for it.
-    if(!best || !srcImage || sendHidden()) return;
+    if(!best || !srcImage || loadToken !== myToken || sendHidden()) return;
     const hitFallback = best.fallback === true;   // real success at {25,256} no longer masquerades as the fallback
     clearTimeout(debounce);
     if(!await waitForIdle()) throw new Error("Timed out waiting for the current compression to finish.");
-    if(!srcImage || sendHidden()) return;   // re-check: waitForIdle() is itself an await gap the user could switch away during
+    if(!srcImage || loadToken !== myToken || sendHidden()) return;   // re-check: waitForIdle() is itself an await gap the user could switch away (or load a different image) during
     clearTimeout(debounce);
     $("#maxdim").value = String(best.d);
     setQuality(best.q);
@@ -3358,7 +3389,7 @@ async function doReveal(){
     if(r.missing.length){ note.className="note err";
       note.textContent = `Missing part${r.missing.length>1?"s":""} ${formatParts(r.missing)}${r.missingTrunc?", …":""} — paste the remaining message(s) first.`; return; }
     snapshot = r.s;   // the exact payload we're about to decrypt
-    const { mime, img, verified } = await unpack(r.s, $("#rpass").value);   // raw value — must match the sender's exactly, whitespace included
+    const { mime, img, verified } = await unpack(r.s, pwValue("rpass"));   // raw value (no trim) — must match the sender's exactly, whitespace included
     // a locked reveal awaits 250k-round PBKDF2 (~1-2 s on a phone). If the user edited the inbox or left
     // Receive mode during that window, this result now describes a stale message — showing it would put a
     // different image on screen than the "Ready to reveal" progress line (and, mid mode-switch, leak a live
