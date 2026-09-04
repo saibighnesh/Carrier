@@ -3011,9 +3011,17 @@ function updateProgress(){
     cm.textContent = `Copy what's missing (${n})`;
     cm.setAttribute("aria-label", `Copy a message naming the ${n} part${n!==1?"s":""} still missing`);
   }
-  $("#reveal").disabled = !ready;   // enable Reveal only once a complete message is present
+  // Also disabled while a previous reveal is still in flight (revealing) — without this, editing the box
+  // to a different complete message while a locked reveal awaits its ~1-2s PBKDF2 re-enabled the button
+  // (this function only ever checked `ready`), but clicking it silently no-op'd against the `revealing`
+  // guard in doReveal() itself: nothing here reflected that the button's own "Revealing…" label was still
+  // describing a DIFFERENT, earlier message. maybeAutoReveal()'s retry on abandonment only covers unlocked
+  // messages, so a second locked message could sit there looking clickable and doing nothing.
+  $("#reveal").disabled = !ready || revealing;
   // explain the disabled state on hover instead of a dead greyed-out button with a stale tooltip
-  $("#reveal").title = ready
+  $("#reveal").title = revealing
+    ? "A reveal is already in progress — wait for it to finish"
+    : ready
     ? "Reassembles the pasted chunks and decrypts them (Ctrl/Cmd+Enter)"
     : "Paste a complete Carrier message first";
   if(!r){
@@ -3430,6 +3438,11 @@ async function doReveal(){
   }
   finally {
     revealing = false; revBtn.textContent = "Reveal image"; revBtn.removeAttribute("aria-busy");
+    // updateProgress() disables #reveal while revealing is true (see there for why) — re-run it now that
+    // it's false, so whatever is CURRENTLY in the box (which may be a different, still-locked message than
+    // the one just finished) is re-evaluated and becomes clickable immediately, instead of staying disabled
+    // until the next unrelated inbox edit happens to trigger it.
+    updateProgress();
     // if this reveal was abandoned because the inbox changed mid-derive, the message that superseded it
     // may itself be complete + unlocked — its own maybeAutoReveal was dropped by the `revealing` guard and
     // nothing else re-fires it. Retry now that we're idle. (A successful/failed reveal doesn't retry, so a
