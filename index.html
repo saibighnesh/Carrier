@@ -1887,8 +1887,13 @@ async function refresh(){
     thumbKey = imgKey;
   }
   // pack with current password to get true size — use the raw value (no trim): a password is an
-  // exact secret, and trimming let an all-whitespace entry collapse to "" and ship UNENCRYPTED
-  const pw = $("#pass").value;
+  // exact secret, and trimming let an all-whitespace entry collapse to "" and ship UNENCRYPTED.
+  // Sliced to PW_MAX (see its comment): the field's maxlength attribute only truncates .value when text
+  // arrives through the browser's own typing/paste editing path — a password manager that autofills by
+  // assigning .value directly (common) bypasses it entirely, so .value can exceed 128 characters even
+  // though pwTruncNote's warning (which DOES read .value.length directly) tells the user only the first
+  // 128 are in use. Slicing here makes that claim actually true instead of assuming maxlength already did it.
+  const pw = $("#pass").value.slice(0, PW_MAX);
   // Reuse the previous pack when nothing that feeds it changed. refresh() runs on a mode switch and on a
   // bfcache restore, not only on a real edit, and every pack re-chunks under a NEW session id — with a
   // password it also re-encrypts under a new IV, so even the bytes differ. Without this cache, tabbing to
@@ -2517,6 +2522,10 @@ const PW_MAX = 128;   // the maxlength on both password fields — effectively p
 // receiver on an older build truncates would fail decryption for two people who typed the same
 // passphrase. So say it instead. 128 characters is far past diminishing returns for PBKDF2 input; this
 // is about the user knowing what their secret actually is.
+// The truncation itself is enforced explicitly (both call sites that feed a password into pack()/unpack()
+// slice to PW_MAX), not merely assumed from maxlength — a password manager that autofills by assigning
+// .value directly bypasses the browser's native typing/paste truncation entirely, which would otherwise
+// let the FULL untruncated string reach key derivation while this note keeps insisting only 128 are used.
 function pwTruncNote(id, noteId){
   const inp = $("#"+id), n = $("#"+noteId);
   if(inp.value.length >= PW_MAX){
@@ -3333,7 +3342,7 @@ async function doReveal(){
     if(r.missing.length){ note.className="note err";
       note.textContent = `Missing part${r.missing.length>1?"s":""} ${formatParts(r.missing)}${r.missingTrunc?", …":""} — paste the remaining message(s) first.`; return; }
     snapshot = r.s;   // the exact payload we're about to decrypt
-    const { mime, img, verified } = await unpack(r.s, $("#rpass").value);   // raw value — must match the sender's exactly, whitespace included
+    const { mime, img, verified } = await unpack(r.s, $("#rpass").value.slice(0, PW_MAX));   // raw value (no trim) — must match the sender's exactly, whitespace included; sliced to PW_MAX for the same reason #pass is (see its comment) — an autofilled value can exceed maxlength, which only truncates the browser's own typing/paste path
     // a locked reveal awaits 250k-round PBKDF2 (~1-2 s on a phone). If the user edited the inbox or left
     // Receive mode during that window, this result now describes a stale message — showing it would put a
     // different image on screen than the "Ready to reveal" progress line (and, mid mode-switch, leak a live
