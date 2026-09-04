@@ -1847,6 +1847,15 @@ async function refresh(){
   // only !srcImage (Start over) invalidates them — so a mode switch mid-pass still gets to keep whatever
   // it already computed; only the DOM-writing tail (guarded separately, below) is skipped.
   if(!srcImage || sendHidden()) return;
+  // Captured now, re-checked after every await below alongside !srcImage: Start over followed immediately
+  // by loading a DIFFERENT image bumps loadToken and reassigns srcImage to the new one, so `!srcImage`
+  // alone no longer catches a stale pass that started against the OLD image — it only catches "cleared and
+  // nothing loaded", not "cleared and something else loaded". Without this, a slow pass for the old image
+  // (a big photo with Strong recovery yields cooperatively for seconds) could finish AFTER the new image's
+  // own refresh() was already blocked behind `refreshing` and queued via pendingRefresh — writing the OLD
+  // image's thumbnail, chunks, and stats under the NEW image's already-displayed filename, momentarily
+  // making the copyable chunk text belong to the wrong image, until the queued pass self-corrects.
+  const myToken = loadToken;
   if(refreshing){ pendingRefresh = true; return; }
   refreshing = true;
   try {
@@ -1863,7 +1872,7 @@ async function refresh(){
     srcMime = imgMimeCache;   // encodeCanvas sets this global as a side effect; restore it on a cache hit
   } else {
     img = await compressOnce(d, q);
-    if(!srcImage) return;   // Start over ran during compression — abandon this stale pass
+    if(!srcImage || loadToken !== myToken) return;   // Start over — or Start over followed by a new load — ran during compression — abandon this stale pass
     imgKey = imgKeyNow; imgCache = img; imgMimeCache = srcMime;
   }
   // the preview only changes when the pixels do — rebuild it when thumbKey has fallen behind imgKey (a
@@ -1897,7 +1906,7 @@ async function refresh(){
     b64 = packB64;
   } else {
     b64 = await pack(img, srcMime, pw);
-    if(!srcImage) return;   // Start over ran during packing — don't repopulate the cleared UI.
+    if(!srcImage || loadToken !== myToken) return;   // Start over — or Start over followed by a new load — ran during packing — don't repopulate the cleared UI, or a stale one, with this pass's result.
     // NOT gated on Send-panel visibility, unlike the guards around it: this only caches packKey/packB64
     // (no DOM write happens here), and pack() is the one step expensive enough to matter — a password
     // means a fresh 250k-round PBKDF2 derivation. Discarding this cache because the user switched to
@@ -1917,8 +1926,9 @@ async function refresh(){
     // the full encode — which means Start Over can now run to completion WHILE this await is outstanding,
     // same class of guard as the pack() await just above.
     lastChunks = await chunkify(b64);
-    if(!srcImage) return;   // Start over ran during chunking — abandon this stale pass. Not gated on Send
-    // visibility either, same reasoning as the pack() cache just above — this only caches chunkKey/lastChunks.
+    if(!srcImage || loadToken !== myToken) return;   // Start over — or Start over followed by a new load —
+    // ran during chunking — abandon this stale pass. Not gated on Send visibility either, same reasoning as
+    // the pack() cache just above — this only caches chunkKey/lastChunks.
     chunkKey = chunkKeyNow;
   }
   // Everything from here down writes into #send's DOM (stats, meter, notes, #lockPanel/#outPanel,
