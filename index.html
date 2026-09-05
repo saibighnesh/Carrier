@@ -1664,9 +1664,7 @@ async function compressOnce(maxDim, quality){
 // tells a screen reader user the button is working, which is the right amount of information there.
 async function autoFit(onProgress){
   const dims = [1280,1024,768,512,384,256];
-  // Same staleness class refresh() guards against: Start over followed immediately by loading a
-  // different image reassigns srcImage, so `!srcImage` alone can't tell "abandoned, nothing loaded" from
-  // "abandoned, something else now loaded" — only the token distinguishes them.
+  // See isStale()'s comment for why this needs the token, not just !srcImage.
   const myToken = loadToken;
   const stale = () => isStale(myToken);
   // the packed payload is bigger than the raw image blob: MAGIC(4)+flags(1) + mimeLen(1)+mime + , when a
@@ -1857,12 +1855,10 @@ async function refresh(){
   // only !srcImage (Start over) invalidates them — so a mode switch mid-pass still gets to keep whatever
   // it already computed; only the DOM-writing tail (guarded separately, below) is skipped.
   if(!srcImage || sendHidden()) return;
-  // Captured now, re-checked after every await below alongside !srcImage: Start over followed immediately
-  // by loading a DIFFERENT image bumps loadToken and reassigns srcImage to the new one, so `!srcImage`
-  // alone no longer catches a stale pass that started against the OLD image — it only catches "cleared and
-  // nothing loaded", not "cleared and something else loaded". Without this, a slow pass for the old image
-  // (a big photo with Strong recovery yields cooperatively for seconds) could finish AFTER the new image's
-  // own refresh() was already blocked behind `refreshing` and queued via pendingRefresh — writing the OLD
+  // Captured now, re-checked after every await below via isStale() (see its comment for why the token
+  // matters, not just !srcImage). Without this, a slow pass for the old image (a big photo with Strong
+  // recovery yields cooperatively for seconds) could finish AFTER the new image's own refresh() was
+  // already blocked behind `refreshing` and queued via pendingRefresh — writing the OLD
   // image's thumbnail, chunks, and stats under the NEW image's already-displayed filename, momentarily
   // making the copyable chunk text belong to the wrong image, until the queued pass self-corrects.
   const myToken = loadToken;
@@ -2620,8 +2616,7 @@ function setTuneDisabled(off){
 }
 $("#autofit").addEventListener("click", async ()=>{
   if(!srcImage) return;
-  // same staleness class as refresh()'s: a Start-over-then-new-load during the fit reassigns srcImage, so
-  // it alone can't distinguish "abandoned, nothing loaded" from "abandoned, a DIFFERENT image now loaded"
+  // See isStale()'s comment for why this needs the token, not just !srcImage.
   const myToken = loadToken;
   const stale = () => isStale(myToken) || sendHidden();
   const btn = $("#autofit");
