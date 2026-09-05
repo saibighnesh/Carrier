@@ -1585,6 +1585,11 @@ function rsRepairDense(map, total, parityRaw){
 
 /* ---------- compression ---------- */
 let srcImage = null, srcMime = "image/webp", handling = false, loadToken = 0;
+// Shared by every stale-pass guard below (refresh, autoFit, the autofit click handler): a Start-over
+// followed immediately by loading a DIFFERENT image bumps loadToken and reassigns srcImage, so `!srcImage`
+// alone can't tell "abandoned, nothing loaded" from "abandoned, something else now loaded" — only the
+// token distinguishes them. One definition means a future guard can't drift by copying just half of it.
+const isStale = myToken => !srcImage || loadToken !== myToken;
 function loadImage(file){
   return new Promise((res,rej)=>{
     // hand the file straight to the decoder. readAsDataURL Base64-encoded the whole photo into a JS
@@ -1663,6 +1668,7 @@ async function autoFit(onProgress){
   // different image reassigns srcImage, so `!srcImage` alone can't tell "abandoned, nothing loaded" from
   // "abandoned, something else now loaded" — only the token distinguishes them.
   const myToken = loadToken;
+  const stale = () => isStale(myToken);
   // the packed payload is bigger than the raw image blob: MAGIC(4)+flags(1) + mimeLen(1)+mime + , when a
   // password is set, salt(16)+iv(12)+GCM tag(16)=44. Comparing the raw blob to targetBytes() ignored all
   // of it, so "Auto-fit to 1 message" could still split into 2 parts (mostly with a password, on small-
@@ -1672,14 +1678,14 @@ async function autoFit(onProgress){
   // (salt+iv+tag) versus what refresh() actually packs, quietly missing the one-message goal.
   const budget = () => targetBytes() - (5 + 1 + 10 + ($("#pass").value ? 44 : 4));   // 10 ≈ longest mime; pw adds salt+iv+tag, unlocked adds the CRC-32 trailer
   for(const d of dims){
-    if(!srcImage || loadToken !== myToken) return null;   // Start over — or Start over followed by a new load — ran mid-fit — abandon (don't deref null, and don't measure against an image this fit was never for)
+    if(stale()) return null;   // Start over — or Start over followed by a new load — ran mid-fit — abandon (don't deref null, and don't measure against an image this fit was never for)
     const cv = drawScaled(srcImage, d);
     let lo = 0.25, hi = 0.92, pick = null;
     for(let i=0;i<7;i++){
       const q = (lo+hi)/2;
       if(onProgress) onProgress(d, i+1, 7);
       const blob = await encodeCanvas(cv, q);
-      if(!srcImage || loadToken !== myToken) return null;   // abandoned during the encode await
+      if(stale()) return null;   // abandoned during the encode await
       // FLOOR, not round: the search parks q right at the budget edge, so rounding UP would make refresh
       // re-encode at a higher quality than we measured to fit — pushing the payload past the budget and
       // back into 2 messages. Flooring guarantees the integer quality is ≤ the fractional q that fit.
@@ -1862,7 +1868,7 @@ async function refresh(){
   const myToken = loadToken;
   // one check shared by every post-await recheck below, so a future added step can't copy just the
   // `!srcImage` half and silently reintroduce the stale-pass bug this token exists to catch.
-  const stale = () => !srcImage || loadToken !== myToken;
+  const stale = () => isStale(myToken);
   if(refreshing){ pendingRefresh = true; return; }
   refreshing = true;
   try {
@@ -2617,6 +2623,7 @@ $("#autofit").addEventListener("click", async ()=>{
   // same staleness class as refresh()'s: a Start-over-then-new-load during the fit reassigns srcImage, so
   // it alone can't distinguish "abandoned, nothing loaded" from "abandoned, a DIFFERENT image now loaded"
   const myToken = loadToken;
+  const stale = () => isStale(myToken) || sendHidden();
   const btn = $("#autofit");
   btn.disabled = true;
   btn.textContent = "Fitting…";
@@ -2634,11 +2641,11 @@ $("#autofit").addEventListener("click", async ()=>{
     // TUNE_CONTROLS/.preset are frozen above), so this is reachable. Bail before mutating anything below:
     // writing #maxdim/quality and persisting them would silently change the user's Send settings behind
     // their back while they're looking at Receive and never asked for it.
-    if(!best || !srcImage || loadToken !== myToken || sendHidden()) return;
+    if(!best || stale()) return;
     const hitFallback = best.fallback === true;   // real success at {25,256} no longer masquerades as the fallback
     clearTimeout(debounce);
     if(!await waitForIdle()) throw new Error("Timed out waiting for the current compression to finish.");
-    if(!srcImage || loadToken !== myToken || sendHidden()) return;   // re-check: waitForIdle() is itself an await gap the user could switch away (or load a different image) during
+    if(stale()) return;   // re-check: waitForIdle() is itself an await gap the user could switch away (or load a different image) during
     clearTimeout(debounce);
     $("#maxdim").value = String(best.d);
     setQuality(best.q);
