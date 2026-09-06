@@ -2655,6 +2655,8 @@ $("#autofit").addEventListener("click", async ()=>{
       queuePersist("carrier_maxdim", String(best.d));
     }
     await refresh();
+    if(stale()) return;   // re-check: refresh() is itself an await gap — it bails internally on its own staleness,
+    // but this handler still needs to skip writing fitNote for an image that's no longer the one showing
     // named once here, not per-branch, so the fallback and success messages below can't drift apart on
     // whether they mention the app at all — matching refresh()'s own "Fits in a single WhatsApp message. ✓"
     const app = activeAppName("this app");
