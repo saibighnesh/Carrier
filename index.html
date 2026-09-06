@@ -1257,6 +1257,10 @@ async function unpack(text, password){
   let plain, verified = false;   // verified = the bytes were checked against an integrity value, not just parsed
   if(flags & FLAG_ENCRYPTED){
     if(!password) throw new Error("This message is locked. Enter the password.");
+    // salt(16) + iv(12) + GCM tag(16) is the floor for any valid ciphertext; a body shorter than that can
+    // only be a truncated send (a missing/mangled part), never a real payload — say so plainly instead of
+    // letting a short IV reach crypto.subtle.decrypt() and surface as a misleading "wrong password" below.
+    if(body.length < 44) throw new Error("This message is too short to hold an image — a part is probably missing.");
     const salt = body.subarray(0,16), iv = body.subarray(16,28), ct = body.subarray(28);
     const key = await deriveKey(password, salt);
     try { plain = new Uint8Array(await crypto.subtle.decrypt({name:"AES-GCM",iv}, key, ct)); }
