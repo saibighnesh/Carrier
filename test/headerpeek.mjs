@@ -59,6 +59,7 @@ await t("rejects a foreign or truncated header rather than guessing", () => {
   assert.equal(headerFlags(""), null);
   assert.equal(headerFlags("AAAA"), null, "valid base64 but wrong magic");
   assert.equal(headerFlags("一丁"), null, "dense but too short for a header");
+  assert.equal(headerFlags("PXT2_invalid_header_string"), null, "invalid prefix magic byte string");
   assert.equal(densePrefixBytes("一丁", 5), null, "must refuse rather than pad");
   assert.equal(densePrefixBytes("一" + "A".repeat(4), 5), null, "non-alphabet symbol must be rejected");
 });
