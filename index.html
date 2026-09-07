@@ -139,6 +139,7 @@
   .btn.amber:hover{background:var(--send-dim)}
   .btn.teal{border-color:var(--recv);color:var(--recv)}
   .btn.teal:hover{background:var(--recv-dim)}
+  .btn.teal:focus-visible{outline:2px solid var(--recv);outline-offset:2px}
   .btn:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
   .btn:disabled{opacity:.45;cursor:not-allowed}
   .btn:disabled:hover{border-color:var(--line);background:transparent}   /* keep hover inert but still allow the title tooltip + not-allowed cursor to show */
@@ -2915,7 +2916,7 @@ document.addEventListener("paste", e=>{
 });
 let dropErrTimer;
 function showDropErr(msg){ const e=$("#dropErr"); e.classList.remove("hidden"); e.textContent=msg; e.scrollIntoView({behavior:scrollBehavior(),block:"nearest"}); clearTimeout(dropErrTimer); dropErrTimer=setTimeout(clearDropErr, 7000); }   // don't leave a stale error sitting forever
-function clearDropErr(){ clearTimeout(dropErrTimer); $("#dropErr").classList.add("hidden"); if(!srcImage) drop.setAttribute("aria-label","Choose an image"); }
+function clearDropErr(){ clearTimeout(dropErrTimer); const e=$("#dropErr"); e.classList.add("hidden"); e.textContent=""; if(!srcImage) drop.setAttribute("aria-label","Choose an image"); }
 async function handleFile(file){
   if(handling) return;
   handling = true;
