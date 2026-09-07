@@ -64,4 +64,10 @@ t("v.length counts UTF-16 code units, not visual characters — emoji inflate th
   assert.equal(pwScore(e8), 3, "scores as if it were a 16-character password, though only 8 were typed");
 });
 
+t("passwords at PW_MAX (128 chars) boundary score consistently", () => {
+  const pw128 = "A1!".repeat(42) + "A1"; // 126 + 2 = 128 chars
+  assert.equal(pw128.length, 128);
+  assert.equal(pwScore(pw128), 4);
+});
+
 console.log(`\n${pass} passed`);
