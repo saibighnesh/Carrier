@@ -72,6 +72,8 @@ t("leading zeros and a leading + are rejected — the round-trip string must mat
 
 t("negative numbers are rejected", () => {
   assert.equal(parseCustomLimit("-100").ok, false);
+  assert.equal(parseCustomLimit("0").ok, false, "zero is below CUSTOM_LIMIT_MIN");
+  assert.equal(parseCustomLimit("-0").ok, false);
 });
 
 t("the error message names both bounds", () => {
@@ -79,6 +81,12 @@ t("the error message names both bounds", () => {
   assert.equal(r.ok, false);
   assert.match(r.error, new RegExp(String(CUSTOM_LIMIT_MIN)));
   assert.match(r.error, /200,000/);
+});
+
+t("extreme values and non-string types return expected error structure", () => {
+  assert.equal(parseCustomLimit("999999999").ok, false);
+  assert.equal(parseCustomLimit("Infinity").ok, false);
+  assert.equal(parseCustomLimit("-Infinity").ok, false);
 });
 
 console.log(`\n${pass} passed`);
