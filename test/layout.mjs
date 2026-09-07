@@ -131,4 +131,8 @@ await t("planParity still meets targets it claims, and monotonic in loss", () =>
   assert.ok(kAt(1,49) <= kAt(10,90));
 });
 
+await t("index.html defines explicit focus-visible outline for teal buttons", () => {
+  assert.match(html, /\.btn\.teal:focus-visible\s*\{\s*outline:\s*2px\s+solid\s+var\(--recv\)/);
+});
+
 console.log(`\n${pass} passed`);
