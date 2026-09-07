@@ -37,4 +37,11 @@ t("zero chunks (nothing packed yet): the check is === 1, so this also falls to t
   assert.equal(copyAllLabel(), "Copy all messages");
 });
 
+t("index.html outPanel action buttons have explicit aria-label attributes", () => {
+  assert.match(html, /id="copyAll"[^>]*aria-label="Copy all messages"/);
+  assert.match(html, /id="copyNext"[^>]*aria-label="Copy next message"/);
+  assert.match(html, /id="copyRest"[^>]*aria-label="Copy remaining unsent messages"/);
+  assert.match(html, /id="resetSent"[^>]*aria-label="Reset sent part markers"/);
+});
+
 console.log(`\n${pass} passed`);
