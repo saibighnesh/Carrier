@@ -71,4 +71,10 @@ t("a negative total is not rejected — the minus sign counts as a character, on
   assert.equal(chunkPrefixLen(-5), 17, "same width as a real 2-digit total, not the 1-digit width its magnitude would suggest");
 });
 
+t("digit width boundary jumps (9->10, 99->100, 999->1000) scale predictably", () => {
+  assert.equal(chunkPrefixLen(10) - chunkPrefixLen(9), 2);
+  assert.equal(chunkPrefixLen(100) - chunkPrefixLen(99), 2);
+  assert.equal(chunkPrefixLen(1000) - chunkPrefixLen(999), 2);
+});
+
 console.log(`\n${pass} passed`);
