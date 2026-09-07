@@ -2480,11 +2480,12 @@ function applyCustomLimit(){
   // parseCustomLimit, because from .value alone that state is indistinguishable from nothing typed yet, and
   // was silently swallowed as "not an error" — msgLimit stayed at its previous value with zero feedback,
   // even though the field visibly still shows whatever garbled text the user typed.
-  if(field.validity.badInput){ err.textContent = customLimitErrorText(); err.classList.remove("hidden"); return; }
+  if(field.validity.badInput){ err.textContent = customLimitErrorText(); err.classList.remove("hidden"); field.setAttribute("aria-invalid", "true"); return; }
   const result = parseCustomLimit(field.value);
-  if(result.empty){ err.classList.add("hidden"); return; }
-  if(!result.ok){ err.textContent = result.error; err.classList.remove("hidden"); return; }
+  if(result.empty){ err.classList.add("hidden"); field.removeAttribute("aria-invalid"); return; }
+  if(!result.ok){ err.textContent = result.error; err.classList.remove("hidden"); field.setAttribute("aria-invalid", "true"); return; }
   err.classList.add("hidden");
+  field.removeAttribute("aria-invalid");
   msgLimit = result.value;
   queueRefresh();
 }
@@ -2496,6 +2497,7 @@ $("#chatLimit").addEventListener("change", e=>{
   // otherwise a badInput field's stale timer fires after this row is hidden and unconditionally re-shows
   // the error, since applyCustomLimit's badInput check runs before the (now-moot) parseCustomLimit call
   $("#chatLimitCustomErr").classList.add("hidden");
+  $("#chatLimitCustom").removeAttribute("aria-invalid");
   msgLimit = +e.target.value; queuePersist("carrier_msglimit", e.target.value); queueRefresh();
 });
 let customLimitDebounce;
