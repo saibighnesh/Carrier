@@ -1,5 +1,17 @@
+# OS files
 .DS_Store
 Thumbs.db
+
+# Editor / IDE
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Logs
 *.log
+
+# AI assistant
 CLAUDE.md
 .claude/
