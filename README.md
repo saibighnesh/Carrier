@@ -236,6 +236,12 @@ Runs every `test/*.mjs` suite and exits non-zero on any failure. CI runs the sam
 
 ---
 
+## Contributing
+
+Pull requests are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, commit conventions, and code style guidelines.
+
+---
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
