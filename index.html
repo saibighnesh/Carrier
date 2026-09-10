@@ -167,7 +167,8 @@
   #qval{font-family:var(--mono);font-size:12px;min-width:36px;text-align:right;font-variant-numeric:tabular-nums}
 
   .chunks{display:flex;flex-direction:column;gap:10px;margin-top:6px}
-  .chunk{background:var(--bg);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .chunk{background:var(--bg);border:1px solid var(--line);border-radius:8px;overflow:hidden;transition:border-color .15s}
+  .chunk:hover{border-color:var(--faint)}
   .chunk:focus-within{border-color:var(--send)}
   /* output built at settings that are no longer on screen — dimmed, but still fully usable */
   #outPanel.stale .chunks,#outPanel.stale .btnrow{opacity:.6}
