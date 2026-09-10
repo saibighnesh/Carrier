@@ -222,6 +222,8 @@ The CRC-32 is **appended**, not prepended, so an older Carrier build reads `flag
 - **Secure context** — password locking needs `crypto.subtle`, so open the file directly or serve it over `https://`. On a plain `http://` page the password fields are disabled and say why; unencrypted send and receive still work
 - **Scope** — this is convenience privacy for everyday use, not a substitute for audited secure-messaging tools like Signal
 
+Found a vulnerability? See [SECURITY.md](SECURITY.md) for how to report it responsibly.
+
 ---
 
 ## Development
