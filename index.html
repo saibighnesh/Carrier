@@ -339,7 +339,7 @@
           </div>
           <div class="btnrow">
             <button type="button" class="btn amber" id="autofit" title="Searches quality and size settings to make the image fit in a single message"><span aria-hidden="true">⚡ </span>Auto-fit to 1 message</button>
-            <button type="button" class="btn" id="startOver" title="Clears the current image and returns to step 1">Start over</button>
+            <button type="button" class="btn" id="startOver" aria-keyshortcuts="Escape" title="Clears the current image and returns to step 1 (Esc)">Start over</button>
           </div>
           <p class="note kbdhint" aria-hidden="true"><kbd>Esc</kbd> starts over</p>
         </div>
@@ -401,7 +401,7 @@
       <div class="btnrow btnrow--spaced">
         <button type="button" class="btn teal" id="pasteInbox" title="Reads your clipboard and drops the Carrier messages into the box above">Paste from clipboard</button>
         <button type="button" class="btn" id="loadTxt" title="Loads a saved Carrier .txt file into the box — or just drag the file onto the box">Load .txt file</button>
-        <button type="button" class="btn" id="clearInbox" title="Empties the box and clears any revealed image">Clear</button>
+        <button type="button" class="btn" id="clearInbox" aria-keyshortcuts="Escape" title="Empties the box and clears any revealed image (Esc)">Clear</button>
       </div>
       <input type="file" id="txtFile" accept=".txt,text/plain" class="hidden" aria-label="Load a Carrier .txt file">
       <p class="progress" id="prog" role="status" aria-atomic="true"></p>
