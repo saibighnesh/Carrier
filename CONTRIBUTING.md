@@ -74,6 +74,11 @@ style/short-description
 - **Accessibility matters.** Every interactive element needs a label, a keyboard path, and a focus style.
 - **Test what you change.** If you touch encoding, chunking, or crypto logic, add or update a test in `test/`.
 
+## Security Vulnerabilities
+
+Please do not open public issues for security vulnerabilities. Instead, refer to [SECURITY.md](SECURITY.md) for instructions on responsible disclosure.
+
 ## License
 
 By contributing, you agree that your contributions will be licensed under the [MIT License](LICENSE).
+
