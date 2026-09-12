@@ -20,6 +20,7 @@ Save the single `index.html` file and it works offline — on a plane, on a trai
 - [Tech Stack](#tech-stack)
 - [Security Notes](#security-notes)
 - [Development](#development)
+- [Contributing](#contributing)
 - [License](#license)
 
 ---
