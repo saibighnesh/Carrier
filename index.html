@@ -67,7 +67,7 @@
     font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;
     padding:10px;border-radius:7px;cursor:pointer;transition:.15s;touch-action:manipulation;-webkit-user-select:none;user-select:none;min-height:44px
   }
-  .modes button:hover{color:var(--ink)}
+  .modes button:hover{color:var(--ink);background:rgba(255,255,255,.04)}
   .modes button[aria-selected="true"][data-m="send"]{background:var(--send-dim);color:var(--send)}
   .modes button[aria-selected="true"][data-m="recv"]{background:var(--recv-dim);color:var(--recv)}
   .modes button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
@@ -438,7 +438,8 @@
   Built offline with the browser's <code translate="no">Web Crypto</code> (AES-256-GCM + PBKDF2) and <code translate="no">canvas</code> compression.<br>
   No servers, no tracking, no uploads. Save this file and it works on a plane. &copy; <span id="year"><script>document.write(Math.max(2026,new Date().getFullYear()))</script></span> Sai Bighnesh &mdash;
   <a href="https://github.com/saibighnesh/Carrier" target="_blank" rel="noopener noreferrer" aria-label="Carrier source code on GitHub (opens in new tab)" title="View the Carrier source on GitHub (opens in a new tab)">source on GitHub</a>,
-  <a href="https://github.com/saibighnesh/Carrier/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" aria-label="MIT license (opens in new tab)" title="Read the MIT license (opens in a new tab)">MIT licensed</a>
+  <a href="https://github.com/saibighnesh/Carrier/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" aria-label="MIT license (opens in new tab)" title="Read the MIT license (opens in a new tab)">MIT licensed</a>,
+  <a href="https://github.com/saibighnesh/Carrier/blob/main/SECURITY.md" target="_blank" rel="noopener noreferrer" aria-label="Security policy (opens in new tab)" title="Read the security policy (opens in a new tab)">security policy</a>
   &mdash; <span id="appVersion" title="Both sides of a send need a Carrier build that understands the same wire format — check this if recovery or Compact isn't working for one of you">v0</span>
 </footer>
 
