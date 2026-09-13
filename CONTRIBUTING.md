@@ -66,6 +66,7 @@ style/short-description
 2. Keep changes focused — one fix or feature per PR
 3. Reference any related issue in the PR body (`Fixes #123`)
 4. Make sure `node test/run.mjs` passes before opening
+5. Ensure git commit author name and email match your GitHub account for proper contributor attribution
 
 ## Code Style
 
