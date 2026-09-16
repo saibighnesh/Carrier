@@ -42,3 +42,8 @@ The following are **not** in scope:
 ## Acknowledgements
 
 Security researchers who report valid vulnerabilities will be credited in the commit message and release notes, unless they prefer to remain anonymous.
+
+## Related Documents
+
+- [README.md](README.md) — Project documentation and architecture details
+- [CONTRIBUTING.md](CONTRIBUTING.md) — Contributing guidelines and development workflow
