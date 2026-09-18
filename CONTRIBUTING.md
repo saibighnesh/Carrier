@@ -41,6 +41,7 @@ We follow [Conventional Commits](https://www.conventionalcommits.org/):
 | `fix:`     | Bug fixes                              |
 | `feat:`    | New features                           |
 | `style:`   | CSS / visual-only changes              |
+| `a11y:`    | Accessibility improvements             |
 | `refactor:`| Code restructuring without behavior change |
 | `test:`    | Adding or updating tests               |
 | `docs:`    | Documentation changes                  |
