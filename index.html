@@ -74,6 +74,8 @@
   .modes button[aria-selected="true"][data-m="send"]{background:var(--send-dim);color:var(--send)}
   .modes button[aria-selected="true"][data-m="recv"]{background:var(--recv-dim);color:var(--recv)}
   .modes button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+  .modes button[data-m="send"]:focus-visible{outline-color:var(--send)}
+  .modes button[data-m="recv"]:focus-visible{outline-color:var(--recv)}
 
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
     padding:18px;margin-bottom:14px;scroll-margin-top:16px}   /* leave breathing room when scrollIntoView lands on a panel */
