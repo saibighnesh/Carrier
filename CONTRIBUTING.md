@@ -59,6 +59,7 @@ feat/short-description
 docs/short-description
 test/short-description
 style/short-description
+a11y/short-description
 ```
 
 ## Pull Requests
