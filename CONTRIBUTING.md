@@ -74,7 +74,7 @@ a11y/short-description
 
 - **No external dependencies.** Carrier ships as a single self-contained HTML file.
 - **Preserve existing comments.** Many inline comments explain non-obvious decisions — keep them unless the code they describe is changing.
-- **Accessibility matters.** Every interactive element needs an explicit accessible name (via `aria-label` or visible text), a keyboard navigation path, and a high-contrast `:focus-visible` outline style.
+- **Accessibility matters.** Every interactive element needs an explicit accessible name (via `aria-label` or visible text), a keyboard navigation path, and a high-contrast `:focus-visible` outline style. Dynamic toggles and disclosure controls must explicitly declare their controlled targets via `aria-controls` alongside `aria-pressed` or `aria-expanded`.
 - **Test what you change.** If you touch encoding, chunking, or crypto logic, add or update a test in `test/`.
 
 ## Security Vulnerabilities
