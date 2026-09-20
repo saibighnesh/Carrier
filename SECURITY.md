@@ -39,6 +39,10 @@ The following are **not** in scope:
 - Issues that require physical access to the user's device
 - The CRC-32 on unlocked messages — this is integrity detection, not authentication (documented in README)
 
+## Privacy and Data Isolation
+
+Carrier operates entirely client-side within the local browser sandbox. No image data, passwords, or encoded chunks are ever transmitted across the network (`connect-src 'none'` CSP directive enforced). All file handling and blob URLs are strictly isolated to browser memory and destroyed upon session reset or teardown.
+
 ## Acknowledgements
 
 Security researchers who report valid vulnerabilities will be credited in the commit message and release notes, unless they prefer to remain anonymous.
