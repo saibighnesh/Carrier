@@ -224,6 +224,7 @@ The CRC-32 is **appended**, not prepended, so an older Carrier build reads `flag
 - **Passphrase length** — both password fields cap at 128 characters and Carrier tells you when you hit it. The cap is deliberately fixed: raising it would mean a newer sender and an older receiver deriving different keys from the same passphrase
 - **Secure context** — password locking needs `crypto.subtle`, so open the file directly or serve it over `https://`. On a plain `http://` page the password fields are disabled and say why; unencrypted send and receive still work
 - **Scope** — this is convenience privacy for everyday use, not a substitute for audited secure-messaging tools like Signal
+- **Accessibility** — built with full keyboard accessibility, explicit ARIA role mappings and live announcements, and high-contrast theme-specific focus rings across all actions
 
 Found a vulnerability? See [SECURITY.md](SECURITY.md) for how to report it responsibly.
 
