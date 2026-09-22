@@ -43,6 +43,10 @@ The following are **not** in scope:
 
 Carrier operates entirely client-side within the local browser sandbox. No image data, passwords, or encoded chunks are ever transmitted across the network (`connect-src 'none'` CSP directive enforced). All file handling and blob URLs are strictly isolated to browser memory and destroyed upon session reset or teardown.
 
+## Input Validation and Bounding
+
+All inputs — including drag-and-drop files, clipboard pastes, and custom character limits — undergo strict client-side validation and numeric bounding before processing. Custom message limits are strictly bounded between 20 and 200,000 characters, passphrases cap at 128 characters, and incoming chunk payloads are defensively parsed against corrupt or malformed headers.
+
 ## Acknowledgements
 
 Security researchers who report valid vulnerabilities will be credited in the commit message and release notes, unless they prefer to remain anonymous.

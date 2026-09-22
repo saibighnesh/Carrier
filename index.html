@@ -332,7 +332,7 @@
           <p class="note warn hidden" id="chatLimitCustomErr" role="status"></p>
           <div class="row">
             <label for="compact">Compact</label>
-            <select id="compact" autocomplete="off" aria-describedby="compactHint" title="Packs 14 bits into each character instead of Base64's 6 — less than half the text — but only where the app counts characters">
+            <select id="compact" autocomplete="off" aria-controls="compactNote" aria-describedby="compactHint" title="Packs 14 bits into each character instead of Base64's 6 — less than half the text — but only where the app counts characters">
               <option value="b64" selected>Off — universal</option>
               <option value="dense">On — under half the text</option>
             </select>
@@ -341,7 +341,7 @@
           <p class="note hidden" id="compactNote" style="margin-top:2px"></p>
           <div class="row">
             <label for="recovery">Recovery</label>
-            <select id="recovery" autocomplete="off" aria-describedby="recoveryHint" title="Adds extra parts so the recipient can rebuild ones that go missing, without asking you to resend">
+            <select id="recovery" autocomplete="off" aria-controls="lossNote" aria-describedby="recoveryHint" title="Adds extra parts so the recipient can rebuild ones that go missing, without asking you to resend">
               <option value="off" selected>Off</option>
               <option value="auto">Auto (aim for 99% delivery)</option>
               <option value="light">Light (+10%)</option>
