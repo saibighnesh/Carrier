@@ -240,6 +240,10 @@ node test/run.mjs
 
 Runs every `test/*.mjs` suite and exits non-zero on any failure. CI runs the same command automatically on pushes/PRs that touch `index.html` or `test/**`; docs-only changes don't trigger a run, and pushing again before a run finishes cancels the superseded one instead of queuing both to completion.
 
+### Accessibility & Interaction Standards
+
+Carrier maintains high-contrast `:focus-visible` keyboard outlines on all interactive controls, programmatic `aria-controls` bindings between buttons and their affected UI containers, `aria-describedby` associations for status notes, and immediate tactile press responses (`:active` scale transforms) across buttons and toggles.
+
 ---
 
 ## Contributing
