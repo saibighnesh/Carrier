@@ -47,6 +47,10 @@ Carrier operates entirely client-side within the local browser sandbox. No image
 
 All inputs — including drag-and-drop files, clipboard pastes, and custom character limits — undergo strict client-side validation and numeric bounding before processing. Custom message limits are strictly bounded between 20 and 200,000 characters, passphrases cap at 128 characters, and incoming chunk payloads are defensively parsed against corrupt or malformed headers.
 
+## Client-Side Password Security & Memory Hygiene
+
+Passphrases entered into Carrier are processed exclusively in-memory via the Web Crypto API (`deriveKey` / PBKDF2). Passwords are never persisted to `localStorage`, `sessionStorage`, or IndexedDB. When a user clicks **Start over** or **Clear**, password input fields are explicitly overwritten, masked states are reset, and associated key buffers are discarded from active browser memory.
+
 ## Acknowledgements
 
 Security researchers who report valid vulnerabilities will be credited in the commit message and release notes, unless they prefer to remain anonymous.
