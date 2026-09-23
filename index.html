@@ -214,8 +214,9 @@
 
   .note{font-size:12.5px;color:var(--muted);margin-top:12px;overflow-wrap:anywhere}
   .kbdhint{color:var(--faint);font-size:11.5px;margin-top:8px}
-  .linkbtn{background:none;border:0;padding:0 0 0 4px;color:var(--recv);font:inherit;font-size:11.5px;cursor:pointer;text-decoration:underline;text-underline-offset:2px;transition:color .15s}
+  .linkbtn{background:none;border:0;padding:0 0 0 4px;color:var(--recv);font:inherit;font-size:11.5px;cursor:pointer;text-decoration:underline;text-underline-offset:2px;transition:color .15s,transform .1s,opacity .1s}
   .linkbtn:hover{color:var(--ink)}
+  .linkbtn:active{transform:scale(.98);opacity:.85}
   .linkbtn:focus-visible{outline:2px solid var(--recv);outline-offset:2px;border-radius:3px}
   #send .linkbtn:focus-visible{outline-color:var(--send)}
   .kbdhint kbd{font-size:10.5px;background:var(--bg)}
