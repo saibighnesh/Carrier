@@ -226,6 +226,13 @@ The CRC-32 is **appended**, not prepended, so an older Carrier build reads `flag
 - **Scope** — this is convenience privacy for everyday use, not a substitute for audited secure-messaging tools like Signal
 - **Accessibility** — built with full keyboard accessibility, explicit ARIA role mappings and live announcements, and high-contrast theme-specific focus rings across all actions
 
+### Browser Privacy and Storage Isolation
+
+Carrier is built with a zero-persistence privacy architecture:
+- **No Remote Telemetry or Tracking:** Zero analytics, cookies, tracking pixels, or outbound beacons.
+- **Strict Storage Isolation:** Passwords and unencrypted image buffers are processed strictly in volatile memory. Passphrases are never saved to `localStorage`, `sessionStorage`, or IndexedDB.
+- **Volatile Teardown:** Clearing an image or starting over explicitly resets internal canvas buffers, revokes object URLs via `URL.revokeObjectURL()`, and scrubs active input fields.
+
 Found a vulnerability? See [SECURITY.md](SECURITY.md) for how to report it responsibly.
 
 ---
