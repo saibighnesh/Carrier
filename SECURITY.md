@@ -51,6 +51,12 @@ All inputs — including drag-and-drop files, clipboard pastes, and custom chara
 
 Passphrases entered into Carrier are processed exclusively in-memory via the Web Crypto API (`deriveKey` / PBKDF2). Passwords are never persisted to `localStorage`, `sessionStorage`, or IndexedDB. When a user clicks **Start over** or **Clear**, password input fields are explicitly overwritten, masked states are reset, and associated key buffers are discarded from active browser memory.
 
+## Air-Gap Integrity and Offline Verification
+
+Carrier contains zero external dependencies, zero CDN scripts, zero third-party font imports, and zero remote analytics or tracking beacons. It can be verified completely offline:
+- Saving `index.html` locally and opening it via `file://` or in an air-gapped network environment functions identically with zero network requests.
+- All Web Crypto operations (`PBKDF2`, `AES-GCM-256`) and Reed-Solomon codec computations run strictly on local CPU within the browser sandbox thread.
+
 ## Acknowledgements
 
 Security researchers who report valid vulnerabilities will be credited in the commit message and release notes, unless they prefer to remain anonymous.
