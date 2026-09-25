@@ -2253,7 +2253,7 @@ function makeChunkCard(c, i){
     `<div class="head"><span class="pill${d.isParity ? " pill--recovery" : ""}" title="${d.pillTitle}">${d.pillLabel}</span>
      <span class="sentmark"></span>
      <span class="chunk-chars" style="font-family:var(--mono);font-size:10px;color:var(--faint);margin-right:auto;padding-left:10px">${d.chars}</span>
-     <button type="button" class="copyone" data-i="${i}" aria-label="${d.copyAriaLabel}" data-orig-label="${d.copyAriaLabel}" title="${d.copyTitle}">Copy</button></div>
+     <button type="button" class="copyone" data-i="${i}" aria-controls="sendProg" aria-label="${d.copyAriaLabel}" data-orig-label="${d.copyAriaLabel}" title="${d.copyTitle}">Copy</button></div>
      <div class="data" data-i="${i}" tabindex="0" role="group" translate="no" aria-label="${d.dataAriaLabel}"></div>`;
   el.querySelector(".data").textContent = d.preview;
   return el;
