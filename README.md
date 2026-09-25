@@ -233,6 +233,12 @@ Carrier is built with a zero-persistence privacy architecture:
 - **Strict Storage Isolation:** Passwords and unencrypted image buffers are processed strictly in volatile memory. Passphrases are never saved to `localStorage`, `sessionStorage`, or IndexedDB.
 - **Volatile Teardown:** Clearing an image or starting over explicitly resets internal canvas buffers, revokes object URLs via `URL.revokeObjectURL()`, and scrubs active input fields.
 
+### Content Security & Defense in Depth
+
+- **Strict CSP Sandbox:** An inline `<meta http-equiv="Content-Security-Policy">` enforces `default-src 'none'`, `connect-src 'none'`, `base-uri 'none'`, and `form-action 'none'`.
+- **Zero Outbound Connections:** All network communication is blocked at the browser engine level; no analytics, fonts, CDNs, or telemetry can execute.
+- **Controlled Image Pipeline:** Only inline SVG data URLs and ephemeral `blob:` object URLs are permitted (`img-src data: blob:`).
+
 Found a vulnerability? See [SECURITY.md](SECURITY.md) for how to report it responsibly.
 
 ---
