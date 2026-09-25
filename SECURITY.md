@@ -57,6 +57,14 @@ Carrier contains zero external dependencies, zero CDN scripts, zero third-party 
 - Saving `index.html` locally and opening it via `file://` or in an air-gapped network environment functions identically with zero network requests.
 - All Web Crypto operations (`PBKDF2`, `AES-GCM-256`) and Reed-Solomon codec computations run strictly on local CPU within the browser sandbox thread.
 
+## Content Security Policy and Sandboxing
+
+Carrier enforces a restrictive Content-Security-Policy (CSP) via `<meta http-equiv="Content-Security-Policy">`:
+- `default-src 'none'`: Blocks all resource loading by default.
+- `connect-src 'none'`: Prohibits all `fetch()`, `XMLHttpRequest`, `WebSocket`, and EventSource network traffic.
+- `form-action 'none'` & `base-uri 'none'`: Prevents form submission and base URL hijacking.
+- `img-src data: blob:`: Restricts image sources solely to inline SVG and local in-memory object URLs.
+
 ## Acknowledgements
 
 Security researchers who report valid vulnerabilities will be credited in the commit message and release notes, unless they prefer to remain anonymous.
