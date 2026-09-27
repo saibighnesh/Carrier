@@ -63,7 +63,7 @@ Carrier enforces a restrictive Content-Security-Policy (CSP) via `<meta http-equ
 - `default-src 'none'`: Blocks all resource loading by default.
 - `connect-src 'none'`: Prohibits all `fetch()`, `XMLHttpRequest`, `WebSocket`, and EventSource network traffic.
 - `form-action 'none'` & `base-uri 'none'`: Prevents form submission and base URL hijacking.
-- `img-src data: blob:`: Restricts image sources solely to inline SVG and local in-memory object URLs.
+- `img-src data: blob:`: Confines images to the `data:` and `blob:` schemes — no image may load from `http(s):` or any other origin. This is not a content-type restriction: `data:` carries any MIME type, and the app's own apple-touch-icon (`data:image/png`) and manifest (`data:application/manifest+json`, under the separate `manifest-src data:` directive) are non-SVG examples already shipped under it.
 
 ## Acknowledgements
 
