@@ -93,17 +93,33 @@ t("the preview truncates at CHUNK_PREVIEW characters of the WHOLE chunk string, 
   assert.equal(long.preview.slice(0, 280), over.slice(0, 280));
 });
 
-t("copy/data aria-labels count against the TOTAL (data + recovery), matching the copy buttons' own contract", () => {
+t("a data part's copy/data aria-labels count against the TOTAL (data + recovery), matching the copy button's own contract", () => {
   setChunks(mkList(3, 2));
   const d = chunkCardContent(globalThis.__CC.lastChunks[0], 0);
   assert.equal(d.copyAriaLabel, "Copy message 1 of 5");   // 3 data + 2 recovery = 5 total, matches lastChunks.length
   assert.match(d.dataAriaLabel, /Message 1 of 5 content/);
 });
 
-t("copyTitle is a hover-tooltip sentence naming the same 1-based/total pair as copyAriaLabel", () => {
+t("copyTitle is a hover-tooltip sentence naming the same 1-based/total pair as copyAriaLabel, for a data part", () => {
   setChunks(mkList(3, 2));
-  const d = chunkCardContent(globalThis.__CC.lastChunks[4], 4);   // a recovery part — total-based numbering still applies
-  assert.equal(d.copyTitle, "Copies message 5 of 5 to the clipboard");
+  const d = chunkCardContent(globalThis.__CC.lastChunks[0], 0);   // a data part — total-based numbering applies
+  assert.equal(d.copyTitle, "Copies message 1 of 5 to the clipboard");
+});
+
+// A recovery part gets its own "RECOVERY n / m" pill so it isn't mistaken for an ordinary message (see
+// the test above this one, and the boundary test further up) — the copy button and data region must say
+// the same thing, not fall back to total-based "message" numbering the way they used to (#482). Before
+// that fix, a screen reader user pressing this same card's Copy button heard "Copy message 5 of 5" for
+// what the pill already, correctly, called "RECOVERY 2 / 2".
+t("a recovery part's copy/data aria-labels say 'recovery part', with recovery-relative numbering, not 'message'", () => {
+  setChunks(mkList(3, 2));
+  const p = chunkCardContent(globalThis.__CC.lastChunks[4], 4);   // second of 2 recovery parts (dataParts=3)
+  assert.equal(p.copyAriaLabel, "Copy recovery part 2 of 2");
+  assert.equal(p.copyTitle, "Copies recovery part 2 of 2 to the clipboard");
+  assert.match(p.dataAriaLabel, /Recovery part 2 of 2 content/);
+  assert.doesNotMatch(p.copyAriaLabel, /message/i);
+  assert.doesNotMatch(p.copyTitle, /message/i);
+  assert.doesNotMatch(p.dataAriaLabel, /message/i);
 });
 
 t("chars reflects the actual chunk text length, not the preview length", () => {

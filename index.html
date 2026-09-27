@@ -441,7 +441,7 @@
       </div>
       <p class="note warn hidden" id="rpassTrunc" role="status"></p>
       <div class="btnrow btnrow--spaced">
-        <button type="button" class="btn teal" id="reveal" disabled aria-controls="result" aria-label="Reveal image — decrypt the received image" aria-describedby="rNote" aria-keyshortcuts="Control+Enter Meta+Enter" title="Reassembles the pasted chunks and decrypts them (Ctrl/Cmd+Enter)">Reveal image</button>
+        <button type="button" class="btn teal" id="reveal" disabled aria-controls="result rNote" aria-label="Reveal image — decrypt the received image" aria-describedby="rNote" aria-keyshortcuts="Control+Enter Meta+Enter" title="Reassembles the pasted chunks and decrypts them (Ctrl/Cmd+Enter)">Reveal image</button>
       </div>
       <p class="note" id="rNote" role="status"></p>
       <p class="note kbdhint" aria-hidden="true"><kbd>Enter</kbd> in the password or <kbd>Ctrl/Cmd</kbd>+<kbd>Enter</kbd> reveals · <kbd>Esc</kbd> clears the box</p>
@@ -2261,9 +2261,19 @@ function chunkCardContent(c, i){
       ? `Recovery part ${i - dataParts + 1} of ${total - dataParts} — lets the recipient rebuild a message that goes missing`
       : `Part ${i+1} of ${dataParts}`,
     chars: `${c.length.toLocaleString()} chars`,
-    copyAriaLabel: `Copy message ${i+1} of ${total}`,
-    copyTitle: `Copies message ${i+1} of ${total} to the clipboard`,
-    dataAriaLabel: `Message ${i+1} of ${total} content — use Copy button to copy`,
+    // A recovery part gets its own "RECOVERY n / m" pill above precisely so it isn't mistaken for an
+    // ordinary message — these three fields used to say "message" unconditionally regardless of isParity,
+    // so a screen-reader user pressing this same card's Copy button heard "Copy message 28 of 30" for a
+    // part that's actually recovery part 3 of 5, losing the exact distinction the pill exists to convey.
+    copyAriaLabel: isParity
+      ? `Copy recovery part ${i - dataParts + 1} of ${total - dataParts}`
+      : `Copy message ${i+1} of ${total}`,
+    copyTitle: isParity
+      ? `Copies recovery part ${i - dataParts + 1} of ${total - dataParts} to the clipboard`
+      : `Copies message ${i+1} of ${total} to the clipboard`,
+    dataAriaLabel: isParity
+      ? `Recovery part ${i - dataParts + 1} of ${total - dataParts} content — use Copy button to copy`
+      : `Message ${i+1} of ${total} content — use Copy button to copy`,
     preview: c.length > CHUNK_PREVIEW ? c.slice(0, CHUNK_PREVIEW) + " …" : c,
   };
 }
