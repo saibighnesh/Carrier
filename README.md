@@ -235,9 +235,9 @@ Carrier is built with a zero-persistence privacy architecture:
 
 ### Content Security & Defense in Depth
 
-- **Strict CSP Sandbox:** An inline `<meta http-equiv="Content-Security-Policy">` enforces `default-src 'none'`, `connect-src 'none'`, `base-uri 'none'`, and `form-action 'none'`.
+- **Strict CSP Sandbox:** An inline `<meta http-equiv="Content-Security-Policy">` enforces `default-src 'none'`, `connect-src 'none'`, `base-uri 'none'`, and `form-action 'none'` — plus `script-src 'unsafe-inline'` and `style-src 'unsafe-inline'`, needed because the app's HTML, CSS and JS all ship as inline blocks in one file with nothing external to reference instead. Those two directives don't block inline script execution the way a nonce- or hash-based policy would, so XSS resistance here rests on never rendering attacker-controlled bytes as markup, not on the CSP forbidding inline code.
 - **Zero Outbound Connections:** All network communication is blocked at the browser engine level; no analytics, fonts, CDNs, or telemetry can execute.
-- **Controlled Image Pipeline:** Only inline SVG data URLs and ephemeral `blob:` object URLs are permitted (`img-src data: blob:`).
+- **Controlled Image Pipeline:** Images are confined to the `data:` and `blob:` schemes (`img-src data: blob:`) — never `http(s):` or any other origin. This isn't a content-type restriction to SVG: the app's own apple-touch-icon already loads non-SVG content (`data:image/png`) through this exact directive. (The manifest is `data:application/manifest+json`, but that's the separate `manifest-src data:` directive, not this one.)
 
 Found a vulnerability? See [SECURITY.md](SECURITY.md) for how to report it responsibly.
 
