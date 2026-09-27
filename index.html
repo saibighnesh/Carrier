@@ -1069,7 +1069,7 @@ function binomTail(m, k, p){
   if(k >= m) return 1;
   if(k < 0) return 0;
   if(p <= 0) return 1;
-  if(p >= 1) return k >= m ? 1 : 0;
+  if(p >= 1) return 0;   // k < m already returned above (first line), so a certain loss on every part always fails
   const lp = Math.log(p), lq = Math.log1p(-p), terms = [];
   for(let i=0;i<=k;i++) terms.push(logChoose(m, i) + i * lp + (m - i) * lq);
   terms.sort((x, y) => x - y);
@@ -3098,6 +3098,10 @@ function updateProgress(){
     $("#reveal").title = revealing ? "A reveal is already in progress — wait for it to finish" : "Paste a complete Carrier message first";
     $("#copyMissing").classList.add("hidden");
     missingSnapshot = null;
+    // this box is no longer being parsed as any particular part count, so the tab strip's "N/M parts"
+    // counter from an earlier, smaller paste is now describing text that isn't there any more — same
+    // guard every other title write below already uses (don't stomp a post-reveal "✓ Image received").
+    if(!recovered && !$("#recv").classList.contains("hidden")) document.title = "Carrier — receive images";
     return;
   }
   const r = reassemble(raw);
