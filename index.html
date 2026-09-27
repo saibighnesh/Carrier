@@ -2145,9 +2145,12 @@ function showPlan(){
   // that made it mean the opposite.
   if(!total || level === "off"){ el.classList.add("hidden"); el.textContent = ""; return; }
   // the DATA part count comes from the chunk header, not from #msgOut — that stat counts every message
-  // the user has to send, parity included, which is the right thing to show there and the wrong input here
-  const m = /^PX[TCD]\/[0-9a-f]+\/\d+\/(\d+)\//.exec(lastChunks[0]);   // PXT, PXC or PXD all carry <total>
-  const dataParts = m ? +m[1] : total;
+  // the user has to send, parity included, which is the right thing to show there and the wrong input here.
+  // chunkDataCount() is the one place that derivation lives — this used to re-run the same regex inline,
+  // and its own fallback (bare `total`) wasn't even the same computation as chunkDataCount()'s clamped one
+  // (Math.min(+m[1], lastChunks.length)), coincidentally equal today only because total already equals
+  // lastChunks.length here. Exactly the class of drift-between-duplicates bug #196/#214/#221 were.
+  const dataParts = chunkDataCount();
   const extra = total - dataParts;
   // the addressable-block ceiling differs by codec — see RS_BLOCK_CEILING
   const ceiling = textCodec === "dense" ? RS_BLOCK_CEILING.dense : RS_BLOCK_CEILING.b64;
