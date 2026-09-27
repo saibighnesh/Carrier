@@ -2250,8 +2250,12 @@ function showCompact(){
 // A recovery part is not message 27 of 30 — it is recovery part 1 of 4, and the difference matters when
 // the send goes wrong: these are the ones the recipient can manage without, and the ones worth resending
 // last. Presenting them as ordinary messages hid that entirely.
-function chunkCardContent(c, i){
-  const dataParts = chunkDataCount(), total = lastChunks.length, isParity = i >= dataParts;
+// dataParts is optional — a caller mid-loop over the SAME lastChunks (renderChunks, for up to
+// CHUNK_RENDER_CAP cards per render) passes it once, computed by chunkDataCount() a single time, instead
+// of every card re-running that regex exec for a value that can't change mid-loop. Omit it (a lone test
+// call, say) and this falls back to computing it itself, so the signature stays backward compatible.
+function chunkCardContent(c, i, dataParts = chunkDataCount()){
+  const total = lastChunks.length, isParity = i >= dataParts;
   return {
     isParity,
     pillLabel: isParity
@@ -2277,11 +2281,11 @@ function chunkCardContent(c, i){
     preview: c.length > CHUNK_PREVIEW ? c.slice(0, CHUNK_PREVIEW) + " …" : c,
   };
 }
-function makeChunkCard(c, i){
+function makeChunkCard(c, i, dataParts){
   const el = document.createElement("div");
   el.className = "chunk";
   el.setAttribute("role","listitem");
-  const d = chunkCardContent(c, i);
+  const d = chunkCardContent(c, i, dataParts);
   el.innerHTML =
     `<div class="head"><span class="pill${d.isParity ? " pill--recovery" : ""}" title="${d.pillTitle}">${d.pillLabel}</span>
      <span class="sentmark"></span>
@@ -2298,8 +2302,8 @@ function makeChunkCard(c, i){
 // attributes on nodes that already exist, which is where the real cost of the old path was. Reads from
 // the exact same chunkCardContent() makeChunkCard uses, so the two paths can never disagree about what a
 // card should show for the same (c, i) — only how the DOM gets there differs.
-function updateChunkCard(el, c, i){
-  const d = chunkCardContent(c, i);
+function updateChunkCard(el, c, i, dataParts){
+  const d = chunkCardContent(c, i, dataParts);
   const pill = el.querySelector(".pill");
   pill.textContent = d.pillLabel;
   pill.title = d.pillTitle;
@@ -2365,11 +2369,16 @@ function renderChunks(){
   // every time) but how many parts are shown usually doesn't. Any count change (first render, growing,
   // shrinking, or crossing the CHUNK_RENDER_CAP boundary) falls back to a full rebuild, which stays
   // correct for every case update-in-place doesn't try to handle.
+  // computed once per render pass, not once per card: it's a regex exec against lastChunks[0], which
+  // can't change between cards in the same pass, so re-deriving it up to CHUNK_RENDER_CAP (200) times per
+  // debounced render (every quality/size/password/recovery-level tick) was pure repeated work for a
+  // constant. Threaded through to chunkCardContent() via makeChunkCard/updateChunkCard.
+  const dataParts = chunkDataCount();
   if(box.children.length === shown){
-    for(let i=0;i<shown;i++) updateChunkCard(box.children[i], lastChunks[i], i);
+    for(let i=0;i<shown;i++) updateChunkCard(box.children[i], lastChunks[i], i, dataParts);
   } else {
     box.innerHTML = "";
-    for(let i=0;i<shown;i++) box.appendChild(makeChunkCard(lastChunks[i], i));
+    for(let i=0;i<shown;i++) box.appendChild(makeChunkCard(lastChunks[i], i, dataParts));
   }
   // the "+N more" note lives OUTSIDE #chunks: a <p role="note"> is an illegal direct child of a role="list"
   const moreEl = $("#chunksMore");
