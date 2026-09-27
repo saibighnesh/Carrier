@@ -681,14 +681,27 @@ function bytesToDense2(bytes){
   for(let i=0;i<chars;i+=0x4000) str += String.fromCharCode(...out.subarray(i, Math.min(chars, i+0x4000)));
   return str;
 }
-function dense2ToBytes(text){
+// How many bytes a v2 payload holds, without decoding it. This is the whole of the cycle arithmetic
+// described above: the header symbol carries n mod 7, the remaining character count carries 4k, and the
+// two together pin n exactly — so the answer is O(1) and needs no buffer.
+// Split out rather than left inline in dense2ToBytes() because a caller that wants only the SIZE (the
+// stats line, which prices Compact against the Base64 it replaced) was decoding the entire container to
+// read `.length` off it: a full Uint8Array allocation and the whole 14-bit unpacking loop, on every
+// debounced refresh — every slider tick and password keystroke — for a number already known before the
+// first byte is written. dense2ToBytes() calls this rather than repeating the derivation, so the two can
+// never disagree about what a given text decodes to, and a length this refuses is a text the decoder
+// refuses too.
+function dense2ByteLength(text){
   if(!text.length) throw new Error("Empty message.");
   const r = text.charCodeAt(0) - DENSE_BASE - DENSE2_HDR;
   if(r < 0 || r > 6) throw new Error("This message's header is damaged.");
   const c = text.length - 1;
   const k4 = c - D2_PAY[r];                           // 4k, per the cycle arithmetic above
   if(k4 < 0 || k4 % 4 !== 0) throw new Error("This message is truncated — some characters are missing.");
-  const n = (k4 / 4) * 7 + r;
+  return (k4 / 4) * 7 + r;
+}
+function dense2ToBytes(text){
+  const n = dense2ByteLength(text);
   const out = new Uint8Array(n);
   let acc = 0, nbits = 0, o = 0;
   for(let i=1;i<text.length;i++){
@@ -1373,11 +1386,16 @@ async function parityChunksB64(b64, sid, total, per, level, tag){
   for(let start=0; start<total; start+=RS_BLOCK){
     const n = Math.min(RS_BLOCK, total - start);
     if(n < 2) break;   // a trailing single-part block has nothing to protect
+    // Decide the ceiling BEFORE building shards and encoding. The block index depends only on `start`,
+    // so nothing about this test needs the encode to have run — and it used to sit just after it, which
+    // meant the first out-of-range block paid for a full 32x32 Cauchy encode (tens of millions of GF(2^6)
+    // multiplications, plus the yields they cost) purely to throw the rows away. Reachable on any send
+    // long enough to cross 64 blocks, i.e. a large image at a tight per-message limit like SMS.
+    const blk = start / RS_BLOCK;
+    if(blk >= RS_BLOCK_CEILING.b64) break;   // block index must fit one Base64 character
     const shards = [];
     for(let i=0;i<n;i++) shards.push(b64ToSyms(core.slice((start+i)*per, (start+i+1)*per), per));
     const rows = await rsEncode(shards, rsParityCount(n, level, lastPlan));
-    const blk = start / RS_BLOCK;
-    if(blk >= RS_BLOCK_CEILING.b64) break;   // block index must fit one Base64 character
     rows.forEach((row, j)=>{
       out.push(`${tag}/${sid}/${total + 1 + seq}/${total}/` + B64A[blk] + B64A[j] + lenChars + symsToB64(row));
       seq++;
@@ -1398,11 +1416,13 @@ async function parityChunksDense(text, sid, total, per, level, tag){
   for(let start=0; start<total; start+=RS_BLOCK){
     const n = Math.min(RS_BLOCK, total - start);
     if(n < 2) break;
+    // ceiling first, for the same reason as the Base64 path above: the block index is a function of
+    // `start` alone, so encoding a block only to discard it is pure waste
+    const blk = start / RS_BLOCK;
+    if(blk >= RS_BLOCK_CEILING.dense) break;   // block index must fit one dense character (16,384 of them)
     const shards = [];
     for(let i=0;i<n;i++) shards.push(denseToSyms(text.slice((start+i)*per, (start+i+1)*per), per));
     const rows = await RS14.encode(shards, rsParityCount(n, level, lastPlan));
-    const blk = start / RS_BLOCK;
-    if(blk >= RS_BLOCK_CEILING.dense) break;   // block index must fit one dense character (16,384 of them)
     rows.forEach((row, j)=>{
       out.push(`${tag}/${sid}/${total + 1 + seq}/${total}/` + enc14(blk, 1) + enc14(j, 1) + lenChars + symsToDense(row));
       seq++;
@@ -2012,8 +2032,10 @@ async function refresh(){
   // derive the container size back out of the dense text rather than re-guessing it from the parts. The
   // char-count-only inverse is genuinely ambiguous (see D2_PAY above — r=2,3 collide and r=4,5 collide), so
   // guessing from ceil(8n/14) alone silently recovers the wrong n for 4 of every 7 byte lengths. The header
-  // symbol resolves that exactly (it carries n mod 7), and dense2ToBytes() already does — reuse it.
-  const b64Equiv = textCodec === "dense" ? b64CharCount(dense2ToBytes(b64).length) : 0;
+  // symbol resolves that exactly (it carries n mod 7), and dense2ByteLength() already does — reuse it.
+  // That helper is the O(1) half of dense2ToBytes(): only the size is wanted here, so decoding the whole
+  // container on every debounced refresh just to read .length off it was the entire cost for nothing.
+  const b64Equiv = textCodec === "dense" ? b64CharCount(dense2ByteLength(b64)) : 0;
   // state the real fraction, not a slogan: v2 is 6/14 = 43% of Base64, and "half" would overstate it
   const savedTag = (b64Equiv > b64.length)
     ? ` <small>chars · ${Math.round(b64.length / b64Equiv * 100)}% of ${b64Equiv.toLocaleString()} as Base64</small>`
