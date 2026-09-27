@@ -2187,7 +2187,7 @@ function showPlan(){
 // recomputed from the settings: the header is what the receiver will act on, so it is the authority.
 function chunkDataCount(){
   if(!lastChunks.length) return 0;
-  const m = /^PX[TCD]\/[0-9a-f]+\/\d+\/(\d+)\//.exec(lastChunks[0]);   // PXT or PXC — both carry <total>
+  const m = /^PX[TCD]\/[0-9a-f]+\/\d+\/(\d+)\//.exec(lastChunks[0]);   // PXT, PXC or PXD — all carry <total>
   return m ? Math.min(+m[1], lastChunks.length) : lastChunks.length;
 }
 // The measured loss history drives every Auto decision, and it was invisible and unresettable — a run of
@@ -3247,8 +3247,8 @@ function headerFlags(s){
     // payload threw inside atob and came back null — and all three callers silently took the wrong branch:
     // no "🔒 Locked" hint, no auto-reveal, and an encrypted message captioned "✓ intact" (the label meant
     // for UNENCRYPTED payloads that passed their CRC). The alphabets are disjoint, so the first character
-    // settles it, exactly as unpack() already decides. Dense needs 4 characters for the 5 bytes required
-    // at 12 bits each; Base64 needs 8 at 6 bits.
+    // settles it, exactly as unpack() already decides. The 5 bytes required take 4 characters at v1's 12
+    // bits each, 3 at v2's 14, or 8 for Base64's 6.
     const dv = denseVersionOf(s);
     const h = dv ? densePrefixBytes(s, 5, dv === 2 ? DENSE2_BITS : DENSE_BITS) : b64ToBytes(s.slice(0, 8));
     if(!h || h.length < 5 || !MAGIC.every((m,i)=>h[i]===m)) return null;
