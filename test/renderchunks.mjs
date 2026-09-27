@@ -130,4 +130,40 @@ t("chars reflects the actual chunk text length, not the preview length", () => {
   assert.notEqual(d.preview.length, chunk.length, "precondition: this chunk must actually be truncated");
 });
 
+// chunkCardContent(c, i, dataParts) gained its third parameter in #483 (renderChunks() now computes
+// dataParts ONCE per render pass and threads it through, instead of every card re-deriving it via
+// chunkDataCount()) — that PR shipped with no direct test of the parameter itself, only of the unchanged
+// 2-arg default path. These pin down that the thread-through actually happens, not merely that it's
+// harmless to omit.
+t("an explicit dataParts argument is honored, not silently overridden by chunkDataCount()'s own answer", () => {
+  setChunks(mkList(5, 0));           // chunkDataCount() would say 5 here — no parity parts at all
+  // renderChunks() computes dataParts once and passes it to every card; simulate that with a value that
+  // deliberately DISAGREES with what chunkDataCount() would derive, so the assertions can only pass if the
+  // parameter is actually used
+  const asIfThree = chunkCardContent(globalThis.__CC.lastChunks[3], 3, 3);   // index 3, told dataParts=3
+  assert.equal(asIfThree.isParity, true, "index 3 >= the PASSED dataParts (3), even though chunkDataCount() would say 5");
+  assert.equal(asIfThree.pillLabel, "RECOVERY 1 / 2");
+  assert.equal(asIfThree.copyAriaLabel, "Copy recovery part 1 of 2");
+});
+
+t("omitting dataParts falls back to chunkDataCount(), matching the pre-#483 default behavior", () => {
+  setChunks(mkList(4, 2));
+  const withDefault = chunkCardContent(globalThis.__CC.lastChunks[4], 4);         // 2-arg call
+  const withExplicit = chunkCardContent(globalThis.__CC.lastChunks[4], 4, chunkDataCount());   // 3-arg, same value
+  assert.deepEqual(withDefault, withExplicit, "the default parameter must compute exactly what chunkDataCount() would");
+});
+
+t("the data/recovery boundary is exact at the single index where dataParts transitions, via an explicit dataParts", () => {
+  // renderChunks() passes the SAME dataParts to every card in a pass — exercise the one-index transition
+  // the way it actually would, rather than only through the 2-arg default path other tests use
+  const list = mkList(6, 3);
+  setChunks(list);
+  const lastData = chunkCardContent(list[5], 5, 6);       // i = dataParts - 1: still a data part
+  const firstParity = chunkCardContent(list[6], 6, 6);    // i = dataParts: the first recovery part
+  assert.equal(lastData.isParity, false);
+  assert.equal(lastData.pillLabel, "MESSAGE 6 / 6");
+  assert.equal(firstParity.isParity, true);
+  assert.equal(firstParity.pillLabel, "RECOVERY 1 / 3");
+});
+
 console.log(`\n${pass} passed`);
