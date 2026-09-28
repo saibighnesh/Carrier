@@ -251,6 +251,8 @@ No build step for the app itself, but the wire format (chunking, encryption, Ree
 node test/run.mjs
 ```
 
+Requires **Node 18+** (the suite is ESM and uses `node:`-prefixed built-ins). CI runs Node 22, pinned in [`.nvmrc`](.nvmrc) — run `nvm use` to match it locally.
+
 Runs every `test/*.mjs` suite and exits non-zero on any failure. CI runs the same command automatically on pushes/PRs that touch `index.html` or `test/**`; docs-only changes don't trigger a run, and pushing again before a run finishes cancels the superseded one instead of queuing both to completion.
 
 ### Accessibility & Interaction Standards
