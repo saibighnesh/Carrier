@@ -6,10 +6,10 @@ permissions:
 on:
   push:
     branches: [main]
-    paths: ['index.html', 'test/**']
+    paths: ['index.html', 'test/**', '.github/workflows/test.yml']
   pull_request:
     branches: [main]
-    paths: ['index.html', 'test/**']
+    paths: ['index.html', 'test/**', '.github/workflows/test.yml']
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
