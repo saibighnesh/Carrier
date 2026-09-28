@@ -1,5 +1,19 @@
+# OS artifacts
 .DS_Store
 Thumbs.db
+desktop.ini
+ehthumbs.db
+
+# Logs
 *.log
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Local Claude config (not committed)
 CLAUDE.md
 .claude/
