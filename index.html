@@ -460,7 +460,7 @@
 </main>
 <footer role="contentinfo" class="wrap">
   Built offline with the browser's <code translate="no">Web Crypto</code> (AES-256-GCM + PBKDF2) and <code translate="no">canvas</code> compression.<br>
-  No servers, no tracking, no uploads. Save this file and it works on a plane. &copy; <span id="year"><script>document.write(Math.max(2026,new Date().getFullYear()))</script></span> Sai Bighnesh &mdash;
+  No servers, no tracking, no uploads. Save this file and it works on a plane. &copy; <span id="year">2026</span> Sai Bighnesh &mdash;
   <a href="https://github.com/saibighnesh/Carrier" target="_blank" rel="noopener noreferrer" aria-label="Carrier source code on GitHub (opens in new tab)" title="View the Carrier source on GitHub (opens in a new tab)">source on GitHub</a>,
   <a href="https://github.com/saibighnesh/Carrier/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" aria-label="MIT license (opens in new tab)" title="Read the MIT license (opens in a new tab)">MIT licensed</a>,
   <a href="https://github.com/saibighnesh/Carrier/blob/main/SECURITY.md" target="_blank" rel="noopener noreferrer" aria-label="Security policy (opens in new tab)" title="Read the security policy (opens in a new tab)">security policy</a>,
@@ -3796,7 +3796,10 @@ modeBtns.forEach((btn, idx)=>{
 /* restore the last-used mode (synthetic click → isTrusted false, so it won't steal focus or scroll) */
 if(lsGet("carrier_mode") === "recv") $("#tab-recv").click();
 
-/* footer copyright year is rendered inline at parse time (see <footer>) — no assignment needed here */
+/* footer copyright year: 2026 is the static floor in the markup; bump it if the clock is later, never
+   below (a wrong-in-the-past clock shouldn't roll the notice back). Set here instead of via document.write
+   — that API blocks the parser and is a no-op or throws in some contexts. */
+$("#year").textContent = Math.max(2026, new Date().getFullYear());
 const verEl = $("#appVersion");
 verEl.textContent = `v${APP_VERSION}`;
 verEl.setAttribute("aria-label", `Wire format version v${APP_VERSION}`);
