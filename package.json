@@ -1,0 +1,23 @@
+{
+  "name": "carrier",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Send a picture through a text-only chat — a single-file, offline, zero-dependency web app.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Sai Bighnesh",
+  "homepage": "https://github.com/saibighnesh/Carrier#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/saibighnesh/Carrier.git"
+  },
+  "bugs": {
+    "url": "https://github.com/saibighnesh/Carrier/issues"
+  },
+  "scripts": {
+    "test": "node test/run.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
