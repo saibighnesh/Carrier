@@ -22,7 +22,7 @@ Carrier is a single-file web app — there's no build step, no bundler, no `npm 
 The test suite runs in Node.js (v18+):
 
 ```bash
-node test/run.mjs
+npm test        # or: node test/run.mjs
 ```
 
 Individual test files can be run directly:
