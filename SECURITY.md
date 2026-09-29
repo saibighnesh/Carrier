@@ -55,7 +55,7 @@ Passphrases entered into Carrier are processed exclusively in-memory via the Web
 
 Carrier contains zero external dependencies, zero CDN scripts, zero third-party font imports, and zero remote analytics or tracking beacons. It can be verified completely offline:
 - Saving `index.html` locally and opening it via `file://` or in an air-gapped network environment functions identically with zero network requests.
-- All Web Crypto operations (`PBKDF2`, `AES-GCM-256`) and Reed-Solomon codec computations run strictly on local CPU within the browser sandbox thread.
+- All Web Crypto operations (`PBKDF2`, `AES-256-GCM`) and Reed-Solomon codec computations run strictly on local CPU within the browser sandbox thread.
 
 ## Content Security Policy and Sandboxing
 
