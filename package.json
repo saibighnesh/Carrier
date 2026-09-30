@@ -4,6 +4,16 @@
   "private": true,
   "description": "Send a picture through a text-only chat — a single-file, offline, zero-dependency web app.",
   "type": "module",
+  "keywords": [
+    "image-to-text",
+    "offline",
+    "single-file",
+    "base64",
+    "aes-256-gcm",
+    "reed-solomon",
+    "webp",
+    "no-dependencies"
+  ],
   "license": "MIT",
   "author": "Sai Bighnesh",
   "homepage": "https://github.com/saibighnesh/Carrier#readme",
