@@ -2,6 +2,7 @@
 
 [![Test](https://github.com/saibighnesh/Carrier/actions/workflows/test.yml/badge.svg)](https://github.com/saibighnesh/Carrier/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 > Send a picture through a text-only chat.
 
