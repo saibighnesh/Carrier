@@ -25,6 +25,8 @@ The test suite runs in Node.js (v18+):
 npm test        # or: node test/run.mjs
 ```
 
+The repo pins Node via [`.nvmrc`](.nvmrc) (Node 22, matching CI) — run `nvm use` to switch to it.
+
 Individual test files can be run directly:
 
 ```bash
