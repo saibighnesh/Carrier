@@ -25,6 +25,8 @@ The test suite runs in Node.js (v18+):
 npm test        # or: node test/run.mjs
 ```
 
+The repo pins Node via [`.nvmrc`](.nvmrc) (Node 22, matching CI) — run `nvm use` to switch to it.
+
 Individual test files can be run directly:
 
 ```bash
@@ -69,6 +71,7 @@ a11y/short-description
 3. Reference any related issue in the PR body (`Fixes #123`)
 4. Make sure `node test/run.mjs` passes before opening
 5. Ensure git commit author name and email match your GitHub account for proper contributor attribution
+6. Delete your branch once the PR is merged (GitHub offers this on the merged PR) to keep the branch list tidy
 
 ## Code Style
 
