@@ -264,6 +264,12 @@ Carrier maintains high-contrast `:focus-visible` keyboard outlines on all intera
 
 ---
 
+## Reporting Issues
+
+Found a bug or have a feature idea? [Open an issue](https://github.com/saibighnesh/Carrier/issues/new/choose) — the bug and feature templates will guide you. For **security vulnerabilities**, don't open a public issue; follow the private disclosure steps in [SECURITY.md](SECURITY.md).
+
+---
+
 ## Contributing
 
 Pull requests are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, commit conventions, and code style guidelines.
