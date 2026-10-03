@@ -24,6 +24,7 @@ Save the single `index.html` file and it works offline — on a plane, on a trai
 - [Security Notes](#security-notes)
 - [Security Policy](SECURITY.md)
 - [Development](#development)
+- [Reporting Issues](#reporting-issues)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -261,6 +262,12 @@ Runs every `test/*.mjs` suite and exits non-zero on any failure. CI runs the sam
 ### Accessibility & Interaction Standards
 
 Carrier maintains high-contrast `:focus-visible` keyboard outlines on all interactive controls, programmatic `aria-controls` bindings between buttons and their affected UI containers, `aria-describedby` associations for status notes, and immediate tactile press responses (`:active` scale transforms) across buttons and toggles.
+
+---
+
+## Reporting Issues
+
+Found a bug or have a feature idea? [Open an issue](https://github.com/saibighnesh/Carrier/issues/new/choose) — the bug and feature templates will guide you. For **security vulnerabilities**, don't open a public issue; follow the private disclosure steps in [SECURITY.md](SECURITY.md).
 
 ---
 
