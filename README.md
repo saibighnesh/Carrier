@@ -19,6 +19,7 @@ Save the single `index.html` file and it works offline — on a plane, on a trai
 - [Demo](#demo)
 - [Features](#features)
 - [How to Use](#how-to-use)
+  - [Keyboard Shortcuts](#keyboard-shortcuts)
 - [How It Works](#how-it-works)
 - [Tech Stack](#tech-stack)
 - [Security Notes](#security-notes)
@@ -72,6 +73,16 @@ Save the single `index.html` file and it works offline — on a plane, on a trai
 2. Paste the Carrier message(s) — any order, all parts in one box
 3. Enter the password if it was locked — Carrier puts the caret there for you when a locked message completes
 4. Click **Reveal image** → **Download received image**, or **Receive another** to go straight into the next one
+
+### Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| `Ctrl` / `Cmd` + `V` | Paste an image to send (with the drop zone focused) |
+| `Ctrl` / `Cmd` + `Enter` | **Send:** copy the next message · **Receive:** reveal the image |
+| `Esc` | **Send:** start over · **Receive:** clear the inbox |
+| `←` / `→` | Switch between the **Send** and **Receive** tabs |
+| `Enter` / `Space` | Open the file picker (with the drop zone focused) |
 
 ---
 
