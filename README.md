@@ -19,6 +19,7 @@ Save the single `index.html` file and it works offline — on a plane, on a trai
 - [Demo](#demo)
 - [Features](#features)
 - [How to Use](#how-to-use)
+  - [Keyboard Shortcuts](#keyboard-shortcuts)
 - [How It Works](#how-it-works)
 - [Tech Stack](#tech-stack)
 - [Security Notes](#security-notes)
