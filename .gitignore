@@ -11,6 +11,12 @@ ehthumbs.db
 node_modules/
 *.tgz
 
+# Secrets (defensive — the app itself has none)
+.env
+.env.*
+*.pem
+*.key
+
 # Editors
 .vscode/
 .idea/
