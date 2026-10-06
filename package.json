@@ -15,7 +15,10 @@
     "no-dependencies"
   ],
   "license": "MIT",
-  "author": "Sai Bighnesh",
+  "author": {
+    "name": "Sai Bighnesh",
+    "url": "https://github.com/saibighnesh"
+  },
   "homepage": "https://github.com/saibighnesh/Carrier#readme",
   "repository": {
     "type": "git",
