@@ -22,6 +22,8 @@ Instead, email **saibighneshprusty@gmail.com** with:
 
 You can expect an initial response within **72 hours**. If the issue is confirmed, a fix will be committed to `main` as soon as possible, typically within a week.
 
+GitHub's [**New issue**](https://github.com/saibighnesh/Carrier/issues/new/choose) page also surfaces this policy as a "Report a security vulnerability" link — public issues are intentionally not the channel for vulnerabilities.
+
 ## Scope
 
 The following are considered security issues for Carrier:
