@@ -42,12 +42,14 @@ We follow [Conventional Commits](https://www.conventionalcommits.org/):
 |------------|----------------------------------------|
 | `fix:`     | Bug fixes                              |
 | `feat:`    | New features                           |
+| `perf:`    | Performance improvements               |
 | `style:`   | CSS / visual-only changes              |
 | `a11y:`    | Accessibility improvements             |
 | `refactor:`| Code restructuring without behavior change |
 | `test:`    | Adding or updating tests               |
 | `docs:`    | Documentation changes                  |
-| `chore:`   | Maintenance (CI, deps, config)         |
+| `ci:`      | CI / GitHub Actions workflow changes   |
+| `chore:`   | Maintenance (deps, config, tooling)    |
 
 **Example:** `fix: guard unpack() against truncated encrypted body`
 
