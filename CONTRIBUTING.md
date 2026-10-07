@@ -51,7 +51,7 @@ We follow [Conventional Commits](https://www.conventionalcommits.org/):
 | `ci:`      | CI / GitHub Actions workflow changes   |
 | `chore:`   | Maintenance (deps, config, tooling)    |
 
-**Example:** `fix: guard unpack() against truncated encrypted body`
+**Examples:** `fix: guard unpack() against truncated encrypted body` — or with an optional scope in parentheses, `perf(chunks): hoist chunkDataCount() out of the render loop`.
 
 ## Branch Naming
 
