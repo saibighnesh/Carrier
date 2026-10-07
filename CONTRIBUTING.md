@@ -60,10 +60,14 @@ Use a prefix matching the commit type:
 ```
 fix/short-description
 feat/short-description
+perf/short-description
 docs/short-description
 test/short-description
 style/short-description
 a11y/short-description
+refactor/short-description
+ci/short-description
+chore/short-description
 ```
 
 ## Pull Requests
