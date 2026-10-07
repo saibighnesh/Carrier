@@ -51,7 +51,7 @@ We follow [Conventional Commits](https://www.conventionalcommits.org/):
 | `ci:`      | CI / GitHub Actions workflow changes   |
 | `chore:`   | Maintenance (deps, config, tooling)    |
 
-**Example:** `fix: guard unpack() against truncated encrypted body`
+**Examples:** `fix: guard unpack() against truncated encrypted body` — or with an optional scope in parentheses, `perf(chunks): hoist chunkDataCount() out of the render loop`.
 
 ## Branch Naming
 
@@ -60,10 +60,14 @@ Use a prefix matching the commit type:
 ```
 fix/short-description
 feat/short-description
+perf/short-description
 docs/short-description
 test/short-description
 style/short-description
 a11y/short-description
+refactor/short-description
+ci/short-description
+chore/short-description
 ```
 
 ## Pull Requests
