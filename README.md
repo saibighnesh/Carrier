@@ -271,7 +271,7 @@ Requires **Node 18+** (the suite is ESM and uses `node:`-prefixed built-ins). CI
 
 Runs every `test/*.mjs` suite and exits non-zero on any failure. CI runs the same command automatically on pushes/PRs that touch `index.html`, `test/**`, or the workflow file itself (`.github/workflows/test.yml`); docs-only changes don't trigger a run, and pushing again before a run finishes cancels the superseded one instead of queuing both to completion.
 
-The GitHub Actions used in CI are pinned by commit SHA and kept current by [Dependabot](.github/dependabot.yml) (weekly).
+The GitHub Actions used in CI are pinned by commit SHA (bumped manually when upstream releases).
 
 ### Accessibility & Interaction Standards
 
