@@ -79,6 +79,10 @@ chore/short-description
 5. Ensure git commit author name and email match your GitHub account for proper contributor attribution
 6. Delete your branch once the PR is merged (GitHub offers this on the merged PR) to keep the branch list tidy
 
+## Continuous Integration
+
+Pushes and pull requests that touch `index.html`, `test/**`, or the workflow file run the test suite automatically on **Node 22** via GitHub Actions. Docs-only changes don't trigger a run, and pushing again before a run finishes cancels the superseded one. Make sure the check is green before merging.
+
 ## Code Style
 
 - **No external dependencies.** Carrier ships as a single self-contained HTML file.
