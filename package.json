@@ -12,7 +12,10 @@
     "aes-256-gcm",
     "reed-solomon",
     "webp",
-    "no-dependencies"
+    "no-dependencies",
+    "privacy",
+    "client-side",
+    "encryption"
   ],
   "license": "MIT",
   "author": {
