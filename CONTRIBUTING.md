@@ -91,6 +91,10 @@ Pushes and pull requests that touch `index.html`, `test/**`, or the workflow fil
 - **Accessibility matters.** Every interactive element needs an explicit accessible name (via `aria-label` or visible text), a keyboard navigation path, and a high-contrast `:focus-visible` outline style. Dynamic toggles, disclosure controls, custom file picker triggers, and action/reset/copy/paste buttons (e.g. `#copyAll`, `#copyNext`, `#copyRest`, `#resetSent`, `#saveTxt`, `#autofit`, `#recvAnother`, `#copyMissing`, `#pasteInbox`, `#loadTxt`, `#save`, `.copyone`) must explicitly declare their controlled targets via `aria-controls` (supporting multi-target ID lists where an action clears, updates, loads, or resets multiple regions) alongside `aria-pressed` or `aria-expanded`. Dynamic status and warning notices must declare `aria-live` for timely screen reader announcements. Range sliders must specify `aria-valuetext` for formatted value readouts, and inputs with companion status, errors, or truncation warnings must associate them via space-separated `aria-describedby` IDs. Inputs with validation alerts must connect error containers via `aria-errormessage`, and all form inputs must maintain distinct `:focus-visible` outline rings. Interactive buttons, toggles, preset pills, navigation tabs, drop zones, and link buttons (`.btn`, `.pwtoggle`, `.copyone`, `.linkbtn`, `.preset`, `.modes button`, `.skip-link`, `.drop`) must provide immediate `:active` tactile press feedback with subtle scale transforms.
 - **Test what you change.** If you touch encoding, chunking, or crypto logic, add or update a test in `test/`.
 
+## Questions
+
+Have a question or an idea? [Open an issue](https://github.com/saibighnesh/Carrier/issues/new/choose) using the bug or feature template. For anything security-related, see below.
+
 ## Security Vulnerabilities
 
 Please do not open public issues for security vulnerabilities. Instead, refer to [SECURITY.md](SECURITY.md) for instructions on responsible disclosure.
