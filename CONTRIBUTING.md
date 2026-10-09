@@ -79,6 +79,10 @@ chore/short-description
 5. Ensure git commit author name and email match your GitHub account for proper contributor attribution
 6. Delete your branch once the PR is merged (GitHub offers this on the merged PR) to keep the branch list tidy
 
+## Continuous Integration
+
+Pushes and pull requests that touch `index.html`, `test/**`, or the workflow file run the test suite automatically on **Node 22** via GitHub Actions. Docs-only changes don't trigger a run, and pushing again before a run finishes cancels the superseded one. Make sure the check is green before merging.
+
 ## Code Style
 
 - **No external dependencies.** Carrier ships as a single self-contained HTML file.
@@ -86,6 +90,10 @@ chore/short-description
 - **Preserve existing comments.** Many inline comments explain non-obvious decisions — keep them unless the code they describe is changing.
 - **Accessibility matters.** Every interactive element needs an explicit accessible name (via `aria-label` or visible text), a keyboard navigation path, and a high-contrast `:focus-visible` outline style. Dynamic toggles, disclosure controls, custom file picker triggers, and action/reset/copy/paste buttons (e.g. `#copyAll`, `#copyNext`, `#copyRest`, `#resetSent`, `#saveTxt`, `#autofit`, `#recvAnother`, `#copyMissing`, `#pasteInbox`, `#loadTxt`, `#save`, `.copyone`) must explicitly declare their controlled targets via `aria-controls` (supporting multi-target ID lists where an action clears, updates, loads, or resets multiple regions) alongside `aria-pressed` or `aria-expanded`. Dynamic status and warning notices must declare `aria-live` for timely screen reader announcements. Range sliders must specify `aria-valuetext` for formatted value readouts, and inputs with companion status, errors, or truncation warnings must associate them via space-separated `aria-describedby` IDs. Inputs with validation alerts must connect error containers via `aria-errormessage`, and all form inputs must maintain distinct `:focus-visible` outline rings. Interactive buttons, toggles, preset pills, navigation tabs, drop zones, and link buttons (`.btn`, `.pwtoggle`, `.copyone`, `.linkbtn`, `.preset`, `.modes button`, `.skip-link`, `.drop`) must provide immediate `:active` tactile press feedback with subtle scale transforms.
 - **Test what you change.** If you touch encoding, chunking, or crypto logic, add or update a test in `test/`.
+
+## Questions
+
+Have a question or an idea? [Open an issue](https://github.com/saibighnesh/Carrier/issues/new/choose) using the bug or feature template. For anything security-related, see below.
 
 ## Security Vulnerabilities
 
