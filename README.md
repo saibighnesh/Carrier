@@ -226,7 +226,7 @@ The CRC-32 is **appended**, not prepended, so an older Carrier build reads `flag
 | Compression | `<canvas>` — resize + WebP/JPEG encode |
 | Language | Vanilla HTML / CSS / JS |
 | Accessibility | WAI-ARIA 1.2 compliant, full keyboard navigation & high-contrast focus rings |
-| Dependencies | None |
+| Dependencies | None — zero runtime and zero dev dependencies |
 | Tooling | GitHub Actions CI + a plain-Node test suite (`test/`) |
 | Runtime | Any modern browser (Chrome, Firefox, Safari, Edge) |
 
