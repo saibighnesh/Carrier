@@ -226,7 +226,7 @@ The CRC-32 is **appended**, not prepended, so an older Carrier build reads `flag
 | Compression | `<canvas>` — resize + WebP/JPEG encode |
 | Language | Vanilla HTML / CSS / JS |
 | Accessibility | WAI-ARIA 1.2 compliant, full keyboard navigation & high-contrast focus rings |
-| Dependencies | None |
+| Dependencies | None — zero runtime and zero dev dependencies |
 | Tooling | GitHub Actions CI + a plain-Node test suite (`test/`) |
 | Runtime | Any modern browser (Chrome, Firefox, Safari, Edge) |
 
@@ -261,7 +261,7 @@ Found a vulnerability? See [SECURITY.md](SECURITY.md) for how to report it respo
 
 ## Development
 
-No build step for the app itself, but the wire format (chunking, encryption, Reed-Solomon recovery, Compact encoding) is covered by a plain-Node test suite in `test/`:
+No build step for the app itself, and nothing to install — `package.json` declares no dependencies and exists only for the `npm test` script. The wire format (chunking, encryption, Reed-Solomon recovery, Compact encoding) is covered by a plain-Node test suite in `test/`:
 
 ```
 npm test        # or: node test/run.mjs
