@@ -4,7 +4,7 @@ Thanks for your interest in contributing to Carrier! This document covers the ba
 
 ## Getting Started
 
-Carrier is a single-file web app — there's no build step, no bundler, no `npm install`.
+Carrier is a single-file web app — there's no build step, no bundler, no `npm install`. The `package.json` declares no dependencies; it exists only to provide the `npm test` script (see [Running Tests](#running-tests)), so there's nothing to install.
 
 1. **Clone the repo**
 
