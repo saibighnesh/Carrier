@@ -263,7 +263,7 @@ Found a vulnerability? See [SECURITY.md](SECURITY.md) for how to report it respo
 
 No build step for the app itself, and nothing to install — `package.json` declares no dependencies and exists only for the `npm test` script. The wire format (chunking, encryption, Reed-Solomon recovery, Compact encoding) is covered by a plain-Node test suite in `test/`:
 
-```
+```bash
 npm test        # or: node test/run.mjs
 ```
 
