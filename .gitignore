@@ -7,6 +7,10 @@ ehthumbs.db
 # Logs
 *.log
 
+# Merge / patch leftovers
+*.orig
+*.rej
+
 # Node (the app stays zero-dependency; these only appear from local npm use)
 node_modules/
 *.tgz
