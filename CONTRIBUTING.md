@@ -27,6 +27,8 @@ npm test        # or: node test/run.mjs
 
 The repo pins Node via [`.nvmrc`](.nvmrc) (Node 22, matching CI) — run `nvm use` to switch to it.
 
+`test/run.mjs` runs every `test/*.mjs` suite and exits non-zero on any failure; it's exactly what CI runs. The suites are plain Node scripts using `node:assert` — there's no test framework to install.
+
 Individual test files can be run directly:
 
 ```bash
