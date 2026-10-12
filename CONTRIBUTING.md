@@ -81,7 +81,7 @@ chore/short-description
 
 ## Continuous Integration
 
-Pushes and pull requests that touch `index.html`, `test/**`, or the workflow file run the test suite automatically on **Node 22** via GitHub Actions. Docs-only changes don't trigger a run, and pushing again before a run finishes cancels the superseded one. Make sure the check is green before merging.
+Pushes and pull requests that touch `index.html`, `test/**`, or the workflow file run the test suite automatically on **Node 22** via GitHub Actions. Docs-only changes don't trigger a run, and pushing again before a run finishes cancels the superseded one. Make sure the check is green before merging. You can also launch the workflow on demand from the repository's **Actions** tab (`workflow_dispatch`).
 
 ## Code Style
 
