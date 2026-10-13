@@ -225,6 +225,7 @@ The CRC-32 is **appended**, not prepended, so an older Carrier build reads `flag
 |-------|-----------|
 | Encryption | [Web Crypto API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API) — AES-256-GCM, PBKDF2 |
 | Compression | `<canvas>` — resize + WebP/JPEG encode |
+| Loss recovery | Reed-Solomon parity over GF(2⁶) (Base64) / GF(2¹⁴) (Compact) |
 | Language | Vanilla HTML / CSS / JS |
 | Accessibility | WAI-ARIA 1.2 compliant, full keyboard navigation & high-contrast focus rings |
 | Dependencies | None — zero runtime and zero dev dependencies |
