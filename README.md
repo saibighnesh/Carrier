@@ -101,6 +101,7 @@ Image file
     │
     ▼  3. CHUNK  (if still > 1 message)
        Split into PXT/<id>/<n>/<total>/<data> parts
+       (+ optional Reed-Solomon parity parts for loss recovery)
 ```
 
 ### Encryption (optional)
