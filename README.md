@@ -228,7 +228,7 @@ The CRC-32 is **appended**, not prepended, so an older Carrier build reads `flag
 | Accessibility | WAI-ARIA 1.2 compliant, full keyboard navigation & high-contrast focus rings |
 | Dependencies | None — zero runtime and zero dev dependencies |
 | Tooling | GitHub Actions CI + a plain-Node test suite (`test/`) |
-| Runtime | Any modern browser (Chrome, Firefox, Safari, Edge) |
+| Runtime | Any modern browser (Chrome, Firefox, Safari, Edge) — served or opened straight from a saved file (`file://`), fully offline |
 
 ---
 
