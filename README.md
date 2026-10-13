@@ -97,7 +97,7 @@ Image file
     │  Canvas resize + WebP/JPEG re-encode until it fits target bytes
     │
     ▼  2. ENCODE
-    │  Binary → Base64 (safe to paste anywhere)
+    │  Binary → Base64 (safe to paste anywhere), or Compact (14 bits/char) when enabled
     │
     ▼  3. CHUNK  (if still > 1 message)
        Split into PXT/<id>/<n>/<total>/<data> parts
