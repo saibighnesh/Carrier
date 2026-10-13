@@ -264,10 +264,11 @@ Found a vulnerability? See [SECURITY.md](SECURITY.md) for how to report it respo
 No build step for the app itself, and nothing to install — `package.json` declares no dependencies and exists only for the `npm test` script. The wire format (chunking, encryption, Reed-Solomon recovery, Compact encoding) is covered by a plain-Node test suite in `test/`:
 
 ```bash
-npm test        # or: node test/run.mjs
+npm test                 # or: node test/run.mjs — the whole suite
+node test/dense.mjs      # run a single suite while iterating on one area
 ```
 
-Requires **Node 18+** (the suite is ESM and uses `node:`-prefixed built-ins). CI runs Node 22, pinned in [`.nvmrc`](.nvmrc) — run `nvm use` to match it locally.
+Each `test/*.mjs` file is a standalone script (plain `node:assert`, no framework), so you can run any one of them directly by path. Requires **Node 18+** (the suite is ESM and uses `node:`-prefixed built-ins). CI runs Node 22, pinned in [`.nvmrc`](.nvmrc) — run `nvm use` to match it locally.
 
 Runs every `test/*.mjs` suite and exits non-zero on any failure. CI runs the same command automatically on pushes/PRs that touch `index.html`, `test/**`, or the workflow file itself (`.github/workflows/test.yml`); docs-only changes don't trigger a run, and pushing again before a run finishes cancels the superseded one instead of queuing both to completion.
 
