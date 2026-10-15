@@ -477,6 +477,9 @@ const APP_VERSION = "1.0";
 // the Send/default document title lives once in the <title> element; capture it at load so the reset
 // paths below don't hardcode a second copy that silently drifts from the markup.
 const SEND_TITLE = document.title;
+// the Receive-mode resting title is set from several code paths (mode switch, teardown, progress);
+// name it once so they can't drift apart.
+const RECV_TITLE = "Carrier — receive images";
 let msgLimit = 60000;             // chars per message for the chosen chat app (user-selectable)
 let recoveryLevel = "off";        // Reed-Solomon redundancy: off | light | strong (see rsParityCount)
 let textCodec = "b64";            // wire text encoding: b64 (universal) | dense (14 bits/char on the wire, opt-in)
@@ -3126,7 +3129,7 @@ function updateProgress(){
     // this box is no longer being parsed as any particular part count, so the tab strip's "N/M parts"
     // counter from an earlier, smaller paste is now describing text that isn't there any more — same
     // guard every other title write below already uses (don't stomp a post-reveal "✓ Image received").
-    if(!recovered && !$("#recv").classList.contains("hidden")) document.title = "Carrier — receive images";
+    if(!recovered && !$("#recv").classList.contains("hidden")) document.title = RECV_TITLE;
     return;
   }
   const r = reassemble(raw);
@@ -3161,7 +3164,7 @@ function updateProgress(){
     // an empty box is just the resting state, but text that parses to NO chunks used to leave the
     // progress line blank — the user saw their paste land and then absolutely nothing happen, with only
     // a disabled Reveal button to explain it. Say what's wrong while the text is still on screen.
-    if(!recovered && !$("#recv").classList.contains("hidden")) document.title = "Carrier — receive images";
+    if(!recovered && !$("#recv").classList.contains("hidden")) document.title = RECV_TITLE;
     if($("#inbox").value.trim()) {
       p.className = "progress warn";
       p.textContent = "No Carrier messages found in that text — each part starts with “PXT/” (or “PXD/” for a Compact send). Paste the messages exactly as you received them.";
@@ -3318,7 +3321,7 @@ function clearReveal(){
   $("#result").setAttribute("aria-label","Received image");
   $("#rimg").setAttribute("aria-label","Open the received image full size in a new tab");   // restore the resting label
   $("#rCaption").textContent = "";
-  if(!$("#recv").classList.contains("hidden")) document.title = "Carrier — receive images";   // drop the "✓ received" title once the image is torn down
+  if(!$("#recv").classList.contains("hidden")) document.title = RECV_TITLE;   // drop the "✓ received" title once the image is torn down
 }
 // full reset of the receive panel: drop any revealed image, empty the inbox + password, hide the result
 function resetReceive(){
@@ -3527,7 +3530,7 @@ async function doReveal(){
       $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true");
       note.className = "note err";
       note.textContent = "The data decoded, but it isn't a valid image — the message is likely corrupted or was altered in transit.";
-      document.title = "Carrier — receive images";
+      document.title = RECV_TITLE;
     };
     // use `now` (the re-validated reassembly), not the pre-await `r`: the winning payload is identical
     // (now.s === snapshot) but the session SET may have changed during the await, so r.multiSession /
@@ -3743,7 +3746,7 @@ window.addEventListener("pageshow", e=>{
     // the reveal also set a green "Received. ✓" note and a "✓ Image received" title; clear both, or the
     // restored page shows success chrome pointing at an image that's no longer there
     $("#rNote").className = "note"; $("#rNote").textContent = "";
-    if(!$("#recv").classList.contains("hidden")) document.title = "Carrier — receive images";
+    if(!$("#recv").classList.contains("hidden")) document.title = RECV_TITLE;
   }
 });
 
@@ -3783,7 +3786,7 @@ modeBtns.forEach((btn, idx)=>{
     // leaving the tab contradicting a #prog that still read "Got 5 of 19 parts". Switching modes
     // mid-assembly is ordinary, and the tab strip is exactly where that count is meant to be readable.
     // Memoised on the inbox string (#172), so re-running it here costs nothing.
-    if(m === "recv"){ document.title = "Carrier — receive images"; updateProgress(); }
+    if(m === "recv"){ document.title = RECV_TITLE; updateProgress(); }
     // set a correct Send title immediately (refresh() refines it with the message count ~180ms later).
     // Unconditional — not gated on !srcImage — so it always overrides any prior receive-mode title.
     else document.title = (srcImage && srcImage._name) ? `${srcImage._name} — Carrier` : SEND_TITLE;
