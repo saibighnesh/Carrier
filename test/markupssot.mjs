@@ -23,6 +23,11 @@ const qualityTag = (() => {
   assert.ok(m, "expected the <input id=\"quality\"> range control");
   return m[0];
 })();
+const qvalTag = (() => {
+  const m = /<output id="qval"[^>]*>([^<]*)<\/output>/.exec(html);
+  assert.ok(m, "expected the <output id=\"qval\"> quality readout");
+  return m;
+})();
 
 t("APP_VERSION is the single source for the version string", () => {
   assert.match(html, /const APP_VERSION\s*=\s*"[^"]+";/, "APP_VERSION constant should exist");
@@ -44,6 +49,14 @@ t("#quality markup has no hardcoded aria-valuetext", () => {
 
 t("setQuality() sets aria-valuetext from the slider value", () => {
   assert.match(html, /setAttribute\("aria-valuetext",\s*q\s*\+\s*"%"\)/, "setQuality should set aria-valuetext from q");
+});
+
+t("#qval readout is empty in markup, not a hardcoded default", () => {
+  assert.equal(qvalTag[1].trim(), "", "#qval must not embed a literal percentage — setQuality() fills it on load");
+});
+
+t("setQuality() writes the #qval readout from the slider value", () => {
+  assert.match(html, /\$\("#qval"\)\.textContent\s*=\s*q\s*\+\s*"%"/, "setQuality should set #qval textContent from q");
 });
 
 console.log(`\n${pass} passed`);
