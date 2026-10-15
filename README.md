@@ -76,6 +76,8 @@ Save the single `index.html` file and it works offline — on a plane, on a trai
 
 If some parts never arrived and there's no recovery to rebuild them, **Copy what's missing** writes a short, ready-to-send list naming exactly the parts you still need — paste it back to the sender.
 
+A leftover part from an earlier image won't block a fresh paste: **Reveal** uses the most complete set in the box, so you can paste a new message group over the old one without clearing first.
+
 ### Keyboard Shortcuts
 
 | Key | Action |
