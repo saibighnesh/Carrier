@@ -82,7 +82,7 @@ Save the single `index.html` file and it works offline — on a plane, on a trai
 | `Ctrl` / `Cmd` + `Enter` | **Send:** copy the next message · **Receive:** reveal the image |
 | `Esc` | **Send:** start over · **Receive:** clear the inbox |
 | `←` / `→` | Switch between the **Send** and **Receive** tabs |
-| `Enter` / `Space` | Open the file picker (with the drop zone focused) |
+| `Enter` / `Space` | Open the file picker (drop zone focused), or open the focused preview / received image full size in a new tab |
 
 ---
 
