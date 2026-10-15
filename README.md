@@ -74,6 +74,8 @@ Save the single `index.html` file and it works offline — on a plane, on a trai
 3. Enter the password if it was locked — Carrier puts the caret there for you when a locked message completes
 4. Click **Reveal image** → **Download received image**, or **Receive another** to go straight into the next one
 
+If some parts never arrived and there's no recovery to rebuild them, **Copy what's missing** writes a short, ready-to-send list naming exactly the parts you still need — paste it back to the sender.
+
 ### Keyboard Shortcuts
 
 | Key | Action |
