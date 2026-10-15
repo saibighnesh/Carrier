@@ -474,6 +474,9 @@
 // one thing that lets two people stuck on "recovery isn't working" or "it says no message found" tell
 // whether they're just running different Carrier builds.
 const APP_VERSION = "1.0";
+// the Send/default document title lives once in the <title> element; capture it at load so the reset
+// paths below don't hardcode a second copy that silently drifts from the markup.
+const SEND_TITLE = document.title;
 let msgLimit = 60000;             // chars per message for the chosen chat app (user-selectable)
 let recoveryLevel = "off";        // Reed-Solomon redundancy: off | light | strong (see rsParityCount)
 let textCodec = "b64";            // wire text encoding: b64 (universal) | dense (14 bits/char on the wire, opt-in)
@@ -3085,7 +3088,7 @@ function resetSend(){
   drop.querySelector("strong").textContent = DROP_STRONG_DEFAULT;
   drop.querySelector("small").textContent = DROP_SMALL_DEFAULT;
   clearDropErr();
-  document.title = "Carrier — send images through text-only chats";
+  document.title = SEND_TITLE;
   drop.scrollIntoView({behavior:scrollBehavior(),block:"nearest"});
   drop.focus();
 }
@@ -3783,7 +3786,7 @@ modeBtns.forEach((btn, idx)=>{
     if(m === "recv"){ document.title = "Carrier — receive images"; updateProgress(); }
     // set a correct Send title immediately (refresh() refines it with the message count ~180ms later).
     // Unconditional — not gated on !srcImage — so it always overrides any prior receive-mode title.
-    else document.title = (srcImage && srcImage._name) ? `${srcImage._name} — Carrier` : "Carrier — send images through text-only chats";
+    else document.title = (srcImage && srcImage._name) ? `${srcImage._name} — Carrier` : SEND_TITLE;
   });
   btn.addEventListener("keydown", e=>{
     let target = null;
