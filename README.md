@@ -67,6 +67,7 @@ Save the single `index.html` file and it works offline — on a plane, on a trai
 3. Adjust **Quality** and **Max size**, select your chat app (or pick **Custom…** to set any limit from 20 to 200,000 characters), or click **⚡ Auto-fit to 1 message**. If the pipe is unreliable, set **Recovery** so the recipient can rebuild lost parts
 4. Optionally set a password under **Lock it**
 5. Copy the text and paste into your chat — if it split into parts, **Copy next message** walks you through them one at a time and marks off what you've already sent (`Ctrl/Cmd+Enter` does the same from the keyboard)
+6. Or click **Save as .txt** to download every part as one self-documenting text file — send it as an attachment where that's allowed, or keep it as a backup
 
 ### Receive
 1. Switch to the **← Receive** tab
