@@ -480,6 +480,9 @@ const SEND_TITLE = document.title;
 // the Receive-mode resting title is set from several code paths (mode switch, teardown, progress);
 // name it once so they can't drift apart.
 const RECV_TITLE = "Carrier — receive images";
+// the clipboard-denied copy feedback (button label + its aria-label) is shown from every copy path;
+// name it once so the four call sites can't drift apart.
+const COPY_FAIL = "Copy failed", COPY_FAIL_ARIA = "Copy failed — clipboard access denied";
 let msgLimit = 60000;             // chars per message for the chosen chat app (user-selectable)
 let recoveryLevel = "off";        // Reed-Solomon redundancy: off | light | strong (see rsParityCount)
 let textCodec = "b64";            // wire text encoding: b64 (universal) | dense (14 bits/char on the wire, opt-in)
@@ -2793,7 +2796,7 @@ $("#copyAll").addEventListener("click", async ()=>{
     b.setAttribute("aria-label", chunks.length === 1 ? "Copied the message" : `Copied all ${chunks.length} messages`);
     copyAllTimer = setTimeout(restore, 2000);
   }catch{
-    b.textContent = "Copy failed"; b.setAttribute("aria-label","Copy failed — clipboard access denied");
+    b.textContent = COPY_FAIL; b.setAttribute("aria-label",COPY_FAIL_ARIA);
     copyAllTimer = setTimeout(restore, 2000);
   }
 });
@@ -2821,7 +2824,7 @@ $("#copyNext").addEventListener("click", async ()=>{
     }
     flashButton(btn, `Copied ${i+1} ✓`, `Copied message ${i+1} of ${chunksNow.length}`, 1200);
   }catch{
-    flashButton(btn, "Copy failed", "Copy failed — clipboard access denied", 1200);
+    flashButton(btn, COPY_FAIL, COPY_FAIL_ARIA, 1200);
   }
 });
 // Ctrl/Cmd+Enter in Send copies the next part — the mirror of the same chord revealing in Receive. A
@@ -2849,7 +2852,7 @@ $("#copyRest").addEventListener("click", async ()=>{
     markSentBatch(rest);   // hides this button if every part is still live and now sent
     flashButton(btn, `Copied ${rest.length} ✓`, `Copied the ${rest.length} remaining message${rest.length!==1?"s":""}`);
   }catch{
-    flashButton(btn, "Copy failed", "Copy failed — clipboard access denied");
+    flashButton(btn, COPY_FAIL, COPY_FAIL_ARIA);
   }
 });
 $("#resetSent").addEventListener("click", ()=>{
@@ -3384,7 +3387,7 @@ $("#copyMissing").addEventListener("click", async ()=>{
     observeSend(missingSnapshot, missing.length);
     flashButton($("#copyMissing"), "Copied ✓", "Copied the list of missing parts");
   }catch{
-    flashButton($("#copyMissing"), "Copy failed", "Copy failed — clipboard access denied");
+    flashButton($("#copyMissing"), COPY_FAIL, COPY_FAIL_ARIA);
   }
 });
 $("#clearInbox").addEventListener("click", resetReceive);
