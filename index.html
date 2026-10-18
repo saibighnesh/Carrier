@@ -500,6 +500,10 @@ const REVEAL_LABEL = document.getElementById("reveal").textContent;
 // the Reveal button's resting title (shown when a complete message is ready) lives in the markup;
 // capture it so updateProgress() restates the ready-state tooltip from the markup, not a second copy.
 const REVEAL_TITLE = document.getElementById("reveal").getAttribute("title");
+// the Reveal button's two disabled-state tooltips are each set from more than one place in
+// updateProgress(); name them once so every site hovers the same reason (see the comment there).
+const REVEAL_BUSY_TITLE = "A reveal is already in progress — wait for it to finish";
+const REVEAL_EMPTY_TITLE = "Paste a complete Carrier message first";
 // the "activate to open full size" hint is appended to the dynamic aria-labels of both the compressed
 // preview and the revealed image; name it once so the three call sites can't word it three ways.
 const FULLSIZE_HINT = " — activate to open full size in a new tab";
@@ -3148,7 +3152,7 @@ function updateProgress(){
     // don't leave the previous state's hint on a now-disabled button — but if a reveal is actually still
     // running, say THAT rather than a generic "paste a complete message" that has nothing to do with why
     // it's disabled right now (matches the messaging every other disabled/title site in this function uses)
-    $("#reveal").title = revealing ? "A reveal is already in progress — wait for it to finish" : "Paste a complete Carrier message first";
+    $("#reveal").title = revealing ? REVEAL_BUSY_TITLE : REVEAL_EMPTY_TITLE;
     $("#copyMissing").classList.add("hidden");
     missingSnapshot = null;
     // this box is no longer being parsed as any particular part count, so the tab strip's "N/M parts"
@@ -3181,10 +3185,10 @@ function updateProgress(){
   $("#reveal").disabled = !ready || revealing;
   // explain the disabled state on hover instead of a dead greyed-out button with a stale tooltip
   $("#reveal").title = revealing
-    ? "A reveal is already in progress — wait for it to finish"
+    ? REVEAL_BUSY_TITLE
     : ready
     ? REVEAL_TITLE
-    : "Paste a complete Carrier message first";
+    : REVEAL_EMPTY_TITLE;
   if(!r){
     // an empty box is just the resting state, but text that parses to NO chunks used to leave the
     // progress line blank — the user saw their paste land and then absolutely nothing happen, with only
