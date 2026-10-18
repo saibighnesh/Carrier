@@ -75,7 +75,7 @@ Save the single `index.html` file and it works offline — on a plane, on a trai
 
 ### Receive
 1. Switch to the **← Receive** tab
-2. Paste the Carrier message(s) — any order, all parts in one box — or click **Load .txt file** (or drag a saved `.txt` onto the box) to pull in a backup the sender attached
+2. Paste the Carrier message(s) — any order, all parts in one box — or click **Load .txt file** (or drag a saved `.txt` onto the box) to pull in a backup the sender attached; the tab title counts parts as they land (`3/7 parts`) so you can watch it fill from the chat app
 3. Enter the password if it was locked — Carrier puts the caret there for you when a locked message completes
 4. Click **Reveal image** → **Download received image**, or **Receive another** to go straight into the next one
 
