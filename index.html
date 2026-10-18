@@ -497,6 +497,9 @@ const THUMB_LABEL = document.getElementById("thumb").getAttribute("aria-label");
 // the Reveal button's resting label lives in the markup; capture it so the post-reveal reset (which
 // swaps in "Revealing…" while busy) restores the exact markup text rather than a hardcoded copy.
 const REVEAL_LABEL = document.getElementById("reveal").textContent;
+// the Reveal button's resting title (shown when a complete message is ready) lives in the markup;
+// capture it so updateProgress() restates the ready-state tooltip from the markup, not a second copy.
+const REVEAL_TITLE = document.getElementById("reveal").getAttribute("title");
 let msgLimit = 60000;             // chars per message for the chosen chat app (user-selectable)
 let recoveryLevel = "off";        // Reed-Solomon redundancy: off | light | strong (see rsParityCount)
 let textCodec = "b64";            // wire text encoding: b64 (universal) | dense (14 bits/char on the wire, opt-in)
@@ -3175,7 +3178,7 @@ function updateProgress(){
   $("#reveal").title = revealing
     ? "A reveal is already in progress — wait for it to finish"
     : ready
-    ? "Reassembles the pasted chunks and decrypts them (Ctrl/Cmd+Enter)"
+    ? REVEAL_TITLE
     : "Paste a complete Carrier message first";
   if(!r){
     // an empty box is just the resting state, but text that parses to NO chunks used to leave the
