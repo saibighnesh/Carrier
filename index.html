@@ -494,6 +494,9 @@ const RIMG_ALT = document.getElementById("rimg").getAttribute("alt");
 // when the image is cleared; capture them from the markup so the reset path keeps no second copy.
 const THUMB_ALT = document.getElementById("thumb").getAttribute("alt");
 const THUMB_LABEL = document.getElementById("thumb").getAttribute("aria-label");
+// the Reveal button's resting label lives in the markup; capture it so the post-reveal reset (which
+// swaps in "Revealing…" while busy) restores the exact markup text rather than a hardcoded copy.
+const REVEAL_LABEL = document.getElementById("reveal").textContent;
 let msgLimit = 60000;             // chars per message for the chosen chat app (user-selectable)
 let recoveryLevel = "off";        // Reed-Solomon redundancy: off | light | strong (see rsParityCount)
 let textCodec = "b64";            // wire text encoding: b64 (universal) | dense (14 bits/char on the wire, opt-in)
@@ -3624,7 +3627,7 @@ async function doReveal(){
     }
   }
   finally {
-    revealing = false; revBtn.textContent = "Reveal image"; revBtn.removeAttribute("aria-busy");
+    revealing = false; revBtn.textContent = REVEAL_LABEL; revBtn.removeAttribute("aria-busy");
     // updateProgress() disables #reveal while revealing is true (see there for why) — re-run it now that
     // it's false, so whatever is CURRENTLY in the box (which may be a different, still-locked message than
     // the one just finished) is re-evaluated and becomes clickable immediately, instead of staying disabled
