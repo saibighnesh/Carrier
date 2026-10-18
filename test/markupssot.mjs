@@ -59,4 +59,34 @@ t("setQuality() writes the #qval readout from the slider value", () => {
   assert.match(html, /\$\("#qval"\)\.textContent\s*=\s*q\s*\+\s*"%"/, "setQuality should set #qval textContent from q");
 });
 
+// --- resting labels captured from the markup (PRs #603–#607) ---
+// A handful of control labels — the received image's region label and alt, the compressed preview's
+// alt and label, and the Reveal button's label and ready-state title — live once in the markup and are
+// restored by JS on teardown. Each is captured into a constant read straight off its own element, so the
+// reset path never hardcodes a second copy that could drift from the markup. Guard both halves: the
+// capturing constant exists, and the reset reads the constant rather than re-typing the string.
+const capturedLabels = [
+  ["RESULT_LABEL", /const RESULT_LABEL\s*=\s*document\.getElementById\("result"\)\.getAttribute\("aria-label"\);/],
+  ["RIMG_ALT",     /const RIMG_ALT\s*=\s*document\.getElementById\("rimg"\)\.getAttribute\("alt"\);/],
+  ["THUMB_ALT",    /const THUMB_ALT\s*=\s*document\.getElementById\("thumb"\)\.getAttribute\("alt"\);/],
+  ["THUMB_LABEL",  /const THUMB_LABEL\s*=\s*document\.getElementById\("thumb"\)\.getAttribute\("aria-label"\);/],
+  ["REVEAL_LABEL", /const REVEAL_LABEL\s*=\s*document\.getElementById\("reveal"\)\.textContent;/],
+  ["REVEAL_TITLE", /const REVEAL_TITLE\s*=\s*document\.getElementById\("reveal"\)\.getAttribute\("title"\);/],
+];
+for (const [name, re] of capturedLabels) {
+  t(`${name} is captured from the markup, not hardcoded`, () => {
+    assert.match(html, re, `${name} should read its resting value straight off the element`);
+  });
+}
+
+t("the received-image teardown restores labels from the captured constants", () => {
+  assert.match(html, /setAttribute\("aria-label",\s*RESULT_LABEL\)/, "clearReveal should restore #result from RESULT_LABEL");
+  assert.match(html, /rimg\.alt\s*=\s*RIMG_ALT;/, "the teardown should restore the #rimg alt from RIMG_ALT");
+});
+
+t("the preview teardown restores its alt and label from the captured constants", () => {
+  assert.match(html, /\$\("#thumb"\)\.alt\s*=\s*THUMB_ALT;/, "clear should restore the #thumb alt from THUMB_ALT");
+  assert.match(html, /setAttribute\("aria-label",\s*THUMB_LABEL\)/, "clear should restore the #thumb label from THUMB_LABEL");
+});
+
 console.log(`\n${pass} passed`);
