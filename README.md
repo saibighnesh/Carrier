@@ -97,7 +97,7 @@ A leftover part from an earlier image won't block a fresh paste: **Reveal** uses
 
 ## How It Works
 
-The core challenge: most messaging apps cap a single message at ~60,000–65,000 characters, and raw image bytes converted to text are too large to fit. Carrier solves this with three stacked techniques:
+The core challenge: every messaging app caps a single message — anywhere from WhatsApp's ~60,000 characters down to SMS's 160 (see [Security Notes](#security-notes) for the per-app figures) — and raw image bytes converted to text are too large to fit. Carrier solves this with three stacked techniques:
 
 ```
 Image file
