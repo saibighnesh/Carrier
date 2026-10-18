@@ -500,6 +500,9 @@ const REVEAL_LABEL = document.getElementById("reveal").textContent;
 // the Reveal button's resting title (shown when a complete message is ready) lives in the markup;
 // capture it so updateProgress() restates the ready-state tooltip from the markup, not a second copy.
 const REVEAL_TITLE = document.getElementById("reveal").getAttribute("title");
+// the "activate to open full size" hint is appended to the dynamic aria-labels of both the compressed
+// preview and the revealed image; name it once so the three call sites can't word it three ways.
+const FULLSIZE_HINT = " — activate to open full size in a new tab";
 let msgLimit = 60000;             // chars per message for the chosen chat app (user-selectable)
 let recoveryLevel = "off";        // Reed-Solomon redundancy: off | light | strong (see rsParityCount)
 let textCodec = "b64";            // wire text encoding: b64 (universal) | dense (14 bits/char on the wire, opt-in)
@@ -3063,7 +3066,7 @@ async function handleFile(file){
     $("#thumb").alt = `Compressed preview of ${name}`;
     // a role=button element's aria-label WINS over alt, so fold the alt's description INTO the label —
     // otherwise a screen reader hears only "open full size, button" and loses the image description
-    $("#thumb").setAttribute("aria-label", `Compressed preview of ${name} — activate to open full size in a new tab`);
+    $("#thumb").setAttribute("aria-label", `Compressed preview of ${name}${FULLSIZE_HINT}`);
     const fmt = file.type ? file.type.replace(/^image\//, "").split(/[+;]/)[0].toUpperCase() : "";   // "image/jpeg" → "JPEG"
     $("#origOut").innerHTML = sizeStr + ` <small>${fmt ? fmt + " · " : ""}${srcImage.naturalWidth}×${srcImage.naturalHeight}</small>`;
     $("#origOut").title = `${file.size.toLocaleString()} bytes${fmt ? " · " + fmt : ""} · ${srcImage.naturalWidth}×${srcImage.naturalHeight}`;   // exact size on hover
@@ -3568,13 +3571,13 @@ async function doReveal(){
       if(!rimg.naturalWidth || !rimg.naturalHeight) return;
       const dims = `${rimg.naturalWidth}×${rimg.naturalHeight}`;
       rimg.alt = `Received image (${fmtKB(img.length)}, ${resolvedMime}, ${dims}, ${parts}${lockTag ? ", encrypted" : ""})`;
-      rimg.setAttribute("aria-label", `Received image, ${fmtKB(img.length)}, ${resolvedMime}, ${dims}, ${parts}${lockTag ? ", encrypted" : ""} — activate to open full size in a new tab`);
+      rimg.setAttribute("aria-label", `Received image, ${fmtKB(img.length)}, ${resolvedMime}, ${dims}, ${parts}${lockTag ? ", encrypted" : ""}${FULLSIZE_HINT}`);
       $("#rCaption").textContent = `${fmtKB(img.length)} · ${resolvedMime} · ${dims} · ${parts}${lockTag}${intactTag}`;
       $("#result").setAttribute("aria-label", `Received image · ${fmtKB(img.length)} · ${resolvedMime} · ${dims} · ${parts}${lockTag}${intactTag}`);
     };
     rimg.src = url;
     rimg.alt = `Received image (${fmtKB(img.length)}, ${resolvedMime})`;
-    rimg.setAttribute("aria-label", `Received image, ${fmtKB(img.length)}, ${resolvedMime} — activate to open full size in a new tab`);   // dims fold in on load
+    rimg.setAttribute("aria-label", `Received image, ${fmtKB(img.length)}, ${resolvedMime}${FULLSIZE_HINT}`);   // dims fold in on load
     $("#rCaption").textContent = `${fmtKB(img.length)} · ${resolvedMime} · ${parts}${lockTag}${intactTag}`;   // visible size/type/parts under the image
     const ext = { "image/jpeg":"jpg", "image/png":"png", "image/gif":"gif", "image/avif":"avif", "image/webp":"webp" }[resolvedMime] || "webp";
     recovered = { url, mime: resolvedMime, ext, bytes: img };   // keep bytes so the zoom can mint its own URL
