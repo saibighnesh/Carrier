@@ -27,6 +27,7 @@ Save the single `index.html` file and it works offline — on a plane, on a trai
   - [Content Security & Defense in Depth](#content-security--defense-in-depth)
 - [Security Policy](SECURITY.md)
 - [Development](#development)
+  - [Accessibility & Interaction Standards](#accessibility--interaction-standards)
 - [Reporting Issues](#reporting-issues)
 - [Contributing](#contributing)
 - [License](#license)
