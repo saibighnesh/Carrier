@@ -3063,10 +3063,11 @@ async function handleFile(file){
     $("#tunePanel").classList.remove("hidden");
     drop.querySelector("strong").textContent = name;
     drop.querySelector("small").textContent = `${sizeStr} · ${srcImage.naturalWidth}×${srcImage.naturalHeight}`;
-    $("#thumb").alt = `Compressed preview of ${name}`;
+    const previewDesc = `Compressed preview of ${name}`;
+    $("#thumb").alt = previewDesc;
     // a role=button element's aria-label WINS over alt, so fold the alt's description INTO the label —
     // otherwise a screen reader hears only "open full size, button" and loses the image description
-    $("#thumb").setAttribute("aria-label", `Compressed preview of ${name}${FULLSIZE_HINT}`);
+    $("#thumb").setAttribute("aria-label", `${previewDesc}${FULLSIZE_HINT}`);
     const fmt = file.type ? file.type.replace(/^image\//, "").split(/[+;]/)[0].toUpperCase() : "";   // "image/jpeg" → "JPEG"
     $("#origOut").innerHTML = sizeStr + ` <small>${fmt ? fmt + " · " : ""}${srcImage.naturalWidth}×${srcImage.naturalHeight}</small>`;
     $("#origOut").title = `${file.size.toLocaleString()} bytes${fmt ? " · " + fmt : ""} · ${srcImage.naturalWidth}×${srcImage.naturalHeight}`;   // exact size on hover
