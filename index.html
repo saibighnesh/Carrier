@@ -3000,6 +3000,7 @@ const drop = $("#drop"), fileInput = $("#file");
 const DROP_STRONG_DEFAULT = drop.querySelector("strong").textContent;
 const DROP_SMALL_DEFAULT = drop.querySelector("small").textContent;
 const DROP_TITLE_DEFAULT = drop.title;   // restored on Start over; swapped to "replace" wording once an image is loaded
+const DROP_LABEL_DEFAULT = drop.getAttribute("aria-label");   // resting "Choose an image"; swapped to "Replace image" once loaded
 drop.addEventListener("click", ()=>fileInput.click());
 drop.addEventListener("keydown", e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();fileInput.click();} });
 ["dragover","dragenter"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("over");}));
@@ -3024,7 +3025,7 @@ document.addEventListener("paste", e=>{
 });
 let dropErrTimer;
 function showDropErr(msg){ const e=$("#dropErr"); e.classList.remove("hidden"); e.textContent=msg; e.scrollIntoView({behavior:scrollBehavior(),block:"nearest"}); clearTimeout(dropErrTimer); dropErrTimer=setTimeout(clearDropErr, 7000); }   // don't leave a stale error sitting forever
-function clearDropErr(){ clearTimeout(dropErrTimer); const e=$("#dropErr"); e.classList.add("hidden"); e.textContent=""; if(!srcImage) drop.setAttribute("aria-label","Choose an image"); }
+function clearDropErr(){ clearTimeout(dropErrTimer); const e=$("#dropErr"); e.classList.add("hidden"); e.textContent=""; if(!srcImage) drop.setAttribute("aria-label",DROP_LABEL_DEFAULT); }
 async function handleFile(file){
   if(handling) return;
   handling = true;
@@ -3110,7 +3111,7 @@ function resetSend(){
   setOutputStale(false);
   $("#thumb").removeAttribute("src"); $("#thumb").alt = THUMB_ALT;
   $("#thumb").setAttribute("aria-label", THUMB_LABEL);   // restore the resting label
-  drop.setAttribute("aria-label","Choose an image");
+  drop.setAttribute("aria-label",DROP_LABEL_DEFAULT);
   drop.title = DROP_TITLE_DEFAULT;
   drop.querySelector("strong").textContent = DROP_STRONG_DEFAULT;
   drop.querySelector("small").textContent = DROP_SMALL_DEFAULT;
