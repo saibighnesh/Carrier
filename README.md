@@ -39,6 +39,7 @@ Save the single `index.html` file and it works offline — on a plane, on a trai
 | Step | What happens |
 |------|-------------|
 | Drop an image | Carrier compresses it to fit a chat message |
+| Lock it *(optional)* | Set a password to encrypt before sending |
 | Copy the text | Paste it into any messenger as plain text |
 | Recipient pastes | Carrier reassembles and decodes it back into the image |
 
