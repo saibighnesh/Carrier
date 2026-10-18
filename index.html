@@ -490,6 +490,10 @@ const RIMG_LABEL = document.getElementById("rimg").getAttribute("aria-label");
 // restored on teardown; capture them from the markup so the reset paths don't hardcode a second copy.
 const RESULT_LABEL = document.getElementById("result").getAttribute("aria-label");
 const RIMG_ALT = document.getElementById("rimg").getAttribute("alt");
+// the compressed preview's resting alt and aria-label live once in the #thumb markup and are restored
+// when the image is cleared; capture them from the markup so the reset path keeps no second copy.
+const THUMB_ALT = document.getElementById("thumb").getAttribute("alt");
+const THUMB_LABEL = document.getElementById("thumb").getAttribute("aria-label");
 let msgLimit = 60000;             // chars per message for the chosen chat app (user-selectable)
 let recoveryLevel = "off";        // Reed-Solomon redundancy: off | light | strong (see rsParityCount)
 let textCodec = "b64";            // wire text encoding: b64 (universal) | dense (14 bits/char on the wire, opt-in)
@@ -3094,8 +3098,8 @@ function resetSend(){
   $("#planNote").classList.add("hidden"); $("#planNote").textContent = "";
   $("#compactNote").classList.add("hidden"); $("#compactNote").textContent = "";
   setOutputStale(false);
-  $("#thumb").removeAttribute("src"); $("#thumb").alt = "Compressed preview";
-  $("#thumb").setAttribute("aria-label", "Open the compressed preview full size in a new tab");   // restore the resting label
+  $("#thumb").removeAttribute("src"); $("#thumb").alt = THUMB_ALT;
+  $("#thumb").setAttribute("aria-label", THUMB_LABEL);   // restore the resting label
   drop.setAttribute("aria-label","Choose an image");
   drop.title = DROP_TITLE_DEFAULT;
   drop.querySelector("strong").textContent = DROP_STRONG_DEFAULT;
