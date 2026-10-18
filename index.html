@@ -486,6 +486,10 @@ const COPY_FAIL = "Copy failed", COPY_FAIL_ARIA = "Copy failed — clipboard acc
 // the received image's resting aria-label lives in the #rimg markup and is restored from three teardown
 // paths; capture it once at load so the markup stays the single source.
 const RIMG_LABEL = document.getElementById("rimg").getAttribute("aria-label");
+// the resting #result region label and #rimg alt ("Received image") each live once in the markup and are
+// restored on teardown; capture them from the markup so the reset paths don't hardcode a second copy.
+const RESULT_LABEL = document.getElementById("result").getAttribute("aria-label");
+const RIMG_ALT = document.getElementById("rimg").getAttribute("alt");
 let msgLimit = 60000;             // chars per message for the chosen chat app (user-selectable)
 let recoveryLevel = "off";        // Reed-Solomon redundancy: off | light | strong (see rsParityCount)
 let textCodec = "b64";            // wire text encoding: b64 (universal) | dense (14 bits/char on the wire, opt-in)
@@ -3324,7 +3328,7 @@ function clearReveal(){
   $("#save").title = SAVE_TITLE_DEFAULT; $("#save").removeAttribute("aria-label");   // revert to the button's text label
   if(recovered){ URL.revokeObjectURL(recovered.url); recovered = null; }
   $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true");
-  $("#result").setAttribute("aria-label","Received image");
+  $("#result").setAttribute("aria-label",RESULT_LABEL);
   $("#rimg").setAttribute("aria-label",RIMG_LABEL);   // restore the resting label
   $("#rCaption").textContent = "";
   if(!$("#recv").classList.contains("hidden")) document.title = RECV_TITLE;   // drop the "✓ received" title once the image is torn down
@@ -3532,7 +3536,7 @@ async function doReveal(){
     rimg.onerror = ()=>{
       if(!recovered || recovered.url !== url) return;   // a newer reveal already replaced this image — ignore the stale error
       URL.revokeObjectURL(recovered.url); recovered = null;
-      rimg.removeAttribute("src"); rimg.alt = "Received image"; rimg.setAttribute("aria-label",RIMG_LABEL); $("#rCaption").textContent = "";
+      rimg.removeAttribute("src"); rimg.alt = RIMG_ALT; rimg.setAttribute("aria-label",RIMG_LABEL); $("#rCaption").textContent = "";
       $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true");
       note.className = "note err";
       note.textContent = "The data decoded, but it isn't a valid image — the message is likely corrupted or was altered in transit.";
