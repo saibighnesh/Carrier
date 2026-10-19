@@ -90,7 +90,7 @@ A leftover part from an earlier image won't block a fresh paste: **Reveal** uses
 | `Ctrl` / `Cmd` + `V` | Paste an image to send (with the drop zone focused) |
 | `Ctrl` / `Cmd` + `Enter` | **Send:** copy the next message · **Receive:** reveal the image |
 | `Esc` | **Send:** start over · **Receive:** clear the inbox |
-| `←` / `→` | Switch between the **Send** and **Receive** tabs |
+| `←` / `→` | Switch between the **Send** and **Receive** tabs (with a tab button focused) |
 | `Enter` / `Space` | Open the file picker (drop zone focused), or open the focused preview / received image full size in a new tab |
 
 ---
