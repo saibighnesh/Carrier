@@ -507,6 +507,10 @@ const REVEAL_EMPTY_TITLE = "Paste a complete Carrier message first";
 // the "activate to open full size" hint is appended to the dynamic aria-labels of both the compressed
 // preview and the revealed image; name it once so the three call sites can't word it three ways.
 const FULLSIZE_HINT = " — activate to open full size in a new tab";
+// the show/hide password toggle's label pair is spelled by both the click handler and maskPassword()'s
+// reset; name it once so the toggled and reset states can't word the same button two ways.
+const PW_SHOW = "Show", PW_HIDE = "Hide";
+const PW_SHOW_LABEL = "Show password", PW_HIDE_LABEL = "Hide password";
 let msgLimit = 60000;             // chars per message for the chosen chat app (user-selectable)
 let recoveryLevel = "off";        // Reed-Solomon redundancy: off | light | strong (see rsParityCount)
 let textCodec = "b64";            // wire text encoding: b64 (universal) | dense (14 bits/char on the wire, opt-in)
@@ -3735,9 +3739,9 @@ document.querySelectorAll(".pwtoggle").forEach(btn=>{
   btn.addEventListener("click", ()=>{
     const show = inp.type === "password";
     inp.type = show ? "text" : "password";
-    btn.textContent = show ? "Hide" : "Show";
+    btn.textContent = show ? PW_HIDE : PW_SHOW;
     btn.setAttribute("aria-pressed", String(show));
-    btn.setAttribute("aria-label", show ? "Hide password" : "Show password");
+    btn.setAttribute("aria-label", show ? PW_HIDE_LABEL : PW_SHOW_LABEL);
     inp.focus();
   });
 });
@@ -3745,7 +3749,7 @@ document.querySelectorAll(".pwtoggle").forEach(btn=>{
 function maskPassword(id){
   const inp = $("#"+id), btn = document.querySelector(`.pwtoggle[data-target="${id}"]`);
   inp.type = "password";
-  if(btn){ btn.textContent = "Show"; btn.setAttribute("aria-pressed","false"); btn.setAttribute("aria-label","Show password"); }
+  if(btn){ btn.textContent = PW_SHOW; btn.setAttribute("aria-pressed","false"); btn.setAttribute("aria-label",PW_SHOW_LABEL); }
 }
 
 window.addEventListener("pagehide", ()=>{
