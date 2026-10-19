@@ -511,6 +511,11 @@ const FULLSIZE_HINT = " — activate to open full size in a new tab";
 // reset; name it once so the toggled and reset states can't word the same button two ways.
 const PW_SHOW = "Show", PW_HIDE = "Hide";
 const PW_SHOW_LABEL = "Show password", PW_HIDE_LABEL = "Hide password";
+// localStorage keys for the remembered UI preferences. Each was read and written as a bare string at
+// several sites; a single typo would silently split a read from its write — a setting that looks saved
+// but loads the default next visit. Name them once so the read and the write can't disagree.
+const LS_QUALITY = "carrier_quality", LS_MAXDIM = "carrier_maxdim", LS_MSGLIMIT = "carrier_msglimit",
+      LS_CODEC = "carrier_codec", LS_RECOVERY = "carrier_recovery", LS_MODE = "carrier_mode";
 let msgLimit = 60000;             // chars per message for the chosen chat app (user-selectable)
 let recoveryLevel = "off";        // Reed-Solomon redundancy: off | light | strong (see rsParityCount)
 let textCodec = "b64";            // wire text encoding: b64 (universal) | dense (14 bits/char on the wire, opt-in)
@@ -2523,30 +2528,30 @@ function setQuality(q){
 
 (()=>{
   const qEl = $("#quality");
-  let q = lsGet("carrier_quality");
-  const d = lsGet("carrier_maxdim");
+  let q = lsGet(LS_QUALITY);
+  const d = lsGet(LS_MAXDIM);
   // validate the stored quality the same way maxdim is validated below: an out-of-range or
   // non-numeric value (corrupt/tampered/cross-version) would otherwise show in the %readout and
   // aria-valuetext while the range input silently clamps to a different number — a desync.
   if(q !== null){
     const n = parseInt(q, 10);
     if(Number.isInteger(n) && n >= +qEl.min && n <= +qEl.max) q = String(n);
-    else { lsRemove("carrier_quality"); q = null; }
+    else { lsRemove(LS_QUALITY); q = null; }
   }
   setQuality(q || qEl.value);   // sync aria-valuetext + %readout on load, even at the default (no stored value)
   if(d && [...$("#maxdim").options].some(o => o.value === d)) $("#maxdim").value = d;
-  else if(d) lsRemove("carrier_maxdim");
+  else if(d) lsRemove(LS_MAXDIM);
   syncPresets();   // restored quality + maxdim are both set now — light the matching preset, if any
   // restore the chosen chat app; only accept a value that maps to a known limit
-  const ml = lsGet("carrier_msglimit");
+  const ml = lsGet(LS_MSGLIMIT);
   if(ml && MSG_LIMITS[ml]){ msgLimit = +ml; $("#chatLimit").value = ml; }
-  else if(ml) lsRemove("carrier_msglimit");
-  const tc = lsGet("carrier_codec");
+  else if(ml) lsRemove(LS_MSGLIMIT);
+  const tc = lsGet(LS_CODEC);
   if(tc === "dense" || tc === "b64"){ textCodec = tc; $("#compact").value = tc; }
-  else if(tc) lsRemove("carrier_codec");
-  const rv = lsGet("carrier_recovery");
+  else if(tc) lsRemove(LS_CODEC);
+  const rv = lsGet(LS_RECOVERY);
   if(rv && Object.prototype.hasOwnProperty.call(RS_LEVELS, rv)){ recoveryLevel = rv; $("#recovery").value = rv; }
-  else if(rv) lsRemove("carrier_recovery");
+  else if(rv) lsRemove(LS_RECOVERY);
 })();
 
 // `input` fires continuously while a range is dragged — once per pixel on a mouse, at sample rate on a
@@ -2567,8 +2572,8 @@ function flushPersist(){
   for(const k in pendingPersist) lsSet(k, pendingPersist[k]);
   pendingPersist = null;
 }
-$("#quality").addEventListener("input", e=>{ const v = e.target.value; setQuality(v); queuePersist("carrier_quality", v); queueRefresh(); });
-$("#maxdim").addEventListener("change", e=>{ queuePersist("carrier_maxdim", e.target.value); syncPresets(); queueRefresh(); });
+$("#quality").addEventListener("input", e=>{ const v = e.target.value; setQuality(v); queuePersist(LS_QUALITY, v); queueRefresh(); });
+$("#maxdim").addEventListener("change", e=>{ queuePersist(LS_MAXDIM, e.target.value); syncPresets(); queueRefresh(); });
 // switching chat app changes the per-message char budget → re-chunk and redraw the meter/stats
 const CUSTOM_LIMIT_MIN = 20, CUSTOM_LIMIT_MAX = 200000;
 // Custom is deliberately session-only — not persisted. Restoring it on load would mean either trusting
@@ -2615,7 +2620,7 @@ $("#chatLimit").addEventListener("change", e=>{
   // the error, since applyCustomLimit's badInput check runs before the (now-moot) parseCustomLimit call
   $("#chatLimitCustomErr").classList.add("hidden");
   $("#chatLimitCustom").removeAttribute("aria-invalid");
-  msgLimit = +e.target.value; queuePersist("carrier_msglimit", e.target.value); queueRefresh();
+  msgLimit = +e.target.value; queuePersist(LS_MSGLIMIT, e.target.value); queueRefresh();
 });
 let customLimitDebounce;
 $("#chatLimitCustom").addEventListener("input", ()=>{
@@ -2623,8 +2628,8 @@ $("#chatLimitCustom").addEventListener("input", ()=>{
   customLimitDebounce = setTimeout(applyCustomLimit, 180);   // same debounce as every other tune control
 });
 // changing redundancy re-chunks (and resizes every part), so it goes through the same debounce
-$("#recovery").addEventListener("change", e=>{ recoveryLevel = e.target.value; queuePersist("carrier_recovery", e.target.value); queueRefresh(); });
-$("#compact").addEventListener("change", e=>{ textCodec = e.target.value; queuePersist("carrier_codec", e.target.value); queueRefresh(); });
+$("#recovery").addEventListener("change", e=>{ recoveryLevel = e.target.value; queuePersist(LS_RECOVERY, e.target.value); queueRefresh(); });
+$("#compact").addEventListener("change", e=>{ textCodec = e.target.value; queuePersist(LS_CODEC, e.target.value); queueRefresh(); });
 // drop the cached derived key the instant the password changes — don't retain the previous secret's key
 // in the heap until Start over, and don't let a future cache-keying refactor risk encrypting under a
 // stale key. getKeyMaterial re-derives on the next pack; correctness no longer rests only on its equality check.
@@ -2715,8 +2720,8 @@ function applyPreset(q, d){
   if([...$("#maxdim").options].some(o => o.value === String(d))) $("#maxdim").value = String(d);
   // through the same queue as the slider, not a direct lsSet: a write still pending from a drag would
   // otherwise land after this one and clobber the preset the user just chose
-  queuePersist("carrier_quality", String(q));
-  queuePersist("carrier_maxdim", String(d));
+  queuePersist(LS_QUALITY, String(q));
+  queuePersist(LS_MAXDIM, String(d));
   syncPresets();   // re-run now that maxdim is set too, so setQuality's earlier pass (old dim) is corrected
   queueRefresh();
 }
@@ -2770,8 +2775,8 @@ $("#autofit").addEventListener("click", async ()=>{
     $("#maxdim").value = String(best.d);
     setQuality(best.q);
     if(!hitFallback){   // persist a working fit — including a legitimate one that landed on the minimum rung
-      queuePersist("carrier_quality", String(best.q));
-      queuePersist("carrier_maxdim", String(best.d));
+      queuePersist(LS_QUALITY, String(best.q));
+      queuePersist(LS_MAXDIM, String(best.d));
     }
     await refresh();
     if(stale()) return;   // re-check: refresh() is itself an await gap — it bails internally on its own staleness,
@@ -3789,7 +3794,7 @@ modeBtns.forEach((btn, idx)=>{
   btn.setAttribute("tabindex", btn.getAttribute("aria-selected")==="true" ? "0" : "-1");
   btn.addEventListener("click", (e)=>{
     const m = btn.dataset.m;
-    lsSet("carrier_mode", m);
+    lsSet(LS_MODE, m);
     // a slider/password edit made just before this click can leave a refresh() queued under the mode we're
     // now leaving. refresh() itself now bails on Send-panel visibility too (not just !srcImage), so an
     // uncancelled timer landing after this switch is harmless — but it's still a whole compress/pack/chunk
@@ -3833,7 +3838,7 @@ modeBtns.forEach((btn, idx)=>{
 });
 
 /* restore the last-used mode (synthetic click → isTrusted false, so it won't steal focus or scroll) */
-if(lsGet("carrier_mode") === "recv") $("#tab-recv").click();
+if(lsGet(LS_MODE) === "recv") $("#tab-recv").click();
 
 /* footer copyright year: 2026 is the static floor in the markup; bump it if the clock is later, never
    below (a wrong-in-the-past clock shouldn't roll the notice back). Set here instead of via document.write
