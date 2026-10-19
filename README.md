@@ -257,7 +257,7 @@ The CRC-32 is **appended**, not prepended, so an older Carrier build reads `flag
 
 Carrier is built with a zero-persistence privacy architecture:
 - **No Remote Telemetry or Tracking:** Zero analytics, cookies, tracking pixels, or outbound beacons.
-- **Strict Storage Isolation:** Passwords and unencrypted image buffers are processed strictly in volatile memory. Passphrases are never saved to `localStorage`, `sessionStorage`, or IndexedDB.
+- **Strict Storage Isolation:** Passwords and unencrypted image buffers are processed strictly in volatile memory. Passphrases are never saved to `localStorage`, `sessionStorage`, or IndexedDB. Only non-sensitive UI preferences persist in `localStorage` — the quality and size settings, chat app, codec, recovery level, last-used tab, and the learned per-app loss rate — never image data or passwords.
 - **Volatile Teardown:** Clearing an image or starting over explicitly resets internal canvas buffers, revokes object URLs via `URL.revokeObjectURL()`, and scrubs active input fields.
 
 ### Content Security & Defense in Depth
