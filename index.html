@@ -507,6 +507,9 @@ const REVEAL_EMPTY_TITLE = "Paste a complete Carrier message first";
 // the "activate to open full size" hint is appended to the dynamic aria-labels of both the compressed
 // preview and the revealed image; name it once so the three call sites can't word it three ways.
 const FULLSIZE_HINT = " — activate to open full size in a new tab";
+// the Recovery control's resting title lives in the #recovery markup; showLossHistory() re-asserts it
+// (it used to toggle the control disabled), so capture it once rather than retype the sentence.
+const RECOVERY_TITLE = document.getElementById("recovery").getAttribute("title");
 // the show/hide password toggle's label pair is spelled by both the click handler and maskPassword()'s
 // reset; name it once so the toggled and reset states can't word the same button two ways.
 const PW_SHOW = "Show", PW_HIDE = "Hide";
@@ -2267,7 +2270,7 @@ function showCompact(){
   // Recovery now works under Compact too (GF(2^14): a parity symbol IS a dense character, the same trick
   // GF(2^6) does for Base64), so the control is never disabled here any more. It briefly was, before that
   // field existed — leaving that comment as the reason a future edit shouldn't reintroduce the disable.
-  $("#recovery").title = "Adds extra parts so the recipient can rebuild ones that go missing, without asking you to resend";
+  $("#recovery").title = RECOVERY_TITLE;
   if(textCodec !== "dense"){
     // only advertise it where it would actually pay — never beside SMS, where it is a loss
     if(msgLimit >= 2000 && lastChunks.length > 1){
