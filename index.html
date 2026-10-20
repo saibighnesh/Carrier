@@ -2804,7 +2804,7 @@ $("#autofit").addEventListener("click", async ()=>{
   } finally {
     setTuneDisabled(false);
     btn.disabled = false;
-    btn.innerHTML = autofitOrigHtml || '<span aria-hidden="true">⚡ </span>Auto-fit to 1 message';
+    btn.innerHTML = autofitOrigHtml;
     btn.removeAttribute("aria-busy");
     // disabling the button dropped keyboard focus to <body> for the duration of the fit; return it to the
     // button now — but only if focus is still adrift (don't yank it back if the user moved on meanwhile)
