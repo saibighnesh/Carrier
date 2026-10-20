@@ -1805,6 +1805,9 @@ async function autoFit(onProgress){
 /* ---------- SEND ui ---------- */
 const prefersReducedMotion = ()=>window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const scrollBehavior = ()=>prefersReducedMotion() ? "auto" : "smooth";
+// every scroll-into-view in the app wants the same thing: the nearest edge, animated unless the user
+// asked for reduced motion. Name it once so the seven call sites can't drift in behavior or block value.
+const scrollIntoViewNearest = el => el.scrollIntoView({behavior:scrollBehavior(), block:"nearest"});
 let lastChunks = [], thumbUrl = null, refreshing = false, pendingRefresh = false, copyAllBusy = false, lastTxtUrl = null;
 let lastPreviewBytes = null, lastPreviewMime = "image/webp";   // latest compressed bytes, for the full-size zoom tab
 const copyAllLabel = () => lastChunks.length === 1 ? "Copy message" : "Copy all messages";
@@ -2856,7 +2859,7 @@ $("#copyNext").addEventListener("click", async ()=>{
     if(lastChunks === chunksNow){
       // only the first CHUNK_RENDER_CAP parts have a card; beyond that there's nothing to scroll to
       const card = $("#chunks").querySelector(`.data[data-i="${i}"]`);
-      if(card) card.closest(".chunk").scrollIntoView({behavior:scrollBehavior(),block:"nearest"});
+      if(card) scrollIntoViewNearest(card.closest(".chunk"));
     }
     flashButton(btn, `Copied ${i+1} ✓`, `Copied message ${i+1} of ${chunksNow.length}`, 1200);
   }catch{
@@ -3040,7 +3043,7 @@ document.addEventListener("paste", e=>{
   }
 });
 let dropErrTimer;
-function showDropErr(msg){ const e=$("#dropErr"); e.classList.remove("hidden"); e.textContent=msg; e.scrollIntoView({behavior:scrollBehavior(),block:"nearest"}); clearTimeout(dropErrTimer); dropErrTimer=setTimeout(clearDropErr, 7000); }   // don't leave a stale error sitting forever
+function showDropErr(msg){ const e=$("#dropErr"); e.classList.remove("hidden"); e.textContent=msg; scrollIntoViewNearest(e); clearTimeout(dropErrTimer); dropErrTimer=setTimeout(clearDropErr, 7000); }   // don't leave a stale error sitting forever
 function clearDropErr(){ clearTimeout(dropErrTimer); const e=$("#dropErr"); e.classList.add("hidden"); e.textContent=""; if(!srcImage) drop.setAttribute("aria-label",DROP_LABEL_DEFAULT); }
 async function handleFile(file){
   if(handling) return;
@@ -3090,7 +3093,7 @@ async function handleFile(file){
     $("#origOut").title = `${file.size.toLocaleString()} bytes${fmt ? " · " + fmt : ""} · ${srcImage.naturalWidth}×${srcImage.naturalHeight}`;   // exact size on hover
     document.title = `${name} — Carrier`;
     await refresh();
-    $("#tunePanel").scrollIntoView({behavior:scrollBehavior(),block:"nearest"});
+    scrollIntoViewNearest($("#tunePanel"));
     $("#tunePanel").focus();
   }catch(err){
     if(myToken !== loadToken) return;   // abandoned during decode — don't surface an error for a file the user dropped
@@ -3133,7 +3136,7 @@ function resetSend(){
   drop.querySelector("small").textContent = DROP_SMALL_DEFAULT;
   clearDropErr();
   document.title = SEND_TITLE;
-  drop.scrollIntoView({behavior:scrollBehavior(),block:"nearest"});
+  scrollIntoViewNearest(drop);
   drop.focus();
 }
 $("#startOver").addEventListener("click", resetSend);
@@ -3252,7 +3255,7 @@ function updateProgress(){
         const ae = document.activeElement;
         if(ae === document.body || ae === $("#inbox") || ae === $("#pasteInbox") || ae === $("#loadTxt")){
           $("#rpass").focus();
-          $("#rpass").scrollIntoView({behavior:scrollBehavior(), block:"nearest"});
+          scrollIntoViewNearest($("#rpass"));
         }
       }
     } else lockedPrompted = false;
@@ -3604,7 +3607,7 @@ async function doReveal(){
     $("#result").setAttribute("aria-label", `Received image · ${fmtKB(img.length)} · ${resolvedMime} · ${parts}${lockTag}${intactTag}`);   // dims fold in on load
     $("#result").classList.remove("hidden");
     $("#result").removeAttribute("aria-hidden");
-    $("#result").scrollIntoView({behavior:scrollBehavior(),block:"nearest"});
+    scrollIntoViewNearest($("#result"));
     // manual Reveal (unlike maybeAutoReveal, which bails on multiSession) will happily reveal whatever
     // reassemble picked — and "most complete" can be a stale leftover, not the image the user is
     // assembling. Don't claim a plain "Received ✓" in that case; say the box held several images and this
@@ -3719,7 +3722,7 @@ $("#save").addEventListener("click", ()=>{
 // on a phone that is the full height of the revealed image. The next action belongs next to the last one.
 $("#recvAnother").addEventListener("click", ()=>{
   resetReceive();   // same teardown as Clear: drops the image, empties the box and password, focuses #inbox
-  $("#inbox").scrollIntoView({behavior:scrollBehavior(), block:"nearest"});
+  scrollIntoViewNearest($("#inbox"));
 });
 $("#rpass").addEventListener("input", ()=>{ const n=$("#rNote"); if(n.classList.contains("err")){ n.className="note"; n.textContent=""; } });
 // call doReveal() directly (not #reveal.click()) so the shortcut still surfaces "Missing part N" /
