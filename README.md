@@ -115,7 +115,7 @@ Image file
 
 ### Encryption (optional)
 When a password is set:
-- Salt (16 bytes) + IV (12 bytes) generated randomly per send
+- Salt (16 bytes) + IV (12 bytes) generated randomly per send, and sent inside the payload so the recipient needs only the password
 - Key derived via **PBKDF2** (SHA-256, 250,000 iterations)
 - Payload encrypted with **AES-256-GCM** (authenticated — wrong password fails loudly)
 
