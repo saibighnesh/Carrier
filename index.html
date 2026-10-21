@@ -507,6 +507,9 @@ const REVEAL_EMPTY_TITLE = "Paste a complete Carrier message first";
 // the "activate to open full size" hint is appended to the dynamic aria-labels of both the compressed
 // preview and the revealed image; name it once so the three call sites can't word it three ways.
 const FULLSIZE_HINT = " — activate to open full size in a new tab";
+// wrap a value so page-translation leaves it alone — used to scope translate="no" to the numbers and
+// units in the live stats (digits, KB/MB, the × separator) while the surrounding prose stays translatable.
+const noTranslate = s => `<span translate="no">${s}</span>`;
 // the Recovery control's resting title lives in the #recovery markup; showLossHistory() re-asserts it
 // (it used to toggle the control disabled), so capture it once rather than retype the sentence.
 const RECOVERY_TITLE = document.getElementById("recovery").getAttribute("title");
@@ -2073,7 +2076,7 @@ async function refresh(){
   // scope translate=no to the numbers/units only, so page-translation can still render the prose
   // ("% of original", "chars") while never rewriting the digits, KB/MB, or the × separator
   const outFmt = (srcMime || "").replace(/^image\//, "").toUpperCase();   // WEBP or JPEG — the encoder's chosen format
-  $("#sizeOut").innerHTML = `<span translate="no">${fmtKB(img.length)}</span> <small>${outFmt ? `<span translate="no">${outFmt}</span> · ` : ""}<span translate="no">${img._w}×${img._h}</span>${pctOrig}</small>`;
+  $("#sizeOut").innerHTML = `${noTranslate(fmtKB(img.length))} <small>${outFmt ? `${noTranslate(outFmt)} · ` : ""}${noTranslate(`${img._w}×${img._h}`)}${pctOrig}</small>`;
   // With Compact on, show what it saved against the Base64 the user would otherwise be pasting. The
   // character count alone is only meaningful next to the number it replaced — "6,352 chars" means
   // nothing on its own, "half of 12,704" is the entire point of the setting.
@@ -2088,7 +2091,7 @@ async function refresh(){
   const savedTag = (b64Equiv > b64.length)
     ? ` <small>chars · ${Math.round(b64.length / b64Equiv * 100)}% of ${b64Equiv.toLocaleString()} as Base64</small>`
     : " <small>chars</small>";
-  $("#charOut").innerHTML = `<span translate="no">${b64.length.toLocaleString()}</span>${savedTag}`;
+  $("#charOut").innerHTML = `${noTranslate(b64.length.toLocaleString())}${savedTag}`;
   // name the encoding actually in use. This said "once Base64-encoded" unconditionally, which is simply
   // untrue for a Compact send — and it is the one tooltip a user checks when working out why the
   // character count halved, so a wrong answer there undermines the feature it is describing.
