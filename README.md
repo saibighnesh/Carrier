@@ -218,6 +218,8 @@ Fixed levels get the same honest figure, and are told when Auto would do better.
 Magic "PXT1" (4 bytes) | flags (1 byte) | body
 ```
 
+`flags` is a bitfield — bit 0 (`1`) marks an encrypted payload, bit 1 (`2`) marks an appended CRC-32:
+
 | `flags` | Body |
 |---|---|
 | `0` | `mimeLen(1) │ mime │ imageBytes` — written by Carrier builds predating the checksum |
