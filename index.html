@@ -525,6 +525,9 @@ const LS_QUALITY = "carrier_quality", LS_MAXDIM = "carrier_maxdim", LS_MSGLIMIT 
 // the delay (ms) every tune control debounces its refresh by — the main slider/dropdown queue and the
 // custom-limit field must stay in step, so name it once rather than repeat the literal 180.
 const TUNE_DEBOUNCE_MS = 180;
+// how long (ms) the Copy-all button holds its "Copied ✓" / failure feedback before reverting to its
+// resting label — set from both the success and the error path, so name it once.
+const COPY_ALL_REVERT_MS = 2000;
 let msgLimit = 60000;             // chars per message for the chosen chat app (user-selectable)
 let recoveryLevel = "off";        // Reed-Solomon redundancy: off | light | strong (see rsParityCount)
 let textCodec = "b64";            // wire text encoding: b64 (universal) | dense (14 bits/char on the wire, opt-in)
@@ -2839,10 +2842,10 @@ $("#copyAll").addEventListener("click", async ()=>{
     markSentBatch(chunks);   // the whole payload is on the clipboard — mark whichever of it is still live
     b.textContent = chunks.length === 1 ? "Copied ✓" : "Copied all ✓";
     b.setAttribute("aria-label", chunks.length === 1 ? "Copied the message" : `Copied all ${chunks.length} messages`);
-    copyAllTimer = setTimeout(restore, 2000);
+    copyAllTimer = setTimeout(restore, COPY_ALL_REVERT_MS);
   }catch{
     b.textContent = COPY_FAIL; b.setAttribute("aria-label",COPY_FAIL_ARIA);
-    copyAllTimer = setTimeout(restore, 2000);
+    copyAllTimer = setTimeout(restore, COPY_ALL_REVERT_MS);
   }
 });
 // Copy-next: the practical way to send a multi-part payload. Pasting a 12-part image into a chat means
