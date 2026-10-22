@@ -522,6 +522,9 @@ const PW_SHOW_LABEL = "Show password", PW_HIDE_LABEL = "Hide password";
 // but loads the default next visit. Name them once so the read and the write can't disagree.
 const LS_QUALITY = "carrier_quality", LS_MAXDIM = "carrier_maxdim", LS_MSGLIMIT = "carrier_msglimit",
       LS_CODEC = "carrier_codec", LS_RECOVERY = "carrier_recovery", LS_MODE = "carrier_mode";
+// the delay (ms) every tune control debounces its refresh by — the main slider/dropdown queue and the
+// custom-limit field must stay in step, so name it once rather than repeat the literal 180.
+const TUNE_DEBOUNCE_MS = 180;
 let msgLimit = 60000;             // chars per message for the chosen chat app (user-selectable)
 let recoveryLevel = "off";        // Reed-Solomon redundancy: off | light | strong (see rsParityCount)
 let textCodec = "b64";            // wire text encoding: b64 (universal) | dense (14 bits/char on the wire, opt-in)
@@ -2499,7 +2502,7 @@ $("#chunks").addEventListener("copy", e=>{
 });
 
 let debounce;
-function queueRefresh(){ clearTimeout(debounce); debounce = setTimeout(refresh, 180); }
+function queueRefresh(){ clearTimeout(debounce); debounce = setTimeout(refresh, TUNE_DEBOUNCE_MS); }
 // wait for an in-flight refresh() to land. Polls with setTimeout, NOT requestAnimationFrame: browsers
 // stop firing rAF entirely in a hidden or backgrounded tab, so a user who started Auto-fit and switched
 // away came back to a button frozen on "Fitting…" — and, because the Esc handler keys on that button's
@@ -2634,7 +2637,7 @@ $("#chatLimit").addEventListener("change", e=>{
 let customLimitDebounce;
 $("#chatLimitCustom").addEventListener("input", ()=>{
   clearTimeout(customLimitDebounce);
-  customLimitDebounce = setTimeout(applyCustomLimit, 180);   // same debounce as every other tune control
+  customLimitDebounce = setTimeout(applyCustomLimit, TUNE_DEBOUNCE_MS);   // same debounce as every other tune control
 });
 // changing redundancy re-chunks (and resizes every part), so it goes through the same debounce
 $("#recovery").addEventListener("change", e=>{ recoveryLevel = e.target.value; queuePersist(LS_RECOVERY, e.target.value); queueRefresh(); });
