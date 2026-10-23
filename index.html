@@ -528,6 +528,9 @@ const TUNE_DEBOUNCE_MS = 180;
 // how long (ms) the Copy-all button holds its "Copied ✓" / failure feedback before reverting to its
 // resting label — set from both the success and the error path, so name it once.
 const COPY_ALL_REVERT_MS = 2000;
+// is the Receive tab the one currently showing? Many title/focus/keyboard paths gate on this; name the
+// check so they read as intent ("receive is visible") rather than the inverted class test spelled out.
+const recvVisible = () => !$("#recv").classList.contains("hidden");
 let msgLimit = 60000;             // chars per message for the chosen chat app (user-selectable)
 let recoveryLevel = "off";        // Reed-Solomon redundancy: off | light | strong (see rsParityCount)
 let textCodec = "b64";            // wire text encoding: b64 (universal) | dense (14 bits/char on the wire, opt-in)
@@ -3182,7 +3185,7 @@ function updateProgress(){
     // this box is no longer being parsed as any particular part count, so the tab strip's "N/M parts"
     // counter from an earlier, smaller paste is now describing text that isn't there any more — same
     // guard every other title write below already uses (don't stomp a post-reveal "✓ Image received").
-    if(!recovered && !$("#recv").classList.contains("hidden")) document.title = RECV_TITLE;
+    if(!recovered && recvVisible()) document.title = RECV_TITLE;
     return;
   }
   const r = reassemble(raw);
@@ -3217,7 +3220,7 @@ function updateProgress(){
     // an empty box is just the resting state, but text that parses to NO chunks used to leave the
     // progress line blank — the user saw their paste land and then absolutely nothing happen, with only
     // a disabled Reveal button to explain it. Say what's wrong while the text is still on screen.
-    if(!recovered && !$("#recv").classList.contains("hidden")) document.title = RECV_TITLE;
+    if(!recovered && recvVisible()) document.title = RECV_TITLE;
     if($("#inbox").value.trim()) {
       p.className = "progress warn";
       p.textContent = "No Carrier messages found in that text — each part starts with “PXT/” (or “PXD/” for a Compact send). Paste the messages exactly as you received them.";
@@ -3287,7 +3290,7 @@ function updateProgress(){
   // mirror of the send side: assembling a long payload means hopping between the chat and this tab, and
   // the tab strip is the only place the count is visible without switching back. Never overwrite the
   // post-reveal "✓ Image received" title — that outranks a parts count for a payload already decoded.
-  if(!recovered && !$("#recv").classList.contains("hidden")) document.title = r.missing.length === 0
+  if(!recovered && recvVisible()) document.title = r.missing.length === 0
     ? `✓ all ${r.total} parts — Carrier`
     : `${r.have}/${r.total} parts — Carrier`;
   if(r.multiSession){
@@ -3374,7 +3377,7 @@ function clearReveal(){
   $("#result").setAttribute("aria-label",RESULT_LABEL);
   $("#rimg").setAttribute("aria-label",RIMG_LABEL);   // restore the resting label
   $("#rCaption").textContent = "";
-  if(!$("#recv").classList.contains("hidden")) document.title = RECV_TITLE;   // drop the "✓ received" title once the image is torn down
+  if(recvVisible()) document.title = RECV_TITLE;   // drop the "✓ received" title once the image is torn down
 }
 // full reset of the receive panel: drop any revealed image, empty the inbox + password, hide the result
 function resetReceive(){
@@ -3553,7 +3556,7 @@ async function doReveal(){
     // the await can't be the snapshot we decrypted, so skip the expensive regex scan and just treat it as stale.
     const inboxNow = $("#inbox").value;
     const now = inboxNow.length > TXT_MAX ? null : reassemble(inboxNow);
-    if(!now || now.s !== snapshot || $("#recv").classList.contains("hidden")){
+    if(!now || now.s !== snapshot || !recvVisible()){
       // Clear the note ONLY if it's still showing OUR re-entrant guard's own text — a re-entrant call
       // (revealing was already true) may have written REVEAL_BUSY_NOTE into it while THIS call was still
       // awaiting, and that claim is now false since this call is about to end. But #rNote isn't ours alone:
@@ -3638,7 +3641,7 @@ async function doReveal(){
     // auto-reveal path the user is mid-type in #inbox, and this 400ms steal would land on Download instead.
     setTimeout(()=>{
       const ae = document.activeElement;
-      if(!$("#recv").classList.contains("hidden") && (ae === document.body || ae === revBtn)) $("#save").focus();
+      if(recvVisible() && (ae === document.body || ae === revBtn)) $("#save").focus();
     }, 400);
   }catch(err){
     // every throw above (wrong password, disallowed mime, unpack/decode error) fires BEFORE the old
@@ -3652,7 +3655,7 @@ async function doReveal(){
     const inboxNow = $("#inbox").value;
     const overLen = inboxNow.length > TXT_MAX;
     const now = (snapshot !== undefined && !overLen) ? reassemble(inboxNow) : null;
-    if(snapshot !== undefined && (overLen || !now || now.s !== snapshot || $("#recv").classList.contains("hidden"))){
+    if(snapshot !== undefined && (overLen || !now || now.s !== snapshot || !recvVisible())){
       // same reasoning as the success path's abandonment branch: only clear #rNote if it's still showing
       // OUR re-entrant guard's own text — don't wipe a more recent, unrelated message that arrived during
       // the same await.
@@ -3737,12 +3740,12 @@ $("#rpass").addEventListener("input", ()=>{ const n=$("#rNote"); if(n.classList.
 // call doReveal() directly (not #reveal.click()) so the shortcut still surfaces "Missing part N" /
 // "No Carrier message found" in #rNote even while the Reveal button is disabled for an incomplete box
 $("#rpass").addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); doReveal(); } });
-document.addEventListener("keydown", e=>{ if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)&&!$("#recv").classList.contains("hidden")){ e.preventDefault(); doReveal(); } });
+document.addEventListener("keydown", e=>{ if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)&&recvVisible()){ e.preventDefault(); doReveal(); } });
 // Esc clears Receive from anywhere in the panel, matching Send, where Esc starts over from anywhere.
 // It used to be bound to #inbox alone, so pressing it with focus on Reveal, the password, or a button did
 // nothing — the hint line promises "Esc clears the box" without saying "only while typing in it".
 document.addEventListener("keydown", e=>{
-  if(e.key !== "Escape" || $("#recv").classList.contains("hidden")) return;
+  if(e.key !== "Escape" || !recvVisible()) return;
   // never hijack Esc from a control that has its own Escape meaning, and not mid-reveal, where the panel
   // is about to be repopulated. INPUT is excluded for the same reason Send excludes it: Esc is the reflex
   // for dismissing a password manager's autofill dropdown, and in #rpass that reflex would wipe a large
@@ -3799,7 +3802,7 @@ window.addEventListener("pageshow", e=>{
     // the reveal also set a green "Received. ✓" note and a "✓ Image received" title; clear both, or the
     // restored page shows success chrome pointing at an image that's no longer there
     $("#rNote").className = "note"; $("#rNote").textContent = "";
-    if(!$("#recv").classList.contains("hidden")) document.title = RECV_TITLE;
+    if(recvVisible()) document.title = RECV_TITLE;
   }
 });
 
@@ -3833,7 +3836,7 @@ modeBtns.forEach((btn, idx)=>{
     // move focus into the paste box only for a real POINTER click (e.detail > 0). Keyboard activation of
     // the tab (Enter/Space → click with detail 0) and arrow-key roving (synthetic, isTrusted false) must
     // keep focus ON the tab, per the ARIA tabs pattern — otherwise focus silently skips into the panel.
-    if(m === "recv") setTimeout(()=>{ if(!$("#recv").classList.contains("hidden") && e.isTrusted && e.detail > 0) $("#inbox").focus(); }, 50);
+    if(m === "recv") setTimeout(()=>{ if(recvVisible() && e.isTrusted && e.detail > 0) $("#inbox").focus(); }, 50);
     // set the resting title, then let updateProgress — which owns the "3/7 parts" title — recompute it.
     // Without this the count vanished on every mode switch and only came back on the next inbox edit,
     // leaving the tab contradicting a #prog that still read "Got 5 of 19 parts". Switching modes
