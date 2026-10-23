@@ -3283,7 +3283,7 @@ function updateProgress(){
     // without this guard.
     const approxFull = r.have ? fmtKB(Math.floor(payloadBytes(r) * (r.total / r.have))) : null;
     const sizeNote = approxFull ? `, ~${approxFull} in all` : "";
-    p.append("Got ", b(r.have), " of ", b(r.total), ` parts (${pct}%${sizeNote}) — still need part${r.missing.length>1?"s":""} ${formatParts(r.missing)}${r.missingTrunc?", …":""}.`);
+    p.append("Got ", b(r.have), " of ", b(r.total), ` parts (${pct}%${sizeNote}) — still need ${missingList(r)}.`);
     // recovery ran and helped but couldn't close the gap: don't let the count imply those parts arrived
     if(r.repaired) p.append(` (${r.repaired} already rebuilt from recovery data.)`);
   }
@@ -3324,6 +3324,11 @@ function formatParts(nums){
     else out.push(String(nums[i++]));
   }
   return out.join(", ");
+}
+// the shared "part(s) <list>[, …]" phrase both the progress line and the reveal note build from a
+// reassembly result: pluralize "part", list the missing indices, and append an ellipsis when truncated.
+function missingList(r){
+  return `part${r.missing.length > 1 ? "s" : ""} ${formatParts(r.missing)}${r.missingTrunc ? ", …" : ""}`;
 }
 function headerFlags(s){
   try{
@@ -3545,7 +3550,7 @@ async function doReveal(){
     const r = reassemble($("#inbox").value);
     if(!r){ note.className="note err"; note.textContent="No Carrier message found in the box above."; return; }
     if(r.missing.length){ note.className="note err";
-      note.textContent = `Missing part${r.missing.length>1?"s":""} ${formatParts(r.missing)}${r.missingTrunc?", …":""} — paste the remaining message(s) first.`; return; }
+      note.textContent = `Missing ${missingList(r)} — paste the remaining message(s) first.`; return; }
     snapshot = r.s;   // the exact payload we're about to decrypt
     const { mime, img, verified } = await unpack(r.s, pwValue("rpass"));   // raw value (no trim) — must match the sender's exactly, whitespace included
     // a locked reveal awaits 250k-round PBKDF2 (~1-2 s on a phone). If the user edited the inbox or left
