@@ -179,7 +179,7 @@ Parts 2, 6, 13, 21 lost in transit
 Receiver has 20 of 24 data parts + 6 parity
       │
       ▼  solve the erasure code
-"Rebuilt 4 missing parts from the recovery data"  →  image, byte-for-byte
+"Rebuilt 4 missing parts from the recovery data — no need to ask for a resend"  →  image, byte-for-byte
 ```
 
 The code works over **GF(2⁶)** rather than the usual GF(2⁸), and that choice is the whole trick: 64 field elements map exactly onto the 64 Base64 characters, so a parity symbol *is* a Base64 character. Parity parts ride in the ordinary chunk format at ordinary chunk size. GF(2⁸) would have forced parity back through Base64 at +33%.
