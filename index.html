@@ -534,6 +534,9 @@ const recvVisible = () => !$("#recv").classList.contains("hidden");
 // hide the revealed-image region and mark it aria-hidden together — three teardown paths need both,
 // and doing one without the other leaves the region either visible-but-ignored or gone-but-announced.
 const hideResult = () => { $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true"); };
+// return the received-image element to its resting state: drop the src, restore the markup alt and
+// aria-label, and clear the caption. Two teardown paths rebuilt this by hand; keep them identical.
+const resetReceivedImage = () => { const rimg = $("#rimg"); rimg.removeAttribute("src"); rimg.alt = RIMG_ALT; rimg.setAttribute("aria-label",RIMG_LABEL); $("#rCaption").textContent = ""; };
 let msgLimit = 60000;             // chars per message for the chosen chat app (user-selectable)
 let recoveryLevel = "off";        // Reed-Solomon redundancy: off | light | strong (see rsParityCount)
 let textCodec = "b64";            // wire text encoding: b64 (universal) | dense (14 bits/char on the wire, opt-in)
@@ -3590,7 +3593,7 @@ async function doReveal(){
     rimg.onerror = ()=>{
       if(!recovered || recovered.url !== url) return;   // a newer reveal already replaced this image — ignore the stale error
       URL.revokeObjectURL(recovered.url); recovered = null;
-      rimg.removeAttribute("src"); rimg.alt = RIMG_ALT; rimg.setAttribute("aria-label",RIMG_LABEL); $("#rCaption").textContent = "";
+      resetReceivedImage();
       hideResult();
       note.className = "note err";
       note.textContent = "The data decoded, but it isn't a valid image — the message is likely corrupted or was altered in transit.";
@@ -3804,7 +3807,7 @@ window.addEventListener("pageshow", e=>{
   if(srcImage) queueRefresh();   // recompress → sets a new #thumb src
   if(recovered){
     recovered = null;
-    $("#rimg").removeAttribute("src"); $("#rimg").alt = RIMG_ALT; $("#rimg").setAttribute("aria-label",RIMG_LABEL); $("#rCaption").textContent = "";
+    resetReceivedImage();
     hideResult();
     $("#result").setAttribute("aria-label",RESULT_LABEL);
     // the reveal also set a green "Received. ✓" note and a "✓ Image received" title; clear both, or the
