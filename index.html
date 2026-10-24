@@ -531,6 +531,9 @@ const COPY_ALL_REVERT_MS = 2000;
 // is the Receive tab the one currently showing? Many title/focus/keyboard paths gate on this; name the
 // check so they read as intent ("receive is visible") rather than the inverted class test spelled out.
 const recvVisible = () => !$("#recv").classList.contains("hidden");
+// hide the revealed-image region and mark it aria-hidden together — three teardown paths need both,
+// and doing one without the other leaves the region either visible-but-ignored or gone-but-announced.
+const hideResult = () => { $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true"); };
 let msgLimit = 60000;             // chars per message for the chosen chat app (user-selectable)
 let recoveryLevel = "off";        // Reed-Solomon redundancy: off | light | strong (see rsParityCount)
 let textCodec = "b64";            // wire text encoding: b64 (universal) | dense (14 bits/char on the wire, opt-in)
@@ -3378,7 +3381,7 @@ function clearReveal(){
   $("#rNote").className="note"; $("#rNote").textContent="";
   $("#save").title = SAVE_TITLE_DEFAULT; $("#save").removeAttribute("aria-label");   // revert to the button's text label
   if(recovered){ URL.revokeObjectURL(recovered.url); recovered = null; }
-  $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true");
+  hideResult();
   $("#result").setAttribute("aria-label",RESULT_LABEL);
   $("#rimg").setAttribute("aria-label",RIMG_LABEL);   // restore the resting label
   $("#rCaption").textContent = "";
@@ -3588,7 +3591,7 @@ async function doReveal(){
       if(!recovered || recovered.url !== url) return;   // a newer reveal already replaced this image — ignore the stale error
       URL.revokeObjectURL(recovered.url); recovered = null;
       rimg.removeAttribute("src"); rimg.alt = RIMG_ALT; rimg.setAttribute("aria-label",RIMG_LABEL); $("#rCaption").textContent = "";
-      $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true");
+      hideResult();
       note.className = "note err";
       note.textContent = "The data decoded, but it isn't a valid image — the message is likely corrupted or was altered in transit.";
       document.title = RECV_TITLE;
@@ -3802,7 +3805,7 @@ window.addEventListener("pageshow", e=>{
   if(recovered){
     recovered = null;
     $("#rimg").removeAttribute("src"); $("#rimg").alt = RIMG_ALT; $("#rimg").setAttribute("aria-label",RIMG_LABEL); $("#rCaption").textContent = "";
-    $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true");
+    hideResult();
     $("#result").setAttribute("aria-label",RESULT_LABEL);
     // the reveal also set a green "Received. ✓" note and a "✓ Image received" title; clear both, or the
     // restored page shows success chrome pointing at an image that's no longer there
