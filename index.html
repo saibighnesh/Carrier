@@ -531,9 +531,9 @@ const COPY_ALL_REVERT_MS = 2000;
 // is the Receive tab the one currently showing? Many title/focus/keyboard paths gate on this; name the
 // check so they read as intent ("receive is visible") rather than the inverted class test spelled out.
 const recvVisible = () => !$("#recv").classList.contains("hidden");
-// hide the revealed-image region and mark it aria-hidden together — three teardown paths need both,
-// and doing one without the other leaves the region either visible-but-ignored or gone-but-announced.
-const hideResult = () => { $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true"); };
+// hide the revealed-image region, mark it aria-hidden, and restore its resting aria-label together —
+// three teardown paths need this, and doing one without the other leaves stale or inconsistent state.
+const hideResult = () => { $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true"); $("#result").setAttribute("aria-label",RESULT_LABEL); };
 // return the received-image element to its resting state: drop the src, restore the markup alt and
 // aria-label, and clear the caption. Two teardown paths rebuilt this by hand; keep them identical.
 const resetReceivedImage = () => { const rimg = $("#rimg"); rimg.removeAttribute("src"); rimg.alt = RIMG_ALT; rimg.setAttribute("aria-label",RIMG_LABEL); $("#rCaption").textContent = ""; };
@@ -3385,7 +3385,6 @@ function clearReveal(){
   $("#save").title = SAVE_TITLE_DEFAULT; $("#save").removeAttribute("aria-label");   // revert to the button's text label
   if(recovered){ URL.revokeObjectURL(recovered.url); recovered = null; }
   hideResult();
-  $("#result").setAttribute("aria-label",RESULT_LABEL);
   $("#rimg").setAttribute("aria-label",RIMG_LABEL);   // restore the resting label
   $("#rCaption").textContent = "";
   if(recvVisible()) document.title = RECV_TITLE;   // drop the "✓ received" title once the image is torn down
@@ -3809,7 +3808,6 @@ window.addEventListener("pageshow", e=>{
     recovered = null;
     resetReceivedImage();
     hideResult();
-    $("#result").setAttribute("aria-label",RESULT_LABEL);
     // the reveal also set a green "Received. ✓" note and a "✓ Image received" title; clear both, or the
     // restored page shows success chrome pointing at an image that's no longer there
     $("#rNote").className = "note"; $("#rNote").textContent = "";
