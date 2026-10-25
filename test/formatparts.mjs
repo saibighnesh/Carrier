@@ -9,10 +9,10 @@ const HTML = fileURLToPath(new URL("../index.html", import.meta.url));
 const html = readFileSync(HTML, "utf8");
 const src = [
   html.slice(html.indexOf("function formatParts"), html.indexOf("function headerFlags")),
-  "globalThis.__FP = { formatParts };",
+  "globalThis.__FP = { formatParts, missingList };",
 ].join("\n");
 new Function(src)();
-const { formatParts } = globalThis.__FP;
+const { formatParts, missingList } = globalThis.__FP;
 
 let pass = 0;
 const t = (n, f) => { f(); console.log("  ok  " + n); pass++; };
@@ -55,6 +55,20 @@ t("two adjacent pairs with a gap between them — a distinct shape from a single
 
 t("a run at the very end of the list", () => {
   assert.equal(formatParts([1, 20, 21, 22]), "1, 20–22");
+});
+
+t("missingList: singular part", () => {
+  assert.equal(missingList({ missing: [4], missingTrunc: false }), "part 4");
+});
+
+t("missingList: plural parts", () => {
+  assert.equal(missingList({ missing: [2, 4], missingTrunc: false }), "parts 2, 4");
+  assert.equal(missingList({ missing: [1, 2, 3], missingTrunc: false }), "parts 1–3");
+});
+
+t("missingList: truncated list appends ellipsis", () => {
+  assert.equal(missingList({ missing: [1, 2, 3], missingTrunc: true }), "parts 1–3, …");
+  assert.equal(missingList({ missing: [7], missingTrunc: true }), "part 7, …");
 });
 
 console.log(`\n${pass} passed`);
