@@ -68,6 +68,7 @@ t("setQuality() writes the #qval readout from the slider value", () => {
 const capturedLabels = [
   ["RESULT_LABEL", /const RESULT_LABEL\s*=\s*document\.getElementById\("result"\)\.getAttribute\("aria-label"\);/],
   ["RIMG_ALT",     /const RIMG_ALT\s*=\s*document\.getElementById\("rimg"\)\.getAttribute\("alt"\);/],
+  ["RIMG_LABEL",   /const RIMG_LABEL\s*=\s*document\.getElementById\("rimg"\)\.getAttribute\("aria-label"\);/],
   ["THUMB_ALT",    /const THUMB_ALT\s*=\s*document\.getElementById\("thumb"\)\.getAttribute\("alt"\);/],
   ["THUMB_LABEL",  /const THUMB_LABEL\s*=\s*document\.getElementById\("thumb"\)\.getAttribute\("aria-label"\);/],
   ["REVEAL_LABEL", /const REVEAL_LABEL\s*=\s*document\.getElementById\("reveal"\)\.textContent;/],
@@ -82,6 +83,7 @@ for (const [name, re] of capturedLabels) {
 t("the received-image teardown restores labels from the captured constants", () => {
   assert.match(html, /setAttribute\("aria-label",\s*RESULT_LABEL\)/, "clearReveal should restore #result from RESULT_LABEL");
   assert.match(html, /rimg\.alt\s*=\s*RIMG_ALT;/, "the teardown should restore the #rimg alt from RIMG_ALT");
+  assert.match(html, /setAttribute\("aria-label",\s*RIMG_LABEL\)/, "the teardown should restore the #rimg label from RIMG_LABEL");
 });
 
 t("the preview teardown restores its alt and label from the captured constants", () => {
