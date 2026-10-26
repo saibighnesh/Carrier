@@ -535,7 +535,7 @@ const recvVisible = () => !$("#recv").classList.contains("hidden");
 // three teardown paths need this, and doing one without the other leaves stale or inconsistent state.
 const hideResult = () => { $("#result").classList.add("hidden"); $("#result").setAttribute("aria-hidden","true"); $("#result").setAttribute("aria-label",RESULT_LABEL); };
 // return the received-image element to its resting state: drop the src, restore the markup alt and
-// aria-label, and clear the caption. Two teardown paths rebuilt this by hand; keep them identical.
+// aria-label, and clear the caption. All three teardown paths share this; keep them identical.
 const resetReceivedImage = () => { const rimg = $("#rimg"); rimg.removeAttribute("src"); rimg.alt = RIMG_ALT; rimg.setAttribute("aria-label",RIMG_LABEL); $("#rCaption").textContent = ""; };
 let msgLimit = 60000;             // chars per message for the chosen chat app (user-selectable)
 let recoveryLevel = "off";        // Reed-Solomon redundancy: off | light | strong (see rsParityCount)
@@ -3385,8 +3385,7 @@ function clearReveal(){
   $("#save").title = SAVE_TITLE_DEFAULT; $("#save").removeAttribute("aria-label");   // revert to the button's text label
   if(recovered){ URL.revokeObjectURL(recovered.url); recovered = null; }
   hideResult();
-  $("#rimg").setAttribute("aria-label",RIMG_LABEL);   // restore the resting label
-  $("#rCaption").textContent = "";
+  resetReceivedImage();
   if(recvVisible()) document.title = RECV_TITLE;   // drop the "✓ received" title once the image is torn down
 }
 // full reset of the receive panel: drop any revealed image, empty the inbox + password, hide the result
