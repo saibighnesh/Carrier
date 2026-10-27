@@ -96,4 +96,12 @@ t("showLossHistory restores the recovery control's resting title from RECOVERY_T
   assert.match(html, /\$\("#recovery"\)\.title\s*=\s*RECOVERY_TITLE;/, "showLossHistory should restore #recovery.title from RECOVERY_TITLE");
 });
 
+t("SAVE_TITLE_DEFAULT captures the Save button resting title from markup", () => {
+  assert.match(html, /const SAVE_TITLE_DEFAULT\s*=\s*\$\("#save"\)\.title;/, "SAVE_TITLE_DEFAULT should capture resting title from #save");
+});
+
+t("clearReveal restores the Save button resting title from SAVE_TITLE_DEFAULT", () => {
+  assert.match(html, /\$\("#save"\)\.title\s*=\s*SAVE_TITLE_DEFAULT;/, "clearReveal should restore #save.title from SAVE_TITLE_DEFAULT");
+});
+
 console.log(`\n${pass} passed`);
