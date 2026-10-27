@@ -3804,13 +3804,9 @@ window.addEventListener("pageshow", e=>{
   maskPassword("pass"); maskPassword("rpass");
   if(srcImage) queueRefresh();   // recompress → sets a new #thumb src
   if(recovered){
-    recovered = null;
-    resetReceivedImage();
-    hideResult();
-    // the reveal also set a green "Received. ✓" note and a "✓ Image received" title; clear both, or the
-    // restored page shows success chrome pointing at an image that's no longer there
-    $("#rNote").className = "note"; $("#rNote").textContent = "";
-    if(recvVisible()) document.title = RECV_TITLE;
+    // tear down the revealed image fully via clearReveal so the result, its caption, the Save-button
+    // resting title/aria-label, the note, and the title are all cleaned up in one place
+    clearReveal();
   }
 });
 
