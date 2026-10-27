@@ -73,6 +73,7 @@ const capturedLabels = [
   ["THUMB_LABEL",  /const THUMB_LABEL\s*=\s*document\.getElementById\("thumb"\)\.getAttribute\("aria-label"\);/],
   ["REVEAL_LABEL", /const REVEAL_LABEL\s*=\s*document\.getElementById\("reveal"\)\.textContent;/],
   ["REVEAL_TITLE", /const REVEAL_TITLE\s*=\s*document\.getElementById\("reveal"\)\.getAttribute\("title"\);/],
+  ["RECOVERY_TITLE", /const RECOVERY_TITLE\s*=\s*document\.getElementById\("recovery"\)\.getAttribute\("title"\);/],
 ];
 for (const [name, re] of capturedLabels) {
   t(`${name} is captured from the markup, not hardcoded`, () => {
@@ -89,6 +90,10 @@ t("the received-image teardown restores labels from the captured constants", () 
 t("the preview teardown restores its alt and label from the captured constants", () => {
   assert.match(html, /\$\("#thumb"\)\.alt\s*=\s*THUMB_ALT;/, "clear should restore the #thumb alt from THUMB_ALT");
   assert.match(html, /setAttribute\("aria-label",\s*THUMB_LABEL\)/, "clear should restore the #thumb label from THUMB_LABEL");
+});
+
+t("showLossHistory restores the recovery control's resting title from RECOVERY_TITLE", () => {
+  assert.match(html, /\$\("#recovery"\)\.title\s*=\s*RECOVERY_TITLE;/, "showLossHistory should restore #recovery.title from RECOVERY_TITLE");
 });
 
 console.log(`\n${pass} passed`);
