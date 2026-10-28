@@ -104,4 +104,12 @@ t("clearReveal restores the Save button resting title from SAVE_TITLE_DEFAULT", 
   assert.match(html, /\$\("#save"\)\.title\s*=\s*SAVE_TITLE_DEFAULT;/, "clearReveal should restore #save.title from SAVE_TITLE_DEFAULT");
 });
 
+t("SEND_TITLE is captured from document.title, not hardcoded", () => {
+  assert.match(html, /const SEND_TITLE\s*=\s*document\.title;/, "SEND_TITLE should capture document.title at load");
+});
+
+t("clear restores document.title from SEND_TITLE", () => {
+  assert.match(html, /document\.title\s*=\s*SEND_TITLE;/, "clear should restore document.title from SEND_TITLE");
+});
+
 console.log(`\n${pass} passed`);
