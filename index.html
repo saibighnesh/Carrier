@@ -3835,8 +3835,7 @@ modeBtns.forEach((btn, idx)=>{
     $("#recv").classList.toggle("hidden", m!=="recv");
     // clearReveal only AFTER #recv is hidden: its title-setter keys on #recv visibility, so calling it
     // while #recv was still visible stamped "receive images" onto a switch that goes INTO Send
-    if(m === "send") clearReveal();
-    if(m === "send") clearDropErr();
+    if(m === "send"){ clearReveal(); clearDropErr(); }
     // move focus into the paste box only for a real POINTER click (e.detail > 0). Keyboard activation of
     // the tab (Enter/Space → click with detail 0) and arrow-key roving (synthetic, isTrusted false) must
     // keep focus ON the tab, per the ARIA tabs pattern — otherwise focus silently skips into the panel.
