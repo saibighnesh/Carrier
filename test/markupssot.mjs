@@ -112,4 +112,9 @@ t("clear restores document.title from SEND_TITLE", () => {
   assert.match(html, /document\.title\s*=\s*SEND_TITLE;/, "clear should restore document.title from SEND_TITLE");
 });
 
+t("RECV_TITLE constant exists and clearReveal restores it when receive is visible", () => {
+  assert.match(html, /const RECV_TITLE\s*=\s*"[^"]+";/, "RECV_TITLE constant should exist");
+  assert.match(html, /document\.title\s*=\s*RECV_TITLE;/, "clearReveal should restore document.title from RECV_TITLE");
+});
+
 console.log(`\n${pass} passed`);
