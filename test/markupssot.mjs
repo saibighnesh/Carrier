@@ -117,4 +117,10 @@ t("RECV_TITLE constant exists and clearReveal restores it when receive is visibl
   assert.match(html, /document\.title\s*=\s*RECV_TITLE;/, "clearReveal should restore document.title from RECV_TITLE");
 });
 
+t("REVEAL_BUSY_TITLE and REVEAL_EMPTY_TITLE single-source the Reveal button disabled tooltips", () => {
+  assert.match(html, /const REVEAL_BUSY_TITLE\s*=\s*"[^"]+";/, "REVEAL_BUSY_TITLE constant should exist");
+  assert.match(html, /const REVEAL_EMPTY_TITLE\s*=\s*"[^"]+";/, "REVEAL_EMPTY_TITLE constant should exist");
+  assert.match(html, /REVEAL_BUSY_TITLE\s*:\s*REVEAL_EMPTY_TITLE/, "updateProgress should use the constants for disabled tooltips");
+});
+
 console.log(`\n${pass} passed`);
