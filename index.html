@@ -579,6 +579,7 @@ const $ = s => document.querySelector(s);
 // pass (refresh, autoFit) needs to decide whether writing into it is still worth doing. One shared
 // definition so a future change to how modes are represented can't miss one of the several call sites.
 const sendHidden = () => $("#send").classList.contains("hidden");
+const sendVisible = () => !sendHidden();
 // The Chat app select can show "Custom…" while msgLimit still holds whatever preset number was active
 // before switching — applyCustomLimit only updates msgLimit once a valid number is typed, so an empty or
 // invalid custom field leaves the OLD limit in force. Every one of the 8 call sites below used to look
@@ -2015,7 +2016,7 @@ async function refresh(){
   // the preview only changes when the pixels do — rebuild it when thumbKey has fallen behind imgKey (a
   // fresh miss above, or a hit that arrived after being skipped earlier while hidden), and only if there's
   // a panel to show it in — no point minting a blob no one can see, or writing into a hidden #thumb.
-  if(thumbKey !== imgKey && !sendHidden()){
+  if(thumbKey !== imgKey && sendVisible()){
     if(thumbUrl) URL.revokeObjectURL(thumbUrl);
     const blob = new Blob([img], {type:srcMime});
     thumbUrl = URL.createObjectURL(blob);
