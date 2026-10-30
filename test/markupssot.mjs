@@ -128,4 +128,16 @@ t("COPY_FAIL and COPY_FAIL_ARIA single-source the clipboard access denied feedba
   assert.match(html, /flashButton\(\s*btn,\s*COPY_FAIL,\s*COPY_FAIL_ARIA\s*\);/, "copy paths should use COPY_FAIL and COPY_FAIL_ARIA");
 });
 
+t("PW_SHOW and PW_HIDE constants single-source the password visibility toggle labels", () => {
+  assert.match(html, /const PW_SHOW\s*=\s*"Show",\s*PW_HIDE\s*=\s*"Hide";/, "PW_SHOW and PW_HIDE constants should exist");
+  assert.match(html, /const PW_SHOW_LABEL\s*=\s*"Show password",\s*PW_HIDE_LABEL\s*=\s*"Hide password";/, "PW_SHOW_LABEL and PW_HIDE_LABEL constants should exist");
+  assert.match(html, /btn\.textContent\s*=\s*show\s*\?\s*PW_HIDE\s*:\s*PW_SHOW;/, "toggle should set textContent from constants");
+  assert.match(html, /btn\.setAttribute\("aria-label",\s*show\s*\?\s*PW_HIDE_LABEL\s*:\s*PW_SHOW_LABEL\);/, "toggle should set aria-label from constants");
+});
+
+t("FULLSIZE_HINT single-sources the full-size image accessibility hint", () => {
+  assert.match(html, /const FULLSIZE_HINT\s*=\s*" — activate to open full size in a new tab";/, "FULLSIZE_HINT constant should exist");
+  assert.match(html, /\$\{previewDesc\}\$\{FULLSIZE_HINT\}/, "preview aria-label should append FULLSIZE_HINT");
+});
+
 console.log(`\n${pass} passed`);
