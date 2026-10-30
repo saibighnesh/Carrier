@@ -123,4 +123,9 @@ t("REVEAL_BUSY_TITLE and REVEAL_EMPTY_TITLE single-source the Reveal button disa
   assert.match(html, /REVEAL_BUSY_TITLE\s*:\s*REVEAL_EMPTY_TITLE/, "updateProgress should use the constants for disabled tooltips");
 });
 
+t("COPY_FAIL and COPY_FAIL_ARIA single-source the clipboard access denied feedback", () => {
+  assert.match(html, /const COPY_FAIL\s*=\s*"Copy failed",\s*COPY_FAIL_ARIA\s*=\s*"Copy failed — clipboard access denied";/, "COPY_FAIL and COPY_FAIL_ARIA constants should exist");
+  assert.match(html, /flashButton\(\s*btn,\s*COPY_FAIL,\s*COPY_FAIL_ARIA\s*\);/, "copy paths should use COPY_FAIL and COPY_FAIL_ARIA");
+});
+
 console.log(`\n${pass} passed`);
