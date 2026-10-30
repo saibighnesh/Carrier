@@ -135,4 +135,9 @@ t("PW_SHOW and PW_HIDE constants single-source the password visibility toggle la
   assert.match(html, /btn\.setAttribute\("aria-label",\s*show\s*\?\s*PW_HIDE_LABEL\s*:\s*PW_SHOW_LABEL\);/, "toggle should set aria-label from constants");
 });
 
+t("FULLSIZE_HINT single-sources the full-size image accessibility hint", () => {
+  assert.match(html, /const FULLSIZE_HINT\s*=\s*" — activate to open full size in a new tab";/, "FULLSIZE_HINT constant should exist");
+  assert.match(html, /\$\{previewDesc\}\$\{FULLSIZE_HINT\}/, "preview aria-label should append FULLSIZE_HINT");
+});
+
 console.log(`\n${pass} passed`);
