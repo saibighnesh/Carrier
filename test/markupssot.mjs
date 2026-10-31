@@ -140,4 +140,8 @@ t("FULLSIZE_HINT single-sources the full-size image accessibility hint", () => {
   assert.match(html, /\$\{previewDesc\}\$\{FULLSIZE_HINT\}/, "preview aria-label should append FULLSIZE_HINT");
 });
 
+t("localStorage preference key constants exist and match expected keys", () => {
+  assert.match(html, /const LS_QUALITY\s*=\s*"carrier_quality",\s*LS_MAXDIM\s*=\s*"carrier_maxdim",\s*LS_MSGLIMIT\s*=\s*"carrier_msglimit",\s*LS_CODEC\s*=\s*"carrier_codec",\s*LS_RECOVERY\s*=\s*"carrier_recovery",\s*LS_MODE\s*=\s*"carrier_mode";/, "all 6 localStorage key constants should be defined");
+});
+
 console.log(`\n${pass} passed`);
