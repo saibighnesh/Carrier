@@ -144,4 +144,12 @@ t("localStorage preference key constants exist and match expected keys", () => {
   assert.match(html, /const LS_QUALITY\s*=\s*"carrier_quality",\s*LS_MAXDIM\s*=\s*"carrier_maxdim",\s*LS_MSGLIMIT\s*=\s*"carrier_msglimit",\s*LS_CODEC\s*=\s*"carrier_codec",\s*LS_RECOVERY\s*=\s*"carrier_recovery",\s*LS_MODE\s*=\s*"carrier_mode";/, "all 6 localStorage key constants should be defined");
 });
 
+t("timing constants TUNE_DEBOUNCE_MS and COPY_ALL_REVERT_MS are defined and referenced", () => {
+  assert.match(html, /const TUNE_DEBOUNCE_MS\s*=\s*180;/, "TUNE_DEBOUNCE_MS should be defined");
+  assert.match(html, /const COPY_ALL_REVERT_MS\s*=\s*2000;/, "COPY_ALL_REVERT_MS should be defined");
+  assert.match(html, /setTimeout\(refresh,\s*TUNE_DEBOUNCE_MS\)/, "queueRefresh should reference TUNE_DEBOUNCE_MS");
+  assert.match(html, /setTimeout\(restore,\s*COPY_ALL_REVERT_MS\)/, "copyAll restore should reference COPY_ALL_REVERT_MS");
+});
+
 console.log(`\n${pass} passed`);
+
