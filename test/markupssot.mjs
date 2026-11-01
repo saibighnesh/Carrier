@@ -169,7 +169,12 @@ t("recvVisible and sendVisible helpers reflect the hidden state of tabs", () => 
   assert.match(html, /const sendVisible\s*=\s*\(\)\s*=>\s*!sendHidden\(\);/, "sendVisible should negate sendHidden");
 });
 
+t("hideResult helper teardown contract is preserved", () => {
+  assert.match(html, /const hideResult\s*=\s*\(\)\s*=>\s*\{\s*\$\("#result"\)\.classList\.add\("hidden"\);\s*\$\("#result"\)\.setAttribute\("aria-hidden","true"\);\s*\$\("#result"\)\.setAttribute\("aria-label",RESULT_LABEL\);\s*\};/, "hideResult should hide #result, set aria-hidden, and restore RESULT_LABEL");
+});
+
 console.log(`\n${pass} passed`);
+
 
 
 
