@@ -182,7 +182,14 @@ t("CHUNK_RENDER_CAP and CHUNK_PREVIEW bounds are defined", () => {
   assert.match(html, /const CHUNK_PREVIEW\s*=\s*280;/, "CHUNK_PREVIEW should be 280");
 });
 
+t("MAGIC wire signature matches PXT1 format", () => {
+  assert.match(html, /const MAGIC\s*=\s*\[0x50,0x58,0x54,0x31\];/, "MAGIC should be [0x50,0x58,0x54,0x31]");
+  assert.match(html, /c\.set\(MAGIC,0\);/, "packPlain should prepend MAGIC");
+  assert.match(html, /if\(c\[i\]!==MAGIC\[i\]\)\s*throw new Error\("This doesn't look like a Carrier message\."\);/, "parsePlain should validate MAGIC");
+});
+
 console.log(`\n${pass} passed`);
+
 
 
 
