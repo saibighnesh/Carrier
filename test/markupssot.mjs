@@ -158,6 +158,12 @@ t("MSG_LIMITS maps chat app limits and matches select options in markup", () => 
   }
 });
 
+t("ALLOWED_IMG whitelist guards against non-raster image types", () => {
+  assert.match(html, /const ALLOWED_IMG\s*=\s*new Set\(\["image\/webp","image\/jpeg","image\/png","image\/gif","image\/avif"\]\);/, "ALLOWED_IMG Set should define safe image mime types");
+  assert.match(html, /if\(!ALLOWED_IMG\.has\(claimed\)\)\s*throw new Error\(/, "received image decode must check claimed mime against ALLOWED_IMG");
+});
+
 console.log(`\n${pass} passed`);
+
 
 
