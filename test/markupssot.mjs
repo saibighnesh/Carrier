@@ -182,7 +182,24 @@ t("CHUNK_RENDER_CAP and CHUNK_PREVIEW bounds are defined", () => {
   assert.match(html, /const CHUNK_PREVIEW\s*=\s*280;/, "CHUNK_PREVIEW should be 280");
 });
 
+t("MAGIC wire signature matches PXT1 format", () => {
+  assert.match(html, /const MAGIC\s*=\s*\[0x50,0x58,0x54,0x31\];/, "MAGIC should be [0x50,0x58,0x54,0x31]");
+  assert.match(html, /c\.set\(MAGIC,0\);/, "packPlain should prepend MAGIC");
+  assert.match(html, /if\(c\[i\]!==MAGIC\[i\]\)\s*throw new Error\("This doesn't look like a Carrier message\."\);/, "parsePlain should validate MAGIC");
+});
+
+t("activeAppName resolves active chat app name or fallback", () => {
+  assert.match(html, /const activeAppName\s*=\s*fallback\s*=>\s*\$\("#chatLimit"\)\.value\s*===\s*"custom"\s*\?\s*fallback\s*:\s*\(MSG_LIMITS\[String\(msgLimit\)\]\s*\|\|\s*fallback\);/, "activeAppName should check custom first then MSG_LIMITS");
+});
+
+t("noTranslate helper scopes translate=no attribute", () => {
+  assert.match(html, /const noTranslate\s*=\s*s\s*=>\s*`<span translate="no">\$\{s\}<\/span>`;/, "noTranslate helper should wrap value in span with translate=no");
+});
+
 console.log(`\n${pass} passed`);
+
+
+
 
 
 
