@@ -188,7 +188,12 @@ t("MAGIC wire signature matches PXT1 format", () => {
   assert.match(html, /if\(c\[i\]!==MAGIC\[i\]\)\s*throw new Error\("This doesn't look like a Carrier message\."\);/, "parsePlain should validate MAGIC");
 });
 
+t("activeAppName resolves active chat app name or fallback", () => {
+  assert.match(html, /const activeAppName\s*=\s*fallback\s*=>\s*\$\("#chatLimit"\)\.value\s*===\s*"custom"\s*\?\s*fallback\s*:\s*\(MSG_LIMITS\[String\(msgLimit\)\]\s*\|\|\s*fallback\);/, "activeAppName should check custom first then MSG_LIMITS");
+});
+
 console.log(`\n${pass} passed`);
+
 
 
 
