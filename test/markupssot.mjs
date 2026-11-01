@@ -192,7 +192,12 @@ t("activeAppName resolves active chat app name or fallback", () => {
   assert.match(html, /const activeAppName\s*=\s*fallback\s*=>\s*\$\("#chatLimit"\)\.value\s*===\s*"custom"\s*\?\s*fallback\s*:\s*\(MSG_LIMITS\[String\(msgLimit\)\]\s*\|\|\s*fallback\);/, "activeAppName should check custom first then MSG_LIMITS");
 });
 
+t("noTranslate helper scopes translate=no attribute", () => {
+  assert.match(html, /const noTranslate\s*=\s*s\s*=>\s*`<span translate="no">\$\{s\}<\/span>`;/, "noTranslate helper should wrap value in span with translate=no");
+});
+
 console.log(`\n${pass} passed`);
+
 
 
 
