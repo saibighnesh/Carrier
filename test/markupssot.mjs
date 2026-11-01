@@ -173,7 +173,12 @@ t("hideResult helper teardown contract is preserved", () => {
   assert.match(html, /const hideResult\s*=\s*\(\)\s*=>\s*\{\s*\$\("#result"\)\.classList\.add\("hidden"\);\s*\$\("#result"\)\.setAttribute\("aria-hidden","true"\);\s*\$\("#result"\)\.setAttribute\("aria-label",RESULT_LABEL\);\s*\};/, "hideResult should hide #result, set aria-hidden, and restore RESULT_LABEL");
 });
 
+t("resetReceivedImage helper resets rimg attributes and clears rCaption", () => {
+  assert.match(html, /const resetReceivedImage\s*=\s*\(\)\s*=>\s*\{\s*const rimg\s*=\s*\$\("#rimg"\);\s*rimg\.removeAttribute\("src"\);\s*rimg\.alt\s*=\s*RIMG_ALT;\s*rimg\.setAttribute\("aria-label",RIMG_LABEL\);\s*\$\("#rCaption"\)\.textContent\s*=\s*"";\s*\};/, "resetReceivedImage should restore rimg to resting state");
+});
+
 console.log(`\n${pass} passed`);
+
 
 
 
