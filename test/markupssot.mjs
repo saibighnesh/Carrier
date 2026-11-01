@@ -177,7 +177,13 @@ t("resetReceivedImage helper resets rimg attributes and clears rCaption", () => 
   assert.match(html, /const resetReceivedImage\s*=\s*\(\)\s*=>\s*\{\s*const rimg\s*=\s*\$\("#rimg"\);\s*rimg\.removeAttribute\("src"\);\s*rimg\.alt\s*=\s*RIMG_ALT;\s*rimg\.setAttribute\("aria-label",RIMG_LABEL\);\s*\$\("#rCaption"\)\.textContent\s*=\s*"";\s*\};/, "resetReceivedImage should restore rimg to resting state");
 });
 
+t("CHUNK_RENDER_CAP and CHUNK_PREVIEW bounds are defined", () => {
+  assert.match(html, /const CHUNK_RENDER_CAP\s*=\s*200;/, "CHUNK_RENDER_CAP should be 200");
+  assert.match(html, /const CHUNK_PREVIEW\s*=\s*280;/, "CHUNK_PREVIEW should be 280");
+});
+
 console.log(`\n${pass} passed`);
+
 
 
 
