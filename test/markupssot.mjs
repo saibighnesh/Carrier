@@ -163,7 +163,14 @@ t("ALLOWED_IMG whitelist guards against non-raster image types", () => {
   assert.match(html, /if\(!ALLOWED_IMG\.has\(claimed\)\)\s*throw new Error\(/, "received image decode must check claimed mime against ALLOWED_IMG");
 });
 
+t("recvVisible and sendVisible helpers reflect the hidden state of tabs", () => {
+  assert.match(html, /const recvVisible\s*=\s*\(\)\s*=>\s*!\$\("#recv"\)\.classList\.contains\("hidden"\);/, "recvVisible should check #recv hidden class");
+  assert.match(html, /const sendHidden\s*=\s*\(\)\s*=>\s*\$\("#send"\)\.classList\.contains\("hidden"\);/, "sendHidden should check #send hidden class");
+  assert.match(html, /const sendVisible\s*=\s*\(\)\s*=>\s*!sendHidden\(\);/, "sendVisible should negate sendHidden");
+});
+
 console.log(`\n${pass} passed`);
+
 
 
 
