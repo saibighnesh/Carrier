@@ -151,5 +151,13 @@ t("timing constants TUNE_DEBOUNCE_MS and COPY_ALL_REVERT_MS are defined and refe
   assert.match(html, /setTimeout\(restore,\s*COPY_ALL_REVERT_MS\)/, "copyAll restore should reference COPY_ALL_REVERT_MS");
 });
 
+t("MSG_LIMITS maps chat app limits and matches select options in markup", () => {
+  assert.match(html, /const MSG_LIMITS\s*=\s*\{\s*60000:"WhatsApp",\s*4096:"Telegram",\s*4000:"Slack",\s*2000:"Discord",\s*160:"SMS"\s*\};/, "MSG_LIMITS should map preset limits");
+  for (const limit of [60000, 4096, 4000, 2000, 160]) {
+    assert.match(html, new RegExp(`<option value="${limit}">`), `select should include option for ${limit}`);
+  }
+});
+
 console.log(`\n${pass} passed`);
+
 
