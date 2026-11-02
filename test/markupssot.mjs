@@ -196,7 +196,14 @@ t("noTranslate helper scopes translate=no attribute", () => {
   assert.match(html, /const noTranslate\s*=\s*s\s*=>\s*`<span translate="no">\$\{s\}<\/span>`;/, "noTranslate helper should wrap value in span with translate=no");
 });
 
+t("lsGet, lsSet, and lsRemove wrap localStorage in try/catch for safe degradation", () => {
+  assert.match(html, /const lsGet\s*=\s*k\s*=>\s*\{\s*try\s*\{\s*return localStorage\.getItem\(k\);\s*\}\s*catch\s*\{\s*return null;\s*\}\s*\};/, "lsGet should catch errors and return null");
+  assert.match(html, /const lsSet\s*=\s*\(k,\s*v\)\s*=>\s*\{\s*try\s*\{\s*localStorage\.setItem\(k,\s*v\);\s*\}\s*catch\s*\{\}\s*\};/, "lsSet should catch storage errors");
+  assert.match(html, /const lsRemove\s*=\s*k\s*=>\s*\{\s*try\s*\{\s*localStorage\.removeItem\(k\);\s*\}\s*catch\s*\{\}\s*\};/, "lsRemove should catch storage errors");
+});
+
 console.log(`\n${pass} passed`);
+
 
 
 
