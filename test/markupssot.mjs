@@ -202,7 +202,14 @@ t("lsGet, lsSet, and lsRemove wrap localStorage in try/catch for safe degradatio
   assert.match(html, /const lsRemove\s*=\s*k\s*=>\s*\{\s*try\s*\{\s*localStorage\.removeItem\(k\);\s*\}\s*catch\s*\{\}\s*\};/, "lsRemove should catch storage errors");
 });
 
+t("pad2, localDate, and localStamp format local calendar dates and timestamps", () => {
+  assert.match(html, /const pad2\s*=\s*n\s*=>\s*String\(n\)\.padStart\(2,\s*"0"\);/, "pad2 should pad single digits to 2 characters");
+  assert.match(html, /const localDate\s*=\s*\(d\s*=\s*new Date\(\)\)\s*=>\s*`\$\{d\.getFullYear\(\)\}-\$\{pad2\(d\.getMonth\(\)\+1\)\}-\$\{pad2\(d\.getDate\(\)\)\}`;/, "localDate should format local YYYY-MM-DD");
+  assert.match(html, /const localStamp\s*=\s*\(d\s*=\s*new Date\(\)\)\s*=>\s*`\$\{localDate\(d\)\}-\$\{pad2\(d\.getHours\(\)\)\}-\$\{pad2\(d\.getMinutes\(\)\)\}-\$\{pad2\(d\.getSeconds\(\)\)\}`;/, "localStamp should format local YYYY-MM-DD-HH-MM-SS");
+});
+
 console.log(`\n${pass} passed`);
+
 
 
 
