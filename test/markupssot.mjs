@@ -208,6 +208,12 @@ t("pad2, localDate, and localStamp format local calendar dates and timestamps", 
   assert.match(html, /const localStamp\s*=\s*\(d\s*=\s*new Date\(\)\)\s*=>\s*`\$\{localDate\(d\)\}-\$\{pad2\(d\.getHours\(\)\)\}-\$\{pad2\(d\.getMinutes\(\)\)\}-\$\{pad2\(d\.getSeconds\(\)\)\}`;/, "localStamp should format local YYYY-MM-DD-HH-MM-SS");
 });
 
+t("dense v1 codec constants are defined", () => {
+  assert.match(html, /const DENSE_BASE\s*=\s*0x4E00;/, "DENSE_BASE should be 0x4E00");
+  assert.match(html, /const DENSE_BITS\s*=\s*12;/, "DENSE_BITS should be 12");
+  assert.match(html, /const DENSE_MASK\s*=\s*0xFFF;/, "DENSE_MASK should be 0xFFF");
+});
+
 console.log(`\n${pass} passed`);
 
 
