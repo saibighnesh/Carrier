@@ -239,6 +239,11 @@ t("RS_LEVELS redundancy level ratios are defined", () => {
   assert.match(html, /const RS_LEVELS\s*=\s*\{\s*off:\s*0,\s*auto:\s*null,\s*light:\s*0\.1,\s*strong:\s*0\.25\s*\};/, "RS_LEVELS should define ratios for off, auto, light, and strong");
 });
 
+t("RS_TARGET and RS_COST_CAP Reed-Solomon tuning constants are defined", () => {
+  assert.match(html, /const RS_TARGET\s*=\s*0\.99;/, "RS_TARGET should be 0.99");
+  assert.match(html, /const RS_COST_CAP\s*=\s*0\.5;/, "RS_COST_CAP should be 0.5");
+});
+
 console.log(`\n${pass} passed`);
 
 
