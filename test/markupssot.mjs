@@ -249,6 +249,10 @@ t("FLAG_ENCRYPTED and FLAG_CRC32 wire flags are defined", () => {
   assert.match(html, /const FLAG_CRC32\s*=\s*2;/, "FLAG_CRC32 should be 2");
 });
 
+t("MISSING_SHOWN missing parts limit constant is defined", () => {
+  assert.match(html, /const MISSING_SHOWN\s*=\s*50;/, "MISSING_SHOWN should be 50");
+});
+
 console.log(`\n${pass} passed`);
 
 
