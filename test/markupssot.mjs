@@ -227,6 +227,10 @@ t("RS_HALF, RS_BLOCK, and RS_META Reed-Solomon constants are defined", () => {
   assert.match(html, /const RS_META\s*=\s*6;/, "RS_META should be 6");
 });
 
+t("B64A Base64 alphabet string is defined", () => {
+  assert.match(html, /const B64A\s*=\s*"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789\+\/";/, "B64A alphabet should be RFC 4648 Base64 standard");
+});
+
 console.log(`\n${pass} passed`);
 
 
