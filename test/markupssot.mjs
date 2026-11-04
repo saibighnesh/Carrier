@@ -249,6 +249,19 @@ t("FLAG_ENCRYPTED and FLAG_CRC32 wire flags are defined", () => {
   assert.match(html, /const FLAG_CRC32\s*=\s*2;/, "FLAG_CRC32 should be 2");
 });
 
+t("MISSING_SHOWN missing parts limit constant is defined", () => {
+  assert.match(html, /const MISSING_SHOWN\s*=\s*50;/, "MISSING_SHOWN should be 50");
+});
+
+t("CUSTOM_LIMIT_MIN and CUSTOM_LIMIT_MAX custom limit bounds are defined", () => {
+  assert.match(html, /const CUSTOM_LIMIT_MIN\s*=\s*20,\s*CUSTOM_LIMIT_MAX\s*=\s*200000;/, "CUSTOM_LIMIT_MIN and CUSTOM_LIMIT_MAX should be 20 and 200000");
+});
+
+t("PW_LABELS and PW_MAX password rating constants are defined", () => {
+  assert.match(html, /const PW_LABELS\s*=\s*\["",\s*"Weak",\s*"Fair",\s*"Good",\s*"Strong"\];/, "PW_LABELS should match 5 password strength levels");
+  assert.match(html, /const PW_MAX\s*=\s*128;/, "PW_MAX should cap password length at 128");
+});
+
 console.log(`\n${pass} passed`);
 
 
