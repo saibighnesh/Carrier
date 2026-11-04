@@ -235,6 +235,10 @@ t("GF14_POLY field generator polynomial is defined", () => {
   assert.match(html, /const GF14_POLY\s*=\s*0x4443;/, "GF14_POLY should be 0x4443");
 });
 
+t("RS_LEVELS redundancy level ratios are defined", () => {
+  assert.match(html, /const RS_LEVELS\s*=\s*\{\s*off:\s*0,\s*auto:\s*null,\s*light:\s*0\.1,\s*strong:\s*0\.25\s*\};/, "RS_LEVELS should define ratios for off, auto, light, and strong");
+});
+
 console.log(`\n${pass} passed`);
 
 
