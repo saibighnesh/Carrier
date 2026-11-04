@@ -221,6 +221,12 @@ t("dense v2 codec constants are defined", () => {
   assert.match(html, /const D2_PAY\s*=\s*Array\.from\(\{length:7\},\s*\(_,r\)=>Math\.ceil\(4\*r\/7\)\);/, "D2_PAY should be computed correctly");
 });
 
+t("RS_HALF, RS_BLOCK, and RS_META Reed-Solomon constants are defined", () => {
+  assert.match(html, /const RS_HALF\s*=\s*32;/, "RS_HALF should be 32");
+  assert.match(html, /const RS_BLOCK\s*=\s*32;/, "RS_BLOCK should be 32");
+  assert.match(html, /const RS_META\s*=\s*6;/, "RS_META should be 6");
+});
+
 console.log(`\n${pass} passed`);
 
 
