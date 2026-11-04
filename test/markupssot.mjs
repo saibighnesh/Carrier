@@ -244,6 +244,11 @@ t("RS_TARGET and RS_COST_CAP Reed-Solomon tuning constants are defined", () => {
   assert.match(html, /const RS_COST_CAP\s*=\s*0\.5;/, "RS_COST_CAP should be 0.5");
 });
 
+t("FLAG_ENCRYPTED and FLAG_CRC32 wire flags are defined", () => {
+  assert.match(html, /const FLAG_ENCRYPTED\s*=\s*1;/, "FLAG_ENCRYPTED should be 1");
+  assert.match(html, /const FLAG_CRC32\s*=\s*2;/, "FLAG_CRC32 should be 2");
+});
+
 console.log(`\n${pass} passed`);
 
 
