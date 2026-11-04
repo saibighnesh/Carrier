@@ -253,6 +253,10 @@ t("MISSING_SHOWN missing parts limit constant is defined", () => {
   assert.match(html, /const MISSING_SHOWN\s*=\s*50;/, "MISSING_SHOWN should be 50");
 });
 
+t("CUSTOM_LIMIT_MIN and CUSTOM_LIMIT_MAX custom limit bounds are defined", () => {
+  assert.match(html, /const CUSTOM_LIMIT_MIN\s*=\s*20,\s*CUSTOM_LIMIT_MAX\s*=\s*200000;/, "CUSTOM_LIMIT_MIN and CUSTOM_LIMIT_MAX should be 20 and 200000");
+});
+
 console.log(`\n${pass} passed`);
 
 
