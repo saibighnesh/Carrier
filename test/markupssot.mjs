@@ -231,6 +231,10 @@ t("B64A Base64 alphabet string is defined", () => {
   assert.match(html, /const B64A\s*=\s*"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789\+\/";/, "B64A alphabet should be RFC 4648 Base64 standard");
 });
 
+t("GF14_POLY field generator polynomial is defined", () => {
+  assert.match(html, /const GF14_POLY\s*=\s*0x4443;/, "GF14_POLY should be 0x4443");
+});
+
 console.log(`\n${pass} passed`);
 
 
