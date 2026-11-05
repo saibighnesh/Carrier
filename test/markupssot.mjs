@@ -262,6 +262,10 @@ t("PW_LABELS and PW_MAX password rating constants are defined", () => {
   assert.match(html, /const PW_MAX\s*=\s*128;/, "PW_MAX should cap password length at 128");
 });
 
+t("TUNE_CONTROLS lists all 5 tune control selectors", () => {
+  assert.match(html, /const TUNE_CONTROLS\s*=\s*\["#quality",\s*"#maxdim",\s*"#chatLimit",\s*"#chatLimitCustom",\s*"#compact"\];/, "TUNE_CONTROLS should list quality, maxdim, chatLimit, chatLimitCustom, and compact");
+});
+
 console.log(`\n${pass} passed`);
 
 
