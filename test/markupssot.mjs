@@ -266,6 +266,11 @@ t("TUNE_CONTROLS lists all 5 tune control selectors", () => {
   assert.match(html, /const TUNE_CONTROLS\s*=\s*\["#quality",\s*"#maxdim",\s*"#chatLimit",\s*"#chatLimitCustom",\s*"#compact"\];/, "TUNE_CONTROLS should list quality, maxdim, chatLimit, chatLimitCustom, and compact");
 });
 
+t("TXT_MAX and REVEAL_BUSY_NOTE constants are defined", () => {
+  assert.match(html, /const TXT_MAX\s*=\s*8\s*\*\s*1024\s*\*\s*1024;/, "TXT_MAX should be 8MB");
+  assert.match(html, /const REVEAL_BUSY_NOTE\s*=\s*"Still revealing the previous message — wait a moment and try again\.";/, "REVEAL_BUSY_NOTE should inform the user a reveal is underway");
+});
+
 console.log(`\n${pass} passed`);
 
 
