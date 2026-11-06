@@ -297,6 +297,10 @@ t("RS14_META header size constant is defined", () => {
   assert.match(html, /const RS14_META\s*=\s*4;/, "RS14_META should be 4");
 });
 
+t("RS_BLOCK_CEILING codec ceiling map is defined", () => {
+  assert.match(html, /const RS_BLOCK_CEILING\s*=\s*\{\s*b64:\s*64,\s*dense:\s*GF14_ORDER\s*\};/, "RS_BLOCK_CEILING should map b64 to 64 and dense to GF14_ORDER");
+});
+
 console.log(`\n${pass} passed`);
 
 
