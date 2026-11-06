@@ -271,6 +271,11 @@ t("TXT_MAX and REVEAL_BUSY_NOTE constants are defined", () => {
   assert.match(html, /const REVEAL_BUSY_NOTE\s*=\s*"Still revealing the previous message — wait a moment and try again\.";/, "REVEAL_BUSY_NOTE should inform the user a reveal is underway");
 });
 
+t("DROP_STRONG_DEFAULT and DROP_SMALL_DEFAULT captured drop markup constants are defined", () => {
+  assert.match(html, /const DROP_STRONG_DEFAULT\s*=\s*drop\.querySelector\("strong"\)\.textContent;/, "DROP_STRONG_DEFAULT should be captured from markup");
+  assert.match(html, /const DROP_SMALL_DEFAULT\s*=\s*drop\.querySelector\("small"\)\.textContent;/, "DROP_SMALL_DEFAULT should be captured from markup");
+});
+
 console.log(`\n${pass} passed`);
 
 
