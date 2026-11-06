@@ -293,6 +293,10 @@ t("RS14 field instantiation is defined with RS_HALF", () => {
   assert.match(html, /const RS14\s*=\s*gfField\(gf14Mul,\s*gf14Inv,\s*RS_HALF\);/, "RS14 should instantiate gfField with gf14Mul, gf14Inv, RS_HALF");
 });
 
+t("RS14_META header size constant is defined", () => {
+  assert.match(html, /const RS14_META\s*=\s*4;/, "RS14_META should be 4");
+});
+
 console.log(`\n${pass} passed`);
 
 
