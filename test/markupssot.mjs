@@ -285,6 +285,10 @@ t("GF_EXP and GF_LOG Galois field tables are initialized", () => {
   assert.match(html, /const GF_EXP\s*=\s*new Uint8Array\(126\),\s*GF_LOG\s*=\s*new Uint8Array\(64\);/, "GF_EXP and GF_LOG should have lengths 126 and 64");
 });
 
+t("GF14_ORDER and GF14_N Galois field size constants are defined", () => {
+  assert.match(html, /const GF14_ORDER\s*=\s*1\s*<<\s*DENSE2_BITS,\s*GF14_N\s*=\s*GF14_ORDER\s*-\s*1;/, "GF14_ORDER and GF14_N should be tied to DENSE2_BITS");
+});
+
 console.log(`\n${pass} passed`);
 
 
