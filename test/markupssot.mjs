@@ -276,6 +276,11 @@ t("DROP_STRONG_DEFAULT and DROP_SMALL_DEFAULT captured drop markup constants are
   assert.match(html, /const DROP_SMALL_DEFAULT\s*=\s*drop\.querySelector\("small"\)\.textContent;/, "DROP_SMALL_DEFAULT should be captured from markup");
 });
 
+t("DROP_TITLE_DEFAULT and DROP_LABEL_DEFAULT captured drop attributes are defined", () => {
+  assert.match(html, /const DROP_TITLE_DEFAULT\s*=\s*drop\.title;/, "DROP_TITLE_DEFAULT should be captured from drop.title");
+  assert.match(html, /const DROP_LABEL_DEFAULT\s*=\s*drop\.getAttribute\("aria-label"\);/, "DROP_LABEL_DEFAULT should be captured from aria-label");
+});
+
 console.log(`\n${pass} passed`);
 
 
