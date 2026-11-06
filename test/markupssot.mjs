@@ -297,6 +297,18 @@ t("RS14_META header size constant is defined", () => {
   assert.match(html, /const RS14_META\s*=\s*4;/, "RS14_META should be 4");
 });
 
+t("RS_BLOCK_CEILING codec ceiling map is defined", () => {
+  assert.match(html, /const RS_BLOCK_CEILING\s*=\s*\{\s*b64:\s*64,\s*dense:\s*GF14_ORDER\s*\};/, "RS_BLOCK_CEILING should map b64 to 64 and dense to GF14_ORDER");
+});
+
+t("LOSS_PRIOR_A and LOSS_PRIOR_B beta prior constants are defined", () => {
+  assert.match(html, /const LOSS_PRIOR_A\s*=\s*1,\s*LOSS_PRIOR_B\s*=\s*49;/, "LOSS_PRIOR_A and LOSS_PRIOR_B should be 1 and 49");
+});
+
+t("targetBytes chunk payload formula is defined", () => {
+  assert.match(html, /const targetBytes\s*=\s*\(\)\s*=>\s*Math\.floor\(\(msgLimit\s*-\s*chunkPrefixLen\(1\)\)\s*\*\s*\(textBitsPerChar\(\)\s*\/\s*8\)\s*\*\s*0\.96\);/, "targetBytes formula should account for prefix, bits per char, and 96% headroom");
+});
+
 console.log(`\n${pass} passed`);
 
 
