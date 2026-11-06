@@ -301,6 +301,10 @@ t("RS_BLOCK_CEILING codec ceiling map is defined", () => {
   assert.match(html, /const RS_BLOCK_CEILING\s*=\s*\{\s*b64:\s*64,\s*dense:\s*GF14_ORDER\s*\};/, "RS_BLOCK_CEILING should map b64 to 64 and dense to GF14_ORDER");
 });
 
+t("LOSS_PRIOR_A and LOSS_PRIOR_B beta prior constants are defined", () => {
+  assert.match(html, /const LOSS_PRIOR_A\s*=\s*1,\s*LOSS_PRIOR_B\s*=\s*49;/, "LOSS_PRIOR_A and LOSS_PRIOR_B should be 1 and 49");
+});
+
 console.log(`\n${pass} passed`);
 
 
