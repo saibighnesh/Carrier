@@ -281,6 +281,10 @@ t("DROP_TITLE_DEFAULT and DROP_LABEL_DEFAULT captured drop attributes are define
   assert.match(html, /const DROP_LABEL_DEFAULT\s*=\s*drop\.getAttribute\("aria-label"\);/, "DROP_LABEL_DEFAULT should be captured from aria-label");
 });
 
+t("GF_EXP and GF_LOG Galois field tables are initialized", () => {
+  assert.match(html, /const GF_EXP\s*=\s*new Uint8Array\(126\),\s*GF_LOG\s*=\s*new Uint8Array\(64\);/, "GF_EXP and GF_LOG should have lengths 126 and 64");
+});
+
 console.log(`\n${pass} passed`);
 
 
