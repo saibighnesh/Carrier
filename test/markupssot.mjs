@@ -289,6 +289,10 @@ t("GF14_ORDER and GF14_N Galois field size constants are defined", () => {
   assert.match(html, /const GF14_ORDER\s*=\s*1\s*<<\s*DENSE2_BITS,\s*GF14_N\s*=\s*GF14_ORDER\s*-\s*1;/, "GF14_ORDER and GF14_N should be tied to DENSE2_BITS");
 });
 
+t("RS14 field instantiation is defined with RS_HALF", () => {
+  assert.match(html, /const RS14\s*=\s*gfField\(gf14Mul,\s*gf14Inv,\s*RS_HALF\);/, "RS14 should instantiate gfField with gf14Mul, gf14Inv, RS_HALF");
+});
+
 console.log(`\n${pass} passed`);
 
 
