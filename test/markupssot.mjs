@@ -305,6 +305,10 @@ t("LOSS_PRIOR_A and LOSS_PRIOR_B beta prior constants are defined", () => {
   assert.match(html, /const LOSS_PRIOR_A\s*=\s*1,\s*LOSS_PRIOR_B\s*=\s*49;/, "LOSS_PRIOR_A and LOSS_PRIOR_B should be 1 and 49");
 });
 
+t("targetBytes chunk payload formula is defined", () => {
+  assert.match(html, /const targetBytes\s*=\s*\(\)\s*=>\s*Math\.floor\(\(msgLimit\s*-\s*chunkPrefixLen\(1\)\)\s*\*\s*\(textBitsPerChar\(\)\s*\/\s*8\)\s*\*\s*0\.96\);/, "targetBytes formula should account for prefix, bits per char, and 96% headroom");
+});
+
 console.log(`\n${pass} passed`);
 
 
