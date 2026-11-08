@@ -353,6 +353,11 @@ t("lossKey storage key generator helper is defined", () => {
   assert.match(html, /const lossKey\s*=\s*\(\)\s*=>\s*`carrier_loss_\$\{msgLimit\}`;/, "lossKey should generate carrier_loss_${msgLimit}");
 });
 
+t("scrollBehavior and scrollIntoViewNearest helpers are defined", () => {
+  assert.match(html, /const scrollBehavior\s*=\s*\(\)=>prefersReducedMotion\(\)\s*\?\s*"auto"\s*:\s*"smooth";/, "scrollBehavior should respect prefersReducedMotion");
+  assert.match(html, /const scrollIntoViewNearest\s*=\s*el\s*=>\s*el\.scrollIntoView\(\{behavior:scrollBehavior\(\),\s*block:"nearest"\}\);/, "scrollIntoViewNearest should scroll with block nearest");
+});
+
 console.log(`\n${pass} passed`);
 
 
