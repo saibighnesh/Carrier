@@ -339,6 +339,11 @@ t("gf14Mul and gf14Inv Galois field arithmetic helpers are defined", () => {
   assert.match(html, /const gf14Inv\s*=\s*a\s*=>\s*GF14_EXP\[\(GF14_N\s*-\s*GF14_LOG\[a\]\)\s*%\s*GF14_N\];/, "gf14Inv should implement GF(16384) inversion");
 });
 
+t("b64ToSyms and symsToB64 symbol conversion helpers are defined", () => {
+  assert.match(html, /const b64ToSyms\s*=\s*\(str,\s*len\)\s*=>\s*\{\s*const out\s*=\s*new Uint8Array\(len\);/, "b64ToSyms should map Base64 chars to numerical symbols");
+  assert.match(html, /const symsToB64\s*=\s*syms\s*=>\s*\{\s*let s\s*=\s*"";/, "symsToB64 should map numerical symbols to Base64 chars");
+});
+
 console.log(`\n${pass} passed`);
 
 
