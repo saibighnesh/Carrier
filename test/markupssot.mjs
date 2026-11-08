@@ -349,6 +349,10 @@ t("denseToSyms and symsToDense symbol conversion helpers are defined", () => {
   assert.match(html, /const symsToDense\s*=\s*syms\s*=>\s*\{\s*let s\s*=\s*"";/, "symsToDense should map numerical symbols to dense chars");
 });
 
+t("lossKey storage key generator helper is defined", () => {
+  assert.match(html, /const lossKey\s*=\s*\(\)\s*=>\s*`carrier_loss_\$\{msgLimit\}`;/, "lossKey should generate carrier_loss_${msgLimit}");
+});
+
 console.log(`\n${pass} passed`);
 
 
