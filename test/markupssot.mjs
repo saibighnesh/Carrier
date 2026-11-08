@@ -329,6 +329,11 @@ t("dense2CharCount, denseCharCount, and b64CharCount helpers are defined", () =>
   assert.match(html, /const b64CharCount\s*=\s*byteLen\s*=>\s*Math\.ceil\(byteLen\s*\/\s*3\)\s*\*\s*4;/, "b64CharCount should calculate 4 Base64 chars per 3 bytes");
 });
 
+t("gfMul and gfInv Galois field arithmetic helpers are defined", () => {
+  assert.match(html, /const gfMul\s*=\s*\(a,b\)\s*=>\s*\(a\s*===\s*0\s*\|\|\s*b\s*===\s*0\)\s*\?\s*0\s*:\s*GF_EXP\[GF_LOG\[a\]\s*\+\s*GF_LOG\[b\]\];/, "gfMul should implement GF(64) multiplication");
+  assert.match(html, /const gfInv\s*=\s*a\s*=>\s*GF_EXP\[\(63\s*-\s*GF_LOG\[a\]\)\s*%\s*63\];/, "gfInv should implement GF(64) inversion");
+});
+
 console.log(`\n${pass} passed`);
 
 
