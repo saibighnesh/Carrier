@@ -309,6 +309,11 @@ t("targetBytes chunk payload formula is defined", () => {
   assert.match(html, /const targetBytes\s*=\s*\(\)\s*=>\s*Math\.floor\(\(msgLimit\s*-\s*chunkPrefixLen\(1\)\)\s*\*\s*\(textBitsPerChar\(\)\s*\/\s*8\)\s*\*\s*0\.96\);/, "targetBytes formula should account for prefix, bits per char, and 96% headroom");
 });
 
+t("SID_LEN constant and chunkPrefixLen helper are defined", () => {
+  assert.match(html, /const SID_LEN\s*=\s*6;/, "SID_LEN should be 6");
+  assert.match(html, /const chunkPrefixLen\s*=\s*total\s*=>\s*4\s*\+\s*SID_LEN\s*\+\s*3\s*\+\s*2\s*\*\s*String\(total\)\.length;/, "chunkPrefixLen formula should account for brackets, SID, slash, and indices");
+});
+
 console.log(`\n${pass} passed`);
 
 
