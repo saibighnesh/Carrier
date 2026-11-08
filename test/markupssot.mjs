@@ -314,6 +314,11 @@ t("SID_LEN constant and chunkPrefixLen helper are defined", () => {
   assert.match(html, /const chunkPrefixLen\s*=\s*total\s*=>\s*4\s*\+\s*SID_LEN\s*\+\s*3\s*\+\s*2\s*\*\s*String\(total\)\.length;/, "chunkPrefixLen formula should account for brackets, SID, slash, and indices");
 });
 
+t("maxChunkIndexFor and textBitsPerChar helpers are defined", () => {
+  assert.match(html, /const maxChunkIndexFor\s*=\s*\(total,\s*recoveryOn\)\s*=>\s*recoveryOn\s*\?\s*total\s*\*\s*2\s*:\s*total;/, "maxChunkIndexFor should double total when recovery is enabled");
+  assert.match(html, /const textBitsPerChar\s*=\s*\(\)\s*=>\s*textCodec\s*===\s*"dense"\s*\?\s*DENSE2_BITS\s*:\s*6;/, "textBitsPerChar should return DENSE2_BITS for dense or 6 for base64");
+});
+
 console.log(`\n${pass} passed`);
 
 
