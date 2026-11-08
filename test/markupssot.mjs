@@ -358,6 +358,10 @@ t("scrollBehavior and scrollIntoViewNearest helpers are defined", () => {
   assert.match(html, /const scrollIntoViewNearest\s*=\s*el\s*=>\s*el\.scrollIntoView\(\{behavior:scrollBehavior\(\),\s*block:"nearest"\}\);/, "scrollIntoViewNearest should scroll with block nearest");
 });
 
+t("copyAllLabel dynamic button label helper is defined", () => {
+  assert.match(html, /const copyAllLabel\s*=\s*\(\)\s*=>\s*lastChunks\.length\s*===\s*1\s*\?\s*"Copy message"\s*:\s*"Copy all messages";/, "copyAllLabel should distinguish single chunk from multiple chunks");
+});
+
 console.log(`\n${pass} passed`);
 
 
