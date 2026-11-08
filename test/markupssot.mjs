@@ -344,6 +344,11 @@ t("b64ToSyms and symsToB64 symbol conversion helpers are defined", () => {
   assert.match(html, /const symsToB64\s*=\s*syms\s*=>\s*\{\s*let s\s*=\s*"";/, "symsToB64 should map numerical symbols to Base64 chars");
 });
 
+t("denseToSyms and symsToDense symbol conversion helpers are defined", () => {
+  assert.match(html, /const denseToSyms\s*=\s*\(str,\s*len\)\s*=>\s*\{\s*const out\s*=\s*new Uint16Array\(len\);/, "denseToSyms should map dense chars to numerical symbols");
+  assert.match(html, /const symsToDense\s*=\s*syms\s*=>\s*\{\s*let s\s*=\s*"";/, "symsToDense should map numerical symbols to dense chars");
+});
+
 console.log(`\n${pass} passed`);
 
 
