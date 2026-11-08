@@ -349,6 +349,19 @@ t("denseToSyms and symsToDense symbol conversion helpers are defined", () => {
   assert.match(html, /const symsToDense\s*=\s*syms\s*=>\s*\{\s*let s\s*=\s*"";/, "symsToDense should map numerical symbols to dense chars");
 });
 
+t("lossKey storage key generator helper is defined", () => {
+  assert.match(html, /const lossKey\s*=\s*\(\)\s*=>\s*`carrier_loss_\$\{msgLimit\}`;/, "lossKey should generate carrier_loss_${msgLimit}");
+});
+
+t("scrollBehavior and scrollIntoViewNearest helpers are defined", () => {
+  assert.match(html, /const scrollBehavior\s*=\s*\(\)=>prefersReducedMotion\(\)\s*\?\s*"auto"\s*:\s*"smooth";/, "scrollBehavior should respect prefersReducedMotion");
+  assert.match(html, /const scrollIntoViewNearest\s*=\s*el\s*=>\s*el\.scrollIntoView\(\{behavior:scrollBehavior\(\),\s*block:"nearest"\}\);/, "scrollIntoViewNearest should scroll with block nearest");
+});
+
+t("copyAllLabel dynamic button label helper is defined", () => {
+  assert.match(html, /const copyAllLabel\s*=\s*\(\)\s*=>\s*lastChunks\.length\s*===\s*1\s*\?\s*"Copy message"\s*:\s*"Copy all messages";/, "copyAllLabel should distinguish single chunk from multiple chunks");
+});
+
 console.log(`\n${pass} passed`);
 
 
