@@ -319,6 +319,10 @@ t("maxChunkIndexFor and textBitsPerChar helpers are defined", () => {
   assert.match(html, /const textBitsPerChar\s*=\s*\(\)\s*=>\s*textCodec\s*===\s*"dense"\s*\?\s*DENSE2_BITS\s*:\s*6;/, "textBitsPerChar should return DENSE2_BITS for dense or 6 for base64");
 });
 
+t("fmtKB byte formatting helper is defined", () => {
+  assert.match(html, /const fmtKB\s*=\s*b\s*=>\s*b\s*<\s*1024\s*\?\s*b\s*\+\s*" B"/, "fmtKB should format bytes with B, KB, or MB units");
+});
+
 console.log(`\n${pass} passed`);
 
 
