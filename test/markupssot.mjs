@@ -334,6 +334,11 @@ t("gfMul and gfInv Galois field arithmetic helpers are defined", () => {
   assert.match(html, /const gfInv\s*=\s*a\s*=>\s*GF_EXP\[\(63\s*-\s*GF_LOG\[a\]\)\s*%\s*63\];/, "gfInv should implement GF(64) inversion");
 });
 
+t("gf14Mul and gf14Inv Galois field arithmetic helpers are defined", () => {
+  assert.match(html, /const gf14Mul\s*=\s*\(a,b\)\s*=>\s*\(a\s*===\s*0\s*\|\|\s*b\s*===\s*0\)\s*\?\s*0\s*:\s*GF14_EXP\[GF14_LOG\[a\]\s*\+\s*GF14_LOG\[b\]\];/, "gf14Mul should implement GF(16384) multiplication");
+  assert.match(html, /const gf14Inv\s*=\s*a\s*=>\s*GF14_EXP\[\(GF14_N\s*-\s*GF14_LOG\[a\]\)\s*%\s*GF14_N\];/, "gf14Inv should implement GF(16384) inversion");
+});
+
 console.log(`\n${pass} passed`);
 
 
