@@ -367,6 +367,11 @@ t("packInputs and chunkInputs cache key generators are defined", () => {
   assert.match(html, /const chunkInputs\s*=\s*packKeyStr\s*=>\s*\[packKeyStr,\s*msgLimit,\s*recoveryLevel\]\.join\("\|"\);/, "chunkInputs should include packKeyStr, msgLimit, recoveryLevel");
 });
 
+t("pwValue and canCopy helpers are defined", () => {
+  assert.match(html, /const pwValue\s*=\s*id\s*=>\s*\$\("#"\+id\)\.value\.slice\(0,\s*PW_MAX\);/, "pwValue should slice password input to PW_MAX");
+  assert.match(html, /const canCopy\s*=\s*\(\)\s*=>\s*!!\(navigator\.clipboard\s*&&\s*navigator\.clipboard\.writeText\)\s*\|\|\s*document\.queryCommandSupported\?\.\("copy"\);/, "canCopy should check clipboard API or fallback");
+});
+
 console.log(`\n${pass} passed`);
 
 
