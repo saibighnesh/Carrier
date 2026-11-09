@@ -372,6 +372,10 @@ t("pwValue and canCopy helpers are defined", () => {
   assert.match(html, /const canCopy\s*=\s*\(\)\s*=>\s*!!\(navigator\.clipboard\s*&&\s*navigator\.clipboard\.writeText\)\s*\|\|\s*document\.queryCommandSupported\?\.\("copy"\);/, "canCopy should check clipboard API or fallback");
 });
 
+t("nextUnsentIndex helper is defined", () => {
+  assert.match(html, /const nextUnsentIndex\s*=\s*\(\)\s*=>\s*lastChunks\.findIndex\(c\s*=>\s*!sentChunks\.has\(c\)\);/, "nextUnsentIndex should find first chunk not in sentChunks set");
+});
+
 console.log(`\n${pass} passed`);
 
 
