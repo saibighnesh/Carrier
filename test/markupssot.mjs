@@ -362,6 +362,11 @@ t("copyAllLabel dynamic button label helper is defined", () => {
   assert.match(html, /const copyAllLabel\s*=\s*\(\)\s*=>\s*lastChunks\.length\s*===\s*1\s*\?\s*"Copy message"\s*:\s*"Copy all messages";/, "copyAllLabel should distinguish single chunk from multiple chunks");
 });
 
+t("packInputs and chunkInputs cache key generators are defined", () => {
+  assert.match(html, /const packInputs\s*=\s*\(maxDim,\s*quality,\s*password\)\s*=>\s*\[loadToken,\s*maxDim,\s*quality,\s*password,\s*textCodec\]\.join\("\|"\);/, "packInputs should include loadToken, maxDim, quality, password, textCodec");
+  assert.match(html, /const chunkInputs\s*=\s*packKeyStr\s*=>\s*\[packKeyStr,\s*msgLimit,\s*recoveryLevel\]\.join\("\|"\);/, "chunkInputs should include packKeyStr, msgLimit, recoveryLevel");
+});
+
 console.log(`\n${pass} passed`);
 
 
