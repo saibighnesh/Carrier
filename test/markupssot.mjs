@@ -376,6 +376,10 @@ t("nextUnsentIndex helper is defined", () => {
   assert.match(html, /const nextUnsentIndex\s*=\s*\(\)\s*=>\s*lastChunks\.findIndex\(c\s*=>\s*!sentChunks\.has\(c\)\);/, "nextUnsentIndex should find first chunk not in sentChunks set");
 });
 
+t("customLimitErrorText helper is defined", () => {
+  assert.match(html, /const customLimitErrorText\s*=\s*\(\)\s*=>\s*`Enter a whole number between \$\{CUSTOM_LIMIT_MIN\} and \$\{CUSTOM_LIMIT_MAX\.toLocaleString\(\)\}\.`;/, "customLimitErrorText should format bounds string");
+});
+
 console.log(`\n${pass} passed`);
 
 
