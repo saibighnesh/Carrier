@@ -384,6 +384,11 @@ t("modeBtns modes array is captured from .modes button selectors", () => {
   assert.match(html, /const modeBtns\s*=\s*\[\.\.\.document\.querySelectorAll\("\.modes button"\)\];/, "modeBtns should query all buttons in .modes");
 });
 
+t("copyoneTimers and flashState WeakMaps are defined for UI state management", () => {
+  assert.match(html, /const copyoneTimers\s*=\s*new WeakMap\(\);/, "copyoneTimers WeakMap should be defined");
+  assert.match(html, /const flashState\s*=\s*new WeakMap\(\);/, "flashState WeakMap should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
