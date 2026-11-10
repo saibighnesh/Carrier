@@ -380,6 +380,10 @@ t("customLimitErrorText helper is defined", () => {
   assert.match(html, /const customLimitErrorText\s*=\s*\(\)\s*=>\s*`Enter a whole number between \$\{CUSTOM_LIMIT_MIN\} and \$\{CUSTOM_LIMIT_MAX\.toLocaleString\(\)\}\.`;/, "customLimitErrorText should format bounds string");
 });
 
+t("modeBtns modes array is captured from .modes button selectors", () => {
+  assert.match(html, /const modeBtns\s*=\s*\[\.\.\.document\.querySelectorAll\("\.modes button"\)\];/, "modeBtns should query all buttons in .modes");
+});
+
 console.log(`\n${pass} passed`);
 
 
