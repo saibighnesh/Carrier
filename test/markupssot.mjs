@@ -394,6 +394,11 @@ t("logChoose and lbeta math helpers are defined", () => {
   assert.match(html, /const lbeta\s*=\s*\(x,\s*y\)\s*=>\s*lgamma\(x\)\s*\+\s*lgamma\(y\)\s*-\s*lgamma\(x\s*\+\s*y\);/, "lbeta should compute log beta function");
 });
 
+t("uncodedParts and isStale helpers are defined", () => {
+  assert.match(html, /const uncodedParts\s*=\s*layout\s*=>\s*layout\.reduce\(\(n,\s*blk\)\s*=>\s*n\s*\+\s*\(blk\.k\s*\?\s*0\s*:\s*blk\.n\),\s*0\);/, "uncodedParts should count parts in blocks without parity");
+  assert.match(html, /const isStale\s*=\s*myToken\s*=>\s*!srcImage\s*\|\|\s*loadToken\s*!==\s*myToken;/, "isStale should check srcImage presence and loadToken match");
+});
+
 console.log(`\n${pass} passed`);
 
 
