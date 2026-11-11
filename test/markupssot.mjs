@@ -389,6 +389,11 @@ t("copyoneTimers and flashState WeakMaps are defined for UI state management", (
   assert.match(html, /const flashState\s*=\s*new WeakMap\(\);/, "flashState WeakMap should be defined");
 });
 
+t("logChoose and lbeta math helpers are defined", () => {
+  assert.match(html, /const logChoose\s*=\s*\(n,\s*k\)\s*=>\s*\(k\s*<\s*0\s*\|\|\s*k\s*>\s*n\)\s*\?\s*-Infinity\s*:\s*lgamma\(n\s*\+\s*1\)\s*-\s*lgamma\(k\s*\+\s*1\)\s*-\s*lgamma\(n\s*-\s*k\s*\+\s*1\);/, "logChoose should compute log combinations");
+  assert.match(html, /const lbeta\s*=\s*\(x,\s*y\)\s*=>\s*lgamma\(x\)\s*\+\s*lgamma\(y\)\s*-\s*lgamma\(x\s*\+\s*y\);/, "lbeta should compute log beta function");
+});
+
 console.log(`\n${pass} passed`);
 
 
