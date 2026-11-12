@@ -399,6 +399,12 @@ t("uncodedParts and isStale helpers are defined", () => {
   assert.match(html, /const isStale\s*=\s*myToken\s*=>\s*!srcImage\s*\|\|\s*loadToken\s*!==\s*myToken;/, "isStale should check srcImage presence and loadToken match");
 });
 
+t("denseVersionOf codec version dispatch helper is defined", () => {
+  assert.match(html, /const denseVersionOf\s*=\s*t\s*=>\s*\{/, "denseVersionOf helper should be defined");
+  assert.match(html, /const off\s*=\s*t\.charCodeAt\(0\)\s*-\s*DENSE_BASE;/, "denseVersionOf should calculate offset from DENSE_BASE");
+  assert.match(html, /return\s*\(off\s*>=\s*0\s*&&\s*off\s*<=\s*2\)\s*\?\s*1\s*:\s*\(off\s*>=\s*DENSE2_HDR\s*&&\s*off\s*<=\s*DENSE2_HDR\s*\+\s*6\)\s*\?\s*2\s*:\s*0;/, "denseVersionOf should distinguish v1 (0..2), v2 (3..9), and invalid (0)");
+});
+
 console.log(`\n${pass} passed`);
 
 
