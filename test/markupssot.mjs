@@ -405,6 +405,11 @@ t("denseVersionOf codec version dispatch helper is defined", () => {
   assert.match(html, /return\s*\(off\s*>=\s*0\s*&&\s*off\s*<=\s*2\)\s*\?\s*1\s*:\s*\(off\s*>=\s*DENSE2_HDR\s*&&\s*off\s*<=\s*DENSE2_HDR\s*\+\s*6\)\s*\?\s*2\s*:\s*0;/, "denseVersionOf should distinguish v1 (0..2), v2 (3..9), and invalid (0)");
 });
 
+t("dec64 Base64 integer decoder helper is defined", () => {
+  assert.match(html, /const dec64\s*=\s*str\s*=>\s*\{\s*let v\s*=\s*0;/, "dec64 helper should be defined");
+  assert.match(html, /const cc\s*=\s*str\.charCodeAt\(i\);\s*const d\s*=\s*cc\s*<\s*128\s*\?\s*B64V\[cc\]\s*:\s*-1;/, "dec64 should guard ASCII range before B64V lookup");
+});
+
 console.log(`\n${pass} passed`);
 
 
