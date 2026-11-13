@@ -433,6 +433,11 @@ t("enc14 and dec14 dense integer encoder and decoder helpers are defined", () =>
   assert.match(html, /function dec14\(str\)\{/, "dec14 function should be defined");
 });
 
+t("countedSends and sentChunks tracking sets are initialized", () => {
+  assert.match(html, /const countedSends\s*=\s*new Set\(\);/, "countedSends Set should be initialized");
+  assert.match(html, /const sentChunks\s*=\s*new Set\(\);/, "sentChunks Set should be initialized");
+});
+
 console.log(`\n${pass} passed`);
 
 
