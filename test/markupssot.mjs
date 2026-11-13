@@ -423,6 +423,11 @@ t("GF14_EXP and GF14_LOG Galois field table allocations are defined", () => {
   assert.match(html, /const GF14_EXP\s*=\s*new Uint16Array\(2\s*\*\s*GF14_N\),\s*GF14_LOG\s*=\s*new Int32Array\(GF14_ORDER\)\.fill\(-1\);/, "GF14_EXP and GF14_LOG should allocate 2*GF14_N and GF14_ORDER elements");
 });
 
+t("enc64 Base64 integer encoder helper is defined", () => {
+  assert.match(html, /function enc64\(v,\s*width\)\{/, "enc64 helper should be defined");
+  assert.match(html, /if\(v\s*<\s*0\s*\|\|\s*v\s*>=\s*Math\.pow\(64,\s*width\)\)\s*return null;/, "enc64 should reject out-of-range values");
+});
+
 console.log(`\n${pass} passed`);
 
 
