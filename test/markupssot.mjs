@@ -442,6 +442,11 @@ t("autofitOrigHtml captures the initial autofit button markup", () => {
   assert.match(html, /const autofitOrigHtml\s*=\s*\$\("#autofit"\)\.innerHTML;/, "autofitOrigHtml should capture innerHTML from #autofit");
 });
 
+t("fileInput and txtFile file input elements are captured", () => {
+  assert.match(html, /const drop\s*=\s*\$\("#drop"\),\s*fileInput\s*=\s*\$\("#file"\);/, "fileInput should capture #file");
+  assert.match(html, /const txtFile\s*=\s*\$\("#txtFile"\);/, "txtFile should capture #txtFile");
+});
+
 console.log(`\n${pass} passed`);
 
 
