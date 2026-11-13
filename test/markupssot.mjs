@@ -419,6 +419,10 @@ t("B64V reverse lookup table is initialized", () => {
   assert.match(html, /const B64V\s*=\s*\(\(\)=>\{\s*const v\s*=\s*new Int8Array\(128\)\.fill\(-1\);/, "B64V table should initialize 128 elements filled with -1");
 });
 
+t("GF14_EXP and GF14_LOG Galois field table allocations are defined", () => {
+  assert.match(html, /const GF14_EXP\s*=\s*new Uint16Array\(2\s*\*\s*GF14_N\),\s*GF14_LOG\s*=\s*new Int32Array\(GF14_ORDER\)\.fill\(-1\);/, "GF14_EXP and GF14_LOG should allocate 2*GF14_N and GF14_ORDER elements");
+});
+
 console.log(`\n${pass} passed`);
 
 
