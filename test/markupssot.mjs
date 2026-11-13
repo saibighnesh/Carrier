@@ -410,6 +410,11 @@ t("dec64 Base64 integer decoder helper is defined", () => {
   assert.match(html, /const cc\s*=\s*str\.charCodeAt\(i\);\s*const d\s*=\s*cc\s*<\s*128\s*\?\s*B64V\[cc\]\s*:\s*-1;/, "dec64 should guard ASCII range before B64V lookup");
 });
 
+t("CRC32_TABLE and crc32 checksum helper are defined", () => {
+  assert.match(html, /const CRC32_TABLE\s*=\s*\(\(\)=>\{/, "CRC32_TABLE precomputation should be defined");
+  assert.match(html, /function crc32\(bytes\)\{/, "crc32 function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
