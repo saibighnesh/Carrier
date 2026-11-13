@@ -438,6 +438,20 @@ t("countedSends and sentChunks tracking sets are initialized", () => {
   assert.match(html, /const sentChunks\s*=\s*new Set\(\);/, "sentChunks Set should be initialized");
 });
 
+t("autofitOrigHtml captures the initial autofit button markup", () => {
+  assert.match(html, /const autofitOrigHtml\s*=\s*\$\("#autofit"\)\.innerHTML;/, "autofitOrigHtml should capture innerHTML from #autofit");
+});
+
+t("fileInput and txtFile file input elements are captured", () => {
+  assert.match(html, /const drop\s*=\s*\$\("#drop"\),\s*fileInput\s*=\s*\$\("#file"\);/, "fileInput should capture #file");
+  assert.match(html, /const txtFile\s*=\s*\$\("#txtFile"\);/, "txtFile should capture #txtFile");
+});
+
+t("bytesToB64 and b64ToBytes byte conversion helpers are defined", () => {
+  assert.match(html, /function bytesToB64\(bytes\)\{/, "bytesToB64 function should be defined");
+  assert.match(html, /function b64ToBytes\(b64\)\{/, "b64ToBytes function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
