@@ -415,6 +415,10 @@ t("CRC32_TABLE and crc32 checksum helper are defined", () => {
   assert.match(html, /function crc32\(bytes\)\{/, "crc32 function should be defined");
 });
 
+t("B64V reverse lookup table is initialized", () => {
+  assert.match(html, /const B64V\s*=\s*\(\(\)=>\{\s*const v\s*=\s*new Int8Array\(128\)\.fill\(-1\);/, "B64V table should initialize 128 elements filled with -1");
+});
+
 console.log(`\n${pass} passed`);
 
 
