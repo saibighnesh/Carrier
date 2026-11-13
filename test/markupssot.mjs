@@ -438,6 +438,10 @@ t("countedSends and sentChunks tracking sets are initialized", () => {
   assert.match(html, /const sentChunks\s*=\s*new Set\(\);/, "sentChunks Set should be initialized");
 });
 
+t("autofitOrigHtml captures the initial autofit button markup", () => {
+  assert.match(html, /const autofitOrigHtml\s*=\s*\$\("#autofit"\)\.innerHTML;/, "autofitOrigHtml should capture innerHTML from #autofit");
+});
+
 console.log(`\n${pass} passed`);
 
 
