@@ -428,6 +428,11 @@ t("enc64 Base64 integer encoder helper is defined", () => {
   assert.match(html, /if\(v\s*<\s*0\s*\|\|\s*v\s*>=\s*Math\.pow\(64,\s*width\)\)\s*return null;/, "enc64 should reject out-of-range values");
 });
 
+t("enc14 and dec14 dense integer encoder and decoder helpers are defined", () => {
+  assert.match(html, /function enc14\(v,\s*width\)\{/, "enc14 function should be defined");
+  assert.match(html, /function dec14\(str\)\{/, "dec14 function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
