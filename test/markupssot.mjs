@@ -457,6 +457,11 @@ t("bytesToDense and denseToBytes dense v1 conversion helpers are defined", () =>
   assert.match(html, /function denseToBytes\(text\)\{/, "denseToBytes function should be defined");
 });
 
+t("bytesToDense2 and dense2ToBytes dense v2 conversion helpers are defined", () => {
+  assert.match(html, /function bytesToDense2\(bytes\)\{/, "bytesToDense2 function should be defined");
+  assert.match(html, /function dense2ToBytes\(text\)\{/, "dense2ToBytes function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
