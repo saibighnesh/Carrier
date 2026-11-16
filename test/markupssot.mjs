@@ -478,6 +478,11 @@ t("rsMatrix Cauchy generator matrix builder is defined", () => {
   assert.match(html, /function rsMatrix\(rows,\s*n\)\{/, "rsMatrix function should be defined");
 });
 
+t("rsEncode and rsDecode Reed-Solomon codec functions are defined", () => {
+  assert.match(html, /function rsEncode\(shards,\s*k\)\{/, "rsEncode function should be defined");
+  assert.match(html, /function rsDecode\(n,\s*len,\s*present,\s*parity\)\{/, "rsDecode function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
