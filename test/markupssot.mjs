@@ -474,6 +474,10 @@ t("yieldToMain cooperative scheduler yield helper is defined", () => {
   assert.match(html, /function yieldToMain\(\)\{/, "yieldToMain function should be defined");
 });
 
+t("rsMatrix Cauchy generator matrix builder is defined", () => {
+  assert.match(html, /function rsMatrix\(rows,\s*n\)\{/, "rsMatrix function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
