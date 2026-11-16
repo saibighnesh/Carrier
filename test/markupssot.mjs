@@ -466,6 +466,10 @@ t("densePrefixBytes prefix extraction helper is defined", () => {
   assert.match(html, /function densePrefixBytes\(text,\s*want,\s*bits\s*=\s*DENSE_BITS\)\{/, "densePrefixBytes function should be defined");
 });
 
+t("dense2ByteLength dense v2 byte length calculator is defined", () => {
+  assert.match(html, /function dense2ByteLength\(text\)\{/, "dense2ByteLength function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
