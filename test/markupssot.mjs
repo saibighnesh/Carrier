@@ -470,6 +470,10 @@ t("dense2ByteLength dense v2 byte length calculator is defined", () => {
   assert.match(html, /function dense2ByteLength\(text\)\{/, "dense2ByteLength function should be defined");
 });
 
+t("yieldToMain cooperative scheduler yield helper is defined", () => {
+  assert.match(html, /function yieldToMain\(\)\{/, "yieldToMain function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
