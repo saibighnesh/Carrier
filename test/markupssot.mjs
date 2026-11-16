@@ -488,6 +488,10 @@ t("lgamma and betaBinomTail statistical math helpers are defined", () => {
   assert.match(html, /function betaBinomTail\(m,\s*k,\s*a,\s*b\)\{/, "betaBinomTail function should be defined");
 });
 
+t("binomTail binomial distribution tail helper is defined", () => {
+  assert.match(html, /function binomTail\(m,\s*k,\s*p\)\{/, "binomTail function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
