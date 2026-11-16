@@ -492,6 +492,11 @@ t("binomTail binomial distribution tail helper is defined", () => {
   assert.match(html, /function binomTail\(m,\s*k,\s*p\)\{/, "binomTail function should be defined");
 });
 
+t("lossPosterior and observeSend Bayesian loss learning helpers are defined", () => {
+  assert.match(html, /function lossPosterior\(\)\{/, "lossPosterior function should be defined");
+  assert.match(html, /function observeSend\(r,\s*unarrived\)\{/, "observeSend function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
