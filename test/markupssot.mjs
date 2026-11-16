@@ -502,6 +502,11 @@ t("deriveKey and getKeyMaterial Web Crypto helpers are defined", () => {
   assert.match(html, /async function getKeyMaterial\(password\)\{/, "getKeyMaterial function should be defined");
 });
 
+t("pack and unpack payload envelope functions are defined", () => {
+  assert.match(html, /async function pack\(img,\s*mime,\s*password\)\{/, "pack function should be defined");
+  assert.match(html, /async function unpack\(text,\s*password\)\{/, "unpack function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
