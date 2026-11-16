@@ -507,6 +507,11 @@ t("pack and unpack payload envelope functions are defined", () => {
   assert.match(html, /async function unpack\(text,\s*password\)\{/, "unpack function should be defined");
 });
 
+t("chunkify and reassemble chunk pipeline functions are defined", () => {
+  assert.match(html, /async function chunkify\(b64,\s*level\s*=\s*recoveryLevel\)\{/, "chunkify function should be defined");
+  assert.match(html, /function reassemble\(text\)\{/, "reassemble function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
