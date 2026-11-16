@@ -488,6 +488,20 @@ t("lgamma and betaBinomTail statistical math helpers are defined", () => {
   assert.match(html, /function betaBinomTail\(m,\s*k,\s*a,\s*b\)\{/, "betaBinomTail function should be defined");
 });
 
+t("binomTail binomial distribution tail helper is defined", () => {
+  assert.match(html, /function binomTail\(m,\s*k,\s*p\)\{/, "binomTail function should be defined");
+});
+
+t("lossPosterior and observeSend Bayesian loss learning helpers are defined", () => {
+  assert.match(html, /function lossPosterior\(\)\{/, "lossPosterior function should be defined");
+  assert.match(html, /function observeSend\(r,\s*unarrived\)\{/, "observeSend function should be defined");
+});
+
+t("deriveKey and getKeyMaterial Web Crypto helpers are defined", () => {
+  assert.match(html, /async function deriveKey\(password,\s*salt\)\{/, "deriveKey function should be defined");
+  assert.match(html, /async function getKeyMaterial\(password\)\{/, "getKeyMaterial function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
