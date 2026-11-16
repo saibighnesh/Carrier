@@ -483,6 +483,11 @@ t("rsEncode and rsDecode Reed-Solomon codec functions are defined", () => {
   assert.match(html, /function rsDecode\(n,\s*len,\s*present,\s*parity\)\{/, "rsDecode function should be defined");
 });
 
+t("lgamma and betaBinomTail statistical math helpers are defined", () => {
+  assert.match(html, /function lgamma\(z\)\{/, "lgamma function should be defined");
+  assert.match(html, /function betaBinomTail\(m,\s*k,\s*a,\s*b\)\{/, "betaBinomTail function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
