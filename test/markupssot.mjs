@@ -517,6 +517,10 @@ t("recordLoss and migrateLoss storage helpers are defined", () => {
   assert.match(html, /function migrateLoss\(\)\{/, "migrateLoss function should be defined");
 });
 
+t("rsBlockLayout block layout calculation helper is defined", () => {
+  assert.match(html, /function rsBlockLayout\(total,\s*kFor,\s*ceiling\s*=\s*RS_BLOCK_CEILING\.b64\)\{/, "rsBlockLayout function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
