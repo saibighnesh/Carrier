@@ -539,6 +539,19 @@ t("parityChunksB64 and parityChunksDense parity chunk generators are defined", (
   assert.match(html, /function parityChunksDense\(text,\s*sid,\s*total,\s*per,\s*level,\s*tag\)\{/, "parityChunksDense function should be defined");
 });
 
+t("reassembleParse message parsing helper is defined", () => {
+  assert.match(html, /function reassembleParse\(text\)\{/, "reassembleParse function should be defined");
+});
+
+t("rsRepair error correction helper is defined", () => {
+  assert.match(html, /function rsRepair\(map,\s*total,\s*parityRaw,\s*isDense\)\{/, "rsRepair function should be defined");
+});
+
+t("rsRepairB64 and rsRepairDense error correction wrappers are defined", () => {
+  assert.match(html, /function rsRepairB64\(map,\s*total,\s*parityRaw\)\{/, "rsRepairB64 function should be defined");
+  assert.match(html, /function rsRepairDense\(map,\s*total,\s*parityRaw\)\{/, "rsRepairDense function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
