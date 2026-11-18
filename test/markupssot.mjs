@@ -587,6 +587,11 @@ t("chunkDataCount and showCompact card layout helpers are defined", () => {
   assert.match(html, /function showCompact\(\)\{/, "showCompact function should be defined");
 });
 
+t("makeChunkCard and updateChunkCard DOM card lifecycle helpers are defined", () => {
+  assert.match(html, /function makeChunkCard\(c,\s*i,\s*dataParts\)\{/, "makeChunkCard function should be defined");
+  assert.match(html, /function updateChunkCard\(el,\s*c,\s*i,\s*dataParts\)\{/, "updateChunkCard function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
