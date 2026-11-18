@@ -577,6 +577,11 @@ t("markSent and markSentBatch chunk delivery state helpers are defined", () => {
   assert.match(html, /function markSentBatch\(chunks\)\{/, "markSentBatch function should be defined");
 });
 
+t("setOutputStale and showPlan transmission planning helpers are defined", () => {
+  assert.match(html, /function setOutputStale\(stale\)\{/, "setOutputStale function should be defined");
+  assert.match(html, /function showPlan\(\)\{/, "showPlan function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
