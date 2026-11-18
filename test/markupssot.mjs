@@ -582,6 +582,21 @@ t("setOutputStale and showPlan transmission planning helpers are defined", () =>
   assert.match(html, /function showPlan\(\)\{/, "showPlan function should be defined");
 });
 
+t("chunkDataCount and showCompact card layout helpers are defined", () => {
+  assert.match(html, /function chunkDataCount\(\)\{/, "chunkDataCount function should be defined");
+  assert.match(html, /function showCompact\(\)\{/, "showCompact function should be defined");
+});
+
+t("makeChunkCard and updateChunkCard DOM card lifecycle helpers are defined", () => {
+  assert.match(html, /function makeChunkCard\(c,\s*i,\s*dataParts\)\{/, "makeChunkCard function should be defined");
+  assert.match(html, /function updateChunkCard\(el,\s*c,\s*i,\s*dataParts\)\{/, "updateChunkCard function should be defined");
+});
+
+t("renderChunks and setChunkText chunk rendering helpers are defined", () => {
+  assert.match(html, /function renderChunks\(\)\{/, "renderChunks function should be defined");
+  assert.match(html, /function setChunkText\(full\)\{/, "setChunkText function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
