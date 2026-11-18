@@ -592,6 +592,11 @@ t("makeChunkCard and updateChunkCard DOM card lifecycle helpers are defined", ()
   assert.match(html, /function updateChunkCard\(el,\s*c,\s*i,\s*dataParts\)\{/, "updateChunkCard function should be defined");
 });
 
+t("renderChunks and setChunkText chunk rendering helpers are defined", () => {
+  assert.match(html, /function renderChunks\(\)\{/, "renderChunks function should be defined");
+  assert.match(html, /function setChunkText\(full\)\{/, "setChunkText function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
