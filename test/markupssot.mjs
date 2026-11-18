@@ -572,6 +572,11 @@ t("updateSendTitle and paintSent transmission UI helpers are defined", () => {
   assert.match(html, /function paintSent\(\)\{/, "paintSent function should be defined");
 });
 
+t("markSent and markSentBatch chunk delivery state helpers are defined", () => {
+  assert.match(html, /function markSent\(c\)\{/, "markSent function should be defined");
+  assert.match(html, /function markSentBatch\(chunks\)\{/, "markSentBatch function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
