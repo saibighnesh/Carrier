@@ -525,6 +525,10 @@ t("imageProb probability model helper is defined", () => {
   assert.match(html, /function imageProb\(layout,\s*a,\s*b\)\{/, "imageProb function should be defined");
 });
 
+t("planParity parity planning helper is defined", () => {
+  assert.match(html, /function planParity\(total,\s*target,\s*post,\s*ceiling\s*=\s*RS_BLOCK_CEILING\.b64\)\{/, "planParity function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
