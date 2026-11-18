@@ -552,6 +552,11 @@ t("rsRepairB64 and rsRepairDense error correction wrappers are defined", () => {
   assert.match(html, /function rsRepairDense\(map,\s*total,\s*parityRaw\)\{/, "rsRepairDense function should be defined");
 });
 
+t("loadImage and detectAlpha image processing helpers are defined", () => {
+  assert.match(html, /function loadImage\(file\)\{/, "loadImage function should be defined");
+  assert.match(html, /function detectAlpha\(img\)\{/, "detectAlpha function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
