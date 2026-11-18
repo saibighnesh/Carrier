@@ -567,6 +567,11 @@ t("compressOnce and autoFit image compression pipeline functions are defined", (
   assert.match(html, /async function autoFit\(onProgress\)\{/, "autoFit function should be defined");
 });
 
+t("updateSendTitle and paintSent transmission UI helpers are defined", () => {
+  assert.match(html, /function updateSendTitle\(\)\{/, "updateSendTitle function should be defined");
+  assert.match(html, /function paintSent\(\)\{/, "paintSent function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
