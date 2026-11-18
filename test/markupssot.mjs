@@ -529,6 +529,11 @@ t("planParity parity planning helper is defined", () => {
   assert.match(html, /function planParity\(total,\s*target,\s*post,\s*ceiling\s*=\s*RS_BLOCK_CEILING\.b64\)\{/, "planParity function should be defined");
 });
 
+t("buildPlain and parsePlain envelope helpers are defined", () => {
+  assert.match(html, /function buildPlain\(mime,\s*img\)\{/, "buildPlain function should be defined");
+  assert.match(html, /function parsePlain\(bytes\)\{/, "parsePlain function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
