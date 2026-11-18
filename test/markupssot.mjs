@@ -557,6 +557,11 @@ t("loadImage and detectAlpha image processing helpers are defined", () => {
   assert.match(html, /function detectAlpha\(img\)\{/, "detectAlpha function should be defined");
 });
 
+t("drawScaled and encodeCanvas canvas rendering helpers are defined", () => {
+  assert.match(html, /function drawScaled\(img,\s*maxDim\)\{/, "drawScaled function should be defined");
+  assert.match(html, /function encodeCanvas\(cv,\s*q\)\{/, "encodeCanvas function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
