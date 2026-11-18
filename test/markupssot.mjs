@@ -539,6 +539,10 @@ t("parityChunksB64 and parityChunksDense parity chunk generators are defined", (
   assert.match(html, /function parityChunksDense\(text,\s*sid,\s*total,\s*per,\s*level,\s*tag\)\{/, "parityChunksDense function should be defined");
 });
 
+t("reassembleParse message parsing helper is defined", () => {
+  assert.match(html, /function reassembleParse\(text\)\{/, "reassembleParse function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
