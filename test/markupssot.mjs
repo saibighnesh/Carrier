@@ -582,6 +582,11 @@ t("setOutputStale and showPlan transmission planning helpers are defined", () =>
   assert.match(html, /function showPlan\(\)\{/, "showPlan function should be defined");
 });
 
+t("chunkDataCount and showCompact card layout helpers are defined", () => {
+  assert.match(html, /function chunkDataCount\(\)\{/, "chunkDataCount function should be defined");
+  assert.match(html, /function showCompact\(\)\{/, "showCompact function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
