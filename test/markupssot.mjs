@@ -543,6 +543,10 @@ t("reassembleParse message parsing helper is defined", () => {
   assert.match(html, /function reassembleParse\(text\)\{/, "reassembleParse function should be defined");
 });
 
+t("rsRepair error correction helper is defined", () => {
+  assert.match(html, /function rsRepair\(map,\s*total,\s*parityRaw,\s*isDense\)\{/, "rsRepair function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
