@@ -512,6 +512,11 @@ t("chunkify and reassemble chunk pipeline functions are defined", () => {
   assert.match(html, /function reassemble\(text\)\{/, "reassemble function should be defined");
 });
 
+t("recordLoss and migrateLoss storage helpers are defined", () => {
+  assert.match(html, /function recordLoss\(lost,\s*seen\)\{/, "recordLoss function should be defined");
+  assert.match(html, /function migrateLoss\(\)\{/, "migrateLoss function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
