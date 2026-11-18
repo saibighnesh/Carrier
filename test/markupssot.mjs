@@ -534,6 +534,11 @@ t("buildPlain and parsePlain envelope helpers are defined", () => {
   assert.match(html, /function parsePlain\(bytes\)\{/, "parsePlain function should be defined");
 });
 
+t("parityChunksB64 and parityChunksDense parity chunk generators are defined", () => {
+  assert.match(html, /function parityChunksB64\(b64,\s*sid,\s*total,\s*per,\s*level,\s*tag\)\{/, "parityChunksB64 function should be defined");
+  assert.match(html, /function parityChunksDense\(text,\s*sid,\s*total,\s*per,\s*level,\s*tag\)\{/, "parityChunksDense function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
