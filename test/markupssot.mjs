@@ -607,6 +607,11 @@ t("queuePersist and flushPersist preference persistence helpers are defined", ()
   assert.match(html, /function flushPersist\(\)\{/, "flushPersist function should be defined");
 });
 
+t("parseCustomLimit and applyCustomLimit character limit helpers are defined", () => {
+  assert.match(html, /function parseCustomLimit\(raw\)\{/, "parseCustomLimit function should be defined");
+  assert.match(html, /function applyCustomLimit\(\)\{/, "applyCustomLimit function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
