@@ -612,6 +612,11 @@ t("parseCustomLimit and applyCustomLimit character limit helpers are defined", (
   assert.match(html, /function applyCustomLimit\(\)\{/, "applyCustomLimit function should be defined");
 });
 
+t("pwScore and pwTruncNote password validation helpers are defined", () => {
+  assert.match(html, /function pwScore\(v\)\{/, "pwScore function should be defined");
+  assert.match(html, /function pwTruncNote\(id,\s*noteId\)\{/, "pwTruncNote function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
