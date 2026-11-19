@@ -636,6 +636,11 @@ t("flashButton and cancelFlash feedback animation helpers are defined", () => {
   assert.match(html, /function cancelFlash\(btn\)\{/, "cancelFlash function should be defined");
 });
 
+t("showDropErr and clearDropErr drag-and-drop feedback helpers are defined", () => {
+  assert.match(html, /function showDropErr\(msg\)\{/, "showDropErr function should be defined");
+  assert.match(html, /function clearDropErr\(\)\{/, "clearDropErr function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
