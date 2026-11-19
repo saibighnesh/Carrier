@@ -617,6 +617,11 @@ t("pwScore and pwTruncNote password validation helpers are defined", () => {
   assert.match(html, /function pwTruncNote\(id,\s*noteId\)\{/, "pwTruncNote function should be defined");
 });
 
+t("updatePwStrength and applyPreset configuration helpers are defined", () => {
+  assert.match(html, /function updatePwStrength\(\)\{/, "updatePwStrength function should be defined");
+  assert.match(html, /function applyPreset\(q,\s*d\)\{/, "applyPreset function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
