@@ -597,6 +597,11 @@ t("renderChunks and setChunkText chunk rendering helpers are defined", () => {
   assert.match(html, /function setChunkText\(full\)\{/, "setChunkText function should be defined");
 });
 
+t("waitForIdle and syncPresets background coordination helpers are defined", () => {
+  assert.match(html, /function waitForIdle\(timeoutMs\s*=\s*30000,\s*stepMs\s*=\s*50\)\{/, "waitForIdle function should be defined");
+  assert.match(html, /function syncPresets\(\)\{/, "syncPresets function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
