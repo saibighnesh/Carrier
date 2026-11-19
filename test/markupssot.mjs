@@ -602,6 +602,11 @@ t("waitForIdle and syncPresets background coordination helpers are defined", () 
   assert.match(html, /function syncPresets\(\)\{/, "syncPresets function should be defined");
 });
 
+t("queuePersist and flushPersist preference persistence helpers are defined", () => {
+  assert.match(html, /function queuePersist\(k,\s*v\)\{/, "queuePersist function should be defined");
+  assert.match(html, /function flushPersist\(\)\{/, "flushPersist function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
