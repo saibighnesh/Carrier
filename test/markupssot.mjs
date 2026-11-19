@@ -627,6 +627,20 @@ t("setTuneDisabled and downloadURL UI utility helpers are defined", () => {
   assert.match(html, /function downloadURL\(url,\s*filename\)\{/, "downloadURL function should be defined");
 });
 
+t("writeToClipboard async clipboard interaction helper is defined", () => {
+  assert.match(html, /async function writeToClipboard\(text\)\{/, "writeToClipboard function should be defined");
+});
+
+t("flashButton and cancelFlash feedback animation helpers are defined", () => {
+  assert.match(html, /function flashButton\(btn,\s*msg,\s*ariaMsg,\s*ms\s*=\s*2000\)\{/, "flashButton function should be defined");
+  assert.match(html, /function cancelFlash\(btn\)\{/, "cancelFlash function should be defined");
+});
+
+t("showDropErr and clearDropErr drag-and-drop feedback helpers are defined", () => {
+  assert.match(html, /function showDropErr\(msg\)\{/, "showDropErr function should be defined");
+  assert.match(html, /function clearDropErr\(\)\{/, "clearDropErr function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
