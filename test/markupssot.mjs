@@ -622,6 +622,11 @@ t("updatePwStrength and applyPreset configuration helpers are defined", () => {
   assert.match(html, /function applyPreset\(q,\s*d\)\{/, "applyPreset function should be defined");
 });
 
+t("setTuneDisabled and downloadURL UI utility helpers are defined", () => {
+  assert.match(html, /function setTuneDisabled\(off\)\{/, "setTuneDisabled function should be defined");
+  assert.match(html, /function downloadURL\(url,\s*filename\)\{/, "downloadURL function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
