@@ -627,6 +627,10 @@ t("setTuneDisabled and downloadURL UI utility helpers are defined", () => {
   assert.match(html, /function downloadURL\(url,\s*filename\)\{/, "downloadURL function should be defined");
 });
 
+t("writeToClipboard async clipboard interaction helper is defined", () => {
+  assert.match(html, /async function writeToClipboard\(text\)\{/, "writeToClipboard function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
