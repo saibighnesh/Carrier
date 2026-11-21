@@ -715,6 +715,10 @@ t("startOver button registers click event listener to reset transmission", () =>
   assert.match(html, /\$\("#startOver"\)\.addEventListener\("click",\s*resetSend\);/, "startOver click listener should be registered");
 });
 
+t("clearInbox button registers click event listener to reset reception", () => {
+  assert.match(html, /\$\("#clearInbox"\)\.addEventListener\("click",\s*resetReceive\);/, "clearInbox click listener should be registered");
+});
+
 console.log(`\n${pass} passed`);
 
 
