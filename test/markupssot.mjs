@@ -691,6 +691,11 @@ t("chunks container registers copy event listener for custom copy behavior", () 
   assert.match(html, /\$\("#chunks"\)\.addEventListener\("copy",\s*e=>\{/, "chunks copy listener should be registered");
 });
 
+t("pagehide and pageshow lifecycle event listeners are registered", () => {
+  assert.match(html, /window\.addEventListener\("pagehide",\s*\(\)=>\{/, "pagehide listener should be registered");
+  assert.match(html, /window\.addEventListener\("pageshow",\s*e=>\{/, "pageshow listener should be registered");
+});
+
 console.log(`\n${pass} passed`);
 
 
