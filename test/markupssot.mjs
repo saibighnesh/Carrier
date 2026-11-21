@@ -711,6 +711,10 @@ t("pasteInbox and copyMissing reception action listeners are registered", () => 
   assert.match(html, /\$\("#copyMissing"\)\.addEventListener\("click",\s*async\s*\(\)=>\{/, "copyMissing click listener should be registered");
 });
 
+t("startOver button registers click event listener to reset transmission", () => {
+  assert.match(html, /\$\("#startOver"\)\.addEventListener\("click",\s*resetSend\);/, "startOver click listener should be registered");
+});
+
 console.log(`\n${pass} passed`);
 
 
