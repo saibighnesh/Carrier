@@ -645,6 +645,10 @@ t("handleFile file drop and selection processing function is defined", () => {
   assert.match(html, /async function handleFile\(file\)\{/, "handleFile function should be defined");
 });
 
+t("resetSend transmission state reset helper is defined", () => {
+  assert.match(html, /function resetSend\(\)\{/, "resetSend function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
