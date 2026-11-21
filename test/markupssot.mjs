@@ -649,6 +649,10 @@ t("resetSend transmission state reset helper is defined", () => {
   assert.match(html, /function resetSend\(\)\{/, "resetSend function should be defined");
 });
 
+t("updateProgress reception progress display helper is defined", () => {
+  assert.match(html, /function updateProgress\(\)\{/, "updateProgress function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
