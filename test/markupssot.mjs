@@ -672,6 +672,11 @@ t("resetReceive reception lifecycle teardown helper is defined", () => {
   assert.match(html, /function resetReceive\(\)\{/, "resetReceive function should be defined");
 });
 
+t("loadTextFile and doReveal message decoding functions are defined", () => {
+  assert.match(html, /function loadTextFile\(file\)\{/, "loadTextFile function should be defined");
+  assert.match(html, /async function doReveal\(\)\{/, "doReveal function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
