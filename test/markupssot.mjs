@@ -668,6 +668,10 @@ t("maybeAutoReveal and clearReveal recovery state helpers are defined", () => {
   assert.match(html, /function clearReveal\(\)\{/, "clearReveal function should be defined");
 });
 
+t("resetReceive reception lifecycle teardown helper is defined", () => {
+  assert.match(html, /function resetReceive\(\)\{/, "resetReceive function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
