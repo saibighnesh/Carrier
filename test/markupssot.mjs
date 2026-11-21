@@ -706,6 +706,11 @@ t("saveTxt and loadTxt text transport action listeners are registered", () => {
   assert.match(html, /\$\("#loadTxt"\)\.addEventListener\("click",\s*\(\)=>txtFile\.click\(\)\);/, "loadTxt click listener should be registered");
 });
 
+t("pasteInbox and copyMissing reception action listeners are registered", () => {
+  assert.match(html, /\$\("#pasteInbox"\)\.addEventListener\("click",\s*async\s*\(\)=>\{/, "pasteInbox click listener should be registered");
+  assert.match(html, /\$\("#copyMissing"\)\.addEventListener\("click",\s*async\s*\(\)=>\{/, "copyMissing click listener should be registered");
+});
+
 console.log(`\n${pass} passed`);
 
 
