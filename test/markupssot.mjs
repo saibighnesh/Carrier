@@ -658,6 +658,11 @@ t("payloadBytes and formatParts message inspection helpers are defined", () => {
   assert.match(html, /function formatParts\(nums\)\{/, "formatParts function should be defined");
 });
 
+t("missingList and headerFlags diagnostic helpers are defined", () => {
+  assert.match(html, /function missingList\(r\)\{/, "missingList function should be defined");
+  assert.match(html, /function headerFlags\(s\)\{/, "headerFlags function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
