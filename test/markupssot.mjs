@@ -641,6 +641,10 @@ t("showDropErr and clearDropErr drag-and-drop feedback helpers are defined", () 
   assert.match(html, /function clearDropErr\(\)\{/, "clearDropErr function should be defined");
 });
 
+t("handleFile file drop and selection processing function is defined", () => {
+  assert.match(html, /async function handleFile\(file\)\{/, "handleFile function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
