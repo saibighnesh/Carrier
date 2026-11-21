@@ -677,6 +677,11 @@ t("loadTextFile and doReveal message decoding functions are defined", () => {
   assert.match(html, /async function doReveal\(\)\{/, "doReveal function should be defined");
 });
 
+t("bindZoom and maskPassword UI interaction helpers are defined", () => {
+  assert.match(html, /function bindZoom\(imgId,\s*getUrl,\s*noteId\)\{/, "bindZoom function should be defined");
+  assert.match(html, /function maskPassword\(id\)\{/, "maskPassword function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
