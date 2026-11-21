@@ -701,6 +701,11 @@ t("pwtoggle buttons bind click events and maskPassword helper is defined", () =>
   assert.match(html, /function maskPassword\(id\)\{/, "maskPassword function should be defined");
 });
 
+t("saveTxt and loadTxt text transport action listeners are registered", () => {
+  assert.match(html, /\$\("#saveTxt"\)\.addEventListener\("click",\s*\(\)=>\{/, "saveTxt click listener should be registered");
+  assert.match(html, /\$\("#loadTxt"\)\.addEventListener\("click",\s*\(\)=>txtFile\.click\(\)\);/, "loadTxt click listener should be registered");
+});
+
 console.log(`\n${pass} passed`);
 
 
