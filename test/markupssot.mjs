@@ -719,6 +719,11 @@ t("clearInbox button registers click event listener to reset reception", () => {
   assert.match(html, /\$\("#clearInbox"\)\.addEventListener\("click",\s*resetReceive\);/, "clearInbox click listener should be registered");
 });
 
+t("footer year notice and application version banner are dynamically populated", () => {
+  assert.match(html, /\$\("#year"\)\.textContent\s*=\s*Math\.max\(2026,\s*new Date\(\)\.getFullYear\(\)\);/, "footer copyright year should be computed dynamically");
+  assert.match(html, /verEl\.textContent\s*=\s*`v\$\{APP_VERSION\}`;/, "appVersion element should display current version");
+});
+
 console.log(`\n${pass} passed`);
 
 
