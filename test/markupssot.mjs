@@ -682,6 +682,11 @@ t("bindZoom and maskPassword UI interaction helpers are defined", () => {
   assert.match(html, /function maskPassword\(id\)\{/, "maskPassword function should be defined");
 });
 
+t("beforeprint and afterprint window handlers update chunk rendering for print", () => {
+  assert.match(html, /window\.addEventListener\("beforeprint",\s*\(\)=>setChunkText\(true\)\);/, "beforeprint listener should be registered");
+  assert.match(html, /window\.addEventListener\("afterprint",\s*\(\)=>setChunkText\(false\)\);/, "afterprint listener should be registered");
+});
+
 console.log(`\n${pass} passed`);
 
 
