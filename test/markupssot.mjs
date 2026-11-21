@@ -687,6 +687,10 @@ t("beforeprint and afterprint window handlers update chunk rendering for print",
   assert.match(html, /window\.addEventListener\("afterprint",\s*\(\)=>setChunkText\(false\)\);/, "afterprint listener should be registered");
 });
 
+t("chunks container registers copy event listener for custom copy behavior", () => {
+  assert.match(html, /\$\("#chunks"\)\.addEventListener\("copy",\s*e=>\{/, "chunks copy listener should be registered");
+});
+
 console.log(`\n${pass} passed`);
 
 
