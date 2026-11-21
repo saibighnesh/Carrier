@@ -653,6 +653,11 @@ t("updateProgress reception progress display helper is defined", () => {
   assert.match(html, /function updateProgress\(\)\{/, "updateProgress function should be defined");
 });
 
+t("payloadBytes and formatParts message inspection helpers are defined", () => {
+  assert.match(html, /function payloadBytes\(r\)\{/, "payloadBytes function should be defined");
+  assert.match(html, /function formatParts\(nums\)\{/, "formatParts function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
