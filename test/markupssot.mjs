@@ -696,6 +696,11 @@ t("pagehide and pageshow lifecycle event listeners are registered", () => {
   assert.match(html, /window\.addEventListener\("pageshow",\s*e=>\{/, "pageshow listener should be registered");
 });
 
+t("pwtoggle buttons bind click events and maskPassword helper is defined", () => {
+  assert.match(html, /document\.querySelectorAll\("\.pwtoggle"\)\.forEach\(btn=>\{/, "pwtoggle elements should be bound");
+  assert.match(html, /function maskPassword\(id\)\{/, "maskPassword function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
