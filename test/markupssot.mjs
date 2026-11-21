@@ -663,6 +663,11 @@ t("missingList and headerFlags diagnostic helpers are defined", () => {
   assert.match(html, /function headerFlags\(s\)\{/, "headerFlags function should be defined");
 });
 
+t("maybeAutoReveal and clearReveal recovery state helpers are defined", () => {
+  assert.match(html, /function maybeAutoReveal\(\)\{/, "maybeAutoReveal function should be defined");
+  assert.match(html, /function clearReveal\(\)\{/, "clearReveal function should be defined");
+});
+
 console.log(`\n${pass} passed`);
 
 
