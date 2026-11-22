@@ -746,6 +746,11 @@ t("pass input listeners clear key cache and update strength indicators", () => {
   assert.match(html, /\$\("#pass"\)\.addEventListener\("input",\s*updatePwStrength\);/, "pass input listener should update strength");
 });
 
+t("autofit and copyAll button click listeners initiate pipeline actions", () => {
+  assert.match(html, /\$\("#autofit"\)\.addEventListener\("click",\s*async\s*\(\)=>\{/, "autofit click listener should be registered");
+  assert.match(html, /\$\("#copyAll"\)\.addEventListener\("click",\s*async\s*\(\)=>\{/, "copyAll click listener should be registered");
+});
+
 console.log(`\n${pass} passed`);
 
 
