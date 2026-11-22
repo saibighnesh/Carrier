@@ -782,6 +782,10 @@ t("preset buttons click listeners apply configured quality and dimension presets
   assert.match(html, /b\.addEventListener\("click",\s*\(\)=>\{\s*if\(srcImage\)\s*applyPreset\(\+b\.dataset\.q,\s*\+b\.dataset\.d\);\s*\}\);/, "preset button click listeners should apply presets");
 });
 
+t("document paste event listener handles pasted images in send mode", () => {
+  assert.match(html, /document\.addEventListener\("paste",\s*e=>\{\s*if\(sendHidden\(\)\)\s*return;/, "document paste listener should handle images in send mode");
+});
+
 console.log(`\n${pass} passed`);
 
 
