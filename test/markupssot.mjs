@@ -791,6 +791,20 @@ t("inbox textarea input and paste listeners update reception progress", () => {
   assert.match(html, /\$\("#inbox"\)\.addEventListener\("paste",\s*\(\)=>\{\s*setTimeout\(\(\)=>\{/, "inbox paste listener should trigger progress and autoReveal");
 });
 
+t("reveal button click listener binds decoding pipeline", () => {
+  assert.match(html, /\$\("#reveal"\)\.addEventListener\("click",\s*doReveal\);/, "reveal click listener should trigger doReveal");
+});
+
+t("save and recvAnother buttons register click handlers for post-reveal actions", () => {
+  assert.match(html, /\$\("#save"\)\.addEventListener\("click",\s*\(\)=>\{/, "save click listener should trigger download");
+  assert.match(html, /\$\("#recvAnother"\)\.addEventListener\("click",\s*\(\)=>\{/, "recvAnother click listener should reset reception view");
+});
+
+t("rpass field and window keydown listeners provide keyboard shortcuts for reveal", () => {
+  assert.match(html, /\$\("#rpass"\)\.addEventListener\("keydown",\s*e=>\{\s*if\(e\.key==="Enter"\)\{\s*e\.preventDefault\(\);\s*doReveal\(\);\s*\}\s*\}\);/, "rpass Enter keydown listener should trigger doReveal");
+  assert.match(html, /document\.addEventListener\("keydown",\s*e=>\{\s*if\(e\.key==="Enter"&&\(e\.ctrlKey\|\|e\.metaKey\)&&recvVisible\(\)\)\{\s*e\.preventDefault\(\);\s*doReveal\(\);\s*\}\s*\}\);/, "Cmd/Ctrl+Enter shortcut should trigger doReveal");
+});
+
 console.log(`\n${pass} passed`);
 
 
