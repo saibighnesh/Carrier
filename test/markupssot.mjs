@@ -778,6 +778,10 @@ t("password input listeners trigger truncation advisory notes", () => {
   assert.match(html, /\$\("#rpass"\)\.addEventListener\("input",\s*\(\)=>pwTruncNote\("rpass",\s*"rpassTrunc"\)\);/, "rpass input should trigger pwTruncNote");
 });
 
+t("preset buttons click listeners apply configured quality and dimension presets", () => {
+  assert.match(html, /b\.addEventListener\("click",\s*\(\)=>\{\s*if\(srcImage\)\s*applyPreset\(\+b\.dataset\.q,\s*\+b\.dataset\.d\);\s*\}\);/, "preset button click listeners should apply presets");
+});
+
 console.log(`\n${pass} passed`);
 
 
