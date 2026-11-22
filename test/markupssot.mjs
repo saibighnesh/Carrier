@@ -786,6 +786,11 @@ t("document paste event listener handles pasted images in send mode", () => {
   assert.match(html, /document\.addEventListener\("paste",\s*e=>\{\s*if\(sendHidden\(\)\)\s*return;/, "document paste listener should handle images in send mode");
 });
 
+t("inbox textarea input and paste listeners update reception progress", () => {
+  assert.match(html, /\$\("#inbox"\)\.addEventListener\("input",\s*\(\)=>\{\s*clearTimeout\(progDebounce\);/, "inbox input listener should debounce progress update");
+  assert.match(html, /\$\("#inbox"\)\.addEventListener\("paste",\s*\(\)=>\{\s*setTimeout\(\(\)=>\{/, "inbox paste listener should trigger progress and autoReveal");
+});
+
 console.log(`\n${pass} passed`);
 
 
