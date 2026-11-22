@@ -769,6 +769,10 @@ t("lossReset button click listener clears loss statistics", () => {
   assert.match(html, /\$\("#lossReset"\)\.addEventListener\("click",\s*\(\)=>\{/, "lossReset click listener should be registered");
 });
 
+t("chatLimitCustom input listener handles custom character limits", () => {
+  assert.match(html, /\$\("#chatLimitCustom"\)\.addEventListener\("input",\s*\(\)=>\{/, "chatLimitCustom input listener should be registered");
+});
+
 console.log(`\n${pass} passed`);
 
 
