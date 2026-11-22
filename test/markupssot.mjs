@@ -756,6 +756,10 @@ t("copyNext and copyRest transmission progression listeners are registered", () 
   assert.match(html, /\$\("#copyRest"\)\.addEventListener\("click",\s*async\s*\(\)=>\{/, "copyRest click listener should be registered");
 });
 
+t("resetSent click listener resets transmitted chunk state", () => {
+  assert.match(html, /\$\("#resetSent"\)\.addEventListener\("click",\s*\(\)=>\{/, "resetSent click listener should be registered");
+});
+
 console.log(`\n${pass} passed`);
 
 
