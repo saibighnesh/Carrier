@@ -751,6 +751,11 @@ t("autofit and copyAll button click listeners initiate pipeline actions", () => 
   assert.match(html, /\$\("#copyAll"\)\.addEventListener\("click",\s*async\s*\(\)=>\{/, "copyAll click listener should be registered");
 });
 
+t("copyNext and copyRest transmission progression listeners are registered", () => {
+  assert.match(html, /\$\("#copyNext"\)\.addEventListener\("click",\s*async\s*\(\)=>\{/, "copyNext click listener should be registered");
+  assert.match(html, /\$\("#copyRest"\)\.addEventListener\("click",\s*async\s*\(\)=>\{/, "copyRest click listener should be registered");
+});
+
 console.log(`\n${pass} passed`);
 
 
