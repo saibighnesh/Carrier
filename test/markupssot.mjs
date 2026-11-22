@@ -760,6 +760,11 @@ t("resetSent click listener resets transmitted chunk state", () => {
   assert.match(html, /\$\("#resetSent"\)\.addEventListener\("click",\s*\(\)=>\{/, "resetSent click listener should be registered");
 });
 
+t("drop zone keyboard activation and change listeners are registered", () => {
+  assert.match(html, /drop\.addEventListener\("keydown",\s*e=>\{\s*if\(e\.key==="Enter"\|\|e\.key===" "\)/, "drop zone keyboard listener should be registered");
+  assert.match(html, /fileInput\.addEventListener\("change",\s*e=>\{\s*const f=e\.target\.files\[0\];/, "fileInput change listener should be registered");
+});
+
 console.log(`\n${pass} passed`);
 
 
