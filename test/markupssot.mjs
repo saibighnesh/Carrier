@@ -741,6 +741,11 @@ t("recovery and compact codec change listeners persist user selections", () => {
   assert.match(html, /\$\("#compact"\)\.addEventListener\("change",\s*e=>\{\s*textCodec\s*=\s*e\.target\.value;/, "compact change listener should be registered");
 });
 
+t("pass input listeners clear key cache and update strength indicators", () => {
+  assert.match(html, /\$\("#pass"\)\.addEventListener\("input",\s*\(\)=>\{\s*keyCache\s*=\s*null;\s*\}\);/, "pass input listener should clear keyCache");
+  assert.match(html, /\$\("#pass"\)\.addEventListener\("input",\s*updatePwStrength\);/, "pass input listener should update strength");
+});
+
 console.log(`\n${pass} passed`);
 
 
