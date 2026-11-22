@@ -800,6 +800,11 @@ t("save and recvAnother buttons register click handlers for post-reveal actions"
   assert.match(html, /\$\("#recvAnother"\)\.addEventListener\("click",\s*\(\)=>\{/, "recvAnother click listener should reset reception view");
 });
 
+t("rpass field and window keydown listeners provide keyboard shortcuts for reveal", () => {
+  assert.match(html, /\$\("#rpass"\)\.addEventListener\("keydown",\s*e=>\{\s*if\(e\.key==="Enter"\)\{\s*e\.preventDefault\(\);\s*doReveal\(\);\s*\}\s*\}\);/, "rpass Enter keydown listener should trigger doReveal");
+  assert.match(html, /document\.addEventListener\("keydown",\s*e=>\{\s*if\(e\.key==="Enter"&&\(e\.ctrlKey\|\|e\.metaKey\)&&recvVisible\(\)\)\{\s*e\.preventDefault\(\);\s*doReveal\(\);\s*\}\s*\}\);/, "Cmd/Ctrl+Enter shortcut should trigger doReveal");
+});
+
 console.log(`\n${pass} passed`);
 
 
