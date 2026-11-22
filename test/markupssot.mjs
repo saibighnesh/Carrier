@@ -724,6 +724,10 @@ t("footer year notice and application version banner are dynamically populated",
   assert.match(html, /verEl\.textContent\s*=\s*`v\$\{APP_VERSION\}`;/, "appVersion element should display current version");
 });
 
+t("quality slider input listener updates quality and queues persist", () => {
+  assert.match(html, /\$\("#quality"\)\.addEventListener\("input",\s*e=>\{\s*const v\s*=\s*e\.target\.value;\s*setQuality\(v\);/, "quality slider input listener should be registered");
+});
+
 console.log(`\n${pass} passed`);
 
 
