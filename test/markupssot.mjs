@@ -773,6 +773,11 @@ t("chatLimitCustom input listener handles custom character limits", () => {
   assert.match(html, /\$\("#chatLimitCustom"\)\.addEventListener\("input",\s*\(\)=>\{/, "chatLimitCustom input listener should be registered");
 });
 
+t("password input listeners trigger truncation advisory notes", () => {
+  assert.match(html, /\$\("#pass"\)\.addEventListener\("input",\s*\(\)=>pwTruncNote\("pass",\s*"passTrunc"\)\);/, "pass input should trigger pwTruncNote");
+  assert.match(html, /\$\("#rpass"\)\.addEventListener\("input",\s*\(\)=>pwTruncNote\("rpass",\s*"rpassTrunc"\)\);/, "rpass input should trigger pwTruncNote");
+});
+
 console.log(`\n${pass} passed`);
 
 
