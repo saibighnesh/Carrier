@@ -732,6 +732,10 @@ t("maxdim dropdown change listener syncs presets and queues refresh", () => {
   assert.match(html, /\$\("#maxdim"\)\.addEventListener\("change",\s*e=>\{\s*queuePersist\(LS_MAXDIM,\s*e\.target\.value\);\s*syncPresets\(\);/, "maxdim change listener should be registered");
 });
 
+t("chatLimit select change listener handles limit selection and persistence", () => {
+  assert.match(html, /\$\("#chatLimit"\)\.addEventListener\("change",\s*e=>\{/, "chatLimit change listener should be registered");
+});
+
 console.log(`\n${pass} passed`);
 
 
