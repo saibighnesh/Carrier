@@ -795,6 +795,11 @@ t("reveal button click listener binds decoding pipeline", () => {
   assert.match(html, /\$\("#reveal"\)\.addEventListener\("click",\s*doReveal\);/, "reveal click listener should trigger doReveal");
 });
 
+t("save and recvAnother buttons register click handlers for post-reveal actions", () => {
+  assert.match(html, /\$\("#save"\)\.addEventListener\("click",\s*\(\)=>\{/, "save click listener should trigger download");
+  assert.match(html, /\$\("#recvAnother"\)\.addEventListener\("click",\s*\(\)=>\{/, "recvAnother click listener should reset reception view");
+});
+
 console.log(`\n${pass} passed`);
 
 
