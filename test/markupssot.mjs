@@ -765,6 +765,10 @@ t("drop zone keyboard activation and change listeners are registered", () => {
   assert.match(html, /fileInput\.addEventListener\("change",\s*e=>\{\s*const f=e\.target\.files\[0\];/, "fileInput change listener should be registered");
 });
 
+t("lossReset button click listener clears loss statistics", () => {
+  assert.match(html, /\$\("#lossReset"\)\.addEventListener\("click",\s*\(\)=>\{/, "lossReset click listener should be registered");
+});
+
 console.log(`\n${pass} passed`);
 
 
