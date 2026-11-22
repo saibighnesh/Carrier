@@ -736,6 +736,11 @@ t("chatLimit select change listener handles limit selection and persistence", ()
   assert.match(html, /\$\("#chatLimit"\)\.addEventListener\("change",\s*e=>\{/, "chatLimit change listener should be registered");
 });
 
+t("recovery and compact codec change listeners persist user selections", () => {
+  assert.match(html, /\$\("#recovery"\)\.addEventListener\("change",\s*e=>\{\s*recoveryLevel\s*=\s*e\.target\.value;/, "recovery change listener should be registered");
+  assert.match(html, /\$\("#compact"\)\.addEventListener\("change",\s*e=>\{\s*textCodec\s*=\s*e\.target\.value;/, "compact change listener should be registered");
+});
+
 console.log(`\n${pass} passed`);
 
 
