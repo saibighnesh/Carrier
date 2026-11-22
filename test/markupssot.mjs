@@ -791,6 +791,10 @@ t("inbox textarea input and paste listeners update reception progress", () => {
   assert.match(html, /\$\("#inbox"\)\.addEventListener\("paste",\s*\(\)=>\{\s*setTimeout\(\(\)=>\{/, "inbox paste listener should trigger progress and autoReveal");
 });
 
+t("reveal button click listener binds decoding pipeline", () => {
+  assert.match(html, /\$\("#reveal"\)\.addEventListener\("click",\s*doReveal\);/, "reveal click listener should trigger doReveal");
+});
+
 console.log(`\n${pass} passed`);
 
 
