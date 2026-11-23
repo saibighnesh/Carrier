@@ -720,7 +720,8 @@ t("clearInbox button registers click event listener to reset reception", () => {
 });
 
 t("footer year notice and application version banner are dynamically populated", () => {
-  assert.match(html, /\$\("#year"\)\.textContent\s*=\s*Math\.max\(2026,\s*new Date\(\)\.getFullYear\(\)\);/, "footer copyright year should be computed dynamically");
+  assert.match(html, /const COPYRIGHT_SINCE\s*=\s*\d{4};/, "COPYRIGHT_SINCE should be the single source for the copyright floor year");
+  assert.match(html, /\$\("#year"\)\.textContent\s*=\s*Math\.max\(COPYRIGHT_SINCE,\s*new Date\(\)\.getFullYear\(\)\);/, "footer copyright year should be computed dynamically from COPYRIGHT_SINCE");
   assert.match(html, /verEl\.textContent\s*=\s*`v\$\{APP_VERSION\}`;/, "appVersion element should display current version");
 });
 

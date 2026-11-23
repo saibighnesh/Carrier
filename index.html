@@ -474,6 +474,9 @@
 // one thing that lets two people stuck on "recovery isn't working" or "it says no message found" tell
 // whether they're just running different Carrier builds.
 const APP_VERSION = "1.0";
+// static floor for the footer copyright year — bump this one constant, never the clock (see the
+// footer-year logic at the end of the script). Single source so the JS floor can't drift from intent.
+const COPYRIGHT_SINCE = 2026;
 // the Send/default document title lives once in the <title> element; capture it at load so the reset
 // paths below don't hardcode a second copy that silently drifts from the markup.
 const SEND_TITLE = document.title;
@@ -3862,10 +3865,10 @@ modeBtns.forEach((btn, idx)=>{
 /* restore the last-used mode (synthetic click → isTrusted false, so it won't steal focus or scroll) */
 if(lsGet(LS_MODE) === "recv") $("#tab-recv").click();
 
-/* footer copyright year: 2026 is the static floor in the markup; bump it if the clock is later, never
+/* footer copyright year: COPYRIGHT_SINCE is the static floor; bump it if the clock is later, never
    below (a wrong-in-the-past clock shouldn't roll the notice back). Set here instead of via document.write
    — that API blocks the parser and is a no-op or throws in some contexts. */
-$("#year").textContent = Math.max(2026, new Date().getFullYear());
+$("#year").textContent = Math.max(COPYRIGHT_SINCE, new Date().getFullYear());
 const verEl = $("#appVersion");
 verEl.textContent = `v${APP_VERSION}`;
 verEl.setAttribute("aria-label", `Wire format version v${APP_VERSION}`);
