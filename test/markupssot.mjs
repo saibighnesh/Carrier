@@ -725,6 +725,16 @@ t("footer year notice and application version banner are dynamically populated",
   assert.match(html, /verEl\.textContent\s*=\s*`v\$\{APP_VERSION\}`;/, "appVersion element should display current version");
 });
 
+t("markup #year no-JS floor matches the COPYRIGHT_SINCE constant", () => {
+  // The static <span id="year"> is what a no-JS reader sees; JS overwrites it only when scripting runs.
+  // It must equal COPYRIGHT_SINCE, or a bump to one silently drifts from the other (PR #596 invariant).
+  const since = /const COPYRIGHT_SINCE\s*=\s*(\d{4});/.exec(html);
+  assert.ok(since, "COPYRIGHT_SINCE constant should exist");
+  const markup = /<span id="year">(\d{4})<\/span>/.exec(html);
+  assert.ok(markup, "markup should carry a static #year floor for no-JS readers");
+  assert.equal(markup[1], since[1], "markup #year floor must equal COPYRIGHT_SINCE");
+});
+
 t("quality slider input listener updates quality and queues persist", () => {
   assert.match(html, /\$\("#quality"\)\.addEventListener\("input",\s*e=>\{\s*const v\s*=\s*e\.target\.value;\s*setQuality\(v\);/, "quality slider input listener should be registered");
 });
