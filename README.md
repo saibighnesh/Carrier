@@ -248,6 +248,18 @@ The CRC-32 is **appended**, not prepended, so an older Carrier build reads `flag
 | Tooling | GitHub Actions CI + a plain-Node test suite (`test/`) |
 | Runtime | Any modern browser (Chrome, Firefox, Safari, Edge) — served or opened straight from a saved file (`file://`), fully offline |
 
+### Browser support
+
+The newest capability Carrier leans on is canvas WebP encoding; a browser that can't produce WebP falls back to JPEG automatically. In practice that means any evergreen browser works:
+
+| Browser | Minimum |
+|---------|---------|
+| Chrome / Edge | 79 |
+| Firefox | 65 |
+| Safari | 14 |
+
+Password locking additionally needs a secure context (`https://` or a `file://` page) for `crypto.subtle`; on a plain `http://` page the password fields disable themselves and say why, while unencrypted send/receive still work. See [Security Notes](#security-notes).
+
 ---
 
 ## Security Notes
