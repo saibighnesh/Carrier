@@ -2153,8 +2153,7 @@ async function refresh(){
     note.textContent = `Fits in a single ${app} message. ✓`;
   } else {
     note.className = "note warn";
-    // don't tell the user to "lower quality to fit in one message" when the chosen app's per-message
-    // budget is too small to ever hold an image — that advice is impossible to satisfy (e.g. SMS)
+    // below MIN_FITTABLE_BYTES "lower quality to fit" is impossible advice (e.g. SMS); see its definition.
     const canFitOne = targetBytes() >= MIN_FITTABLE_BYTES;
     note.textContent = canFitOne
       ? `Sending as ${lastChunks.length} parts — lower quality or size to fit in one message.`
