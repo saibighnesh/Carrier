@@ -531,7 +531,7 @@ const TUNE_DEBOUNCE_MS = 180;
 // how long (ms) the Copy-all button holds its "Copied ✓" / failure feedback before reverting to its
 // resting label — set from both the success and the error path, so name it once.
 const COPY_ALL_REVERT_MS = 2000;
-// the same, shorter, for a single-chunk Copy button — set from both the success and failure paths.
+// the same, shorter, for a single-chunk Copy button — one timer reverts the label after either outcome.
 const COPY_ONE_REVERT_MS = 1200;
 // is the Receive tab the one currently showing? Many title/focus/keyboard paths gate on this; name the
 // check so they read as intent ("receive is visible") rather than the inverted class test spelled out.
