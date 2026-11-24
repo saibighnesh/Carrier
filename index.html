@@ -770,9 +770,10 @@ function bytesToDense2(bytes){
     }
   }
   if(nbits) out[o++] = DENSE_BASE + ((acc << (DENSE2_BITS - nbits)) & DENSE2_MASK);
-  // build the string in bounded slices: fromCharCode(...whole) would blow the argument limit on big sends
+  // build the string in FROMCHARCODE_MAX_ARGS-sized slices (see the constant) — subarray clamps the final
+  // slice to the array's length, so no explicit end-of-range guard is needed, same as bytesToB64.
   let str = "";
-  for(let i=0;i<chars;i+=FROMCHARCODE_MAX_ARGS) str += String.fromCharCode(...out.subarray(i, Math.min(chars, i+FROMCHARCODE_MAX_ARGS)));
+  for(let i=0;i<chars;i+=FROMCHARCODE_MAX_ARGS) str += String.fromCharCode(...out.subarray(i, i+FROMCHARCODE_MAX_ARGS));
   return str;
 }
 // How many bytes a v2 payload holds, without decoding it. This is the whole of the cycle arithmetic
