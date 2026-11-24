@@ -1817,6 +1817,9 @@ async function compressOnce(maxDim, quality){
 // binary-search iterations per dimension rung — used as both the loop bound and the progress total, so
 // name it once rather than let the two 7s drift apart.
 const AUTOFIT_Q_STEPS = 7;
+// quality search bounds for the fit (0–1 WebP scale). The floor is deliberately above the slider's own
+// minimum — autofit won't chase a fit by driving quality all the way down.
+const AUTOFIT_Q_MIN = 0.25, AUTOFIT_Q_MAX = 0.92;
 async function autoFit(onProgress){
   const dims = [1280,1024,768,512,384,256];
   // See isStale()'s comment for why this needs the token, not just !srcImage.
@@ -1833,7 +1836,7 @@ async function autoFit(onProgress){
   for(const d of dims){
     if(stale()) return null;   // Start over — or Start over followed by a new load — ran mid-fit — abandon (don't deref null, and don't measure against an image this fit was never for)
     const cv = drawScaled(srcImage, d);
-    let lo = 0.25, hi = 0.92, pick = null;
+    let lo = AUTOFIT_Q_MIN, hi = AUTOFIT_Q_MAX, pick = null;
     for(let i=0;i<AUTOFIT_Q_STEPS;i++){
       const q = (lo+hi)/2;
       if(onProgress) onProgress(d, i+1, AUTOFIT_Q_STEPS);
