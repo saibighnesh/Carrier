@@ -547,6 +547,9 @@ const PERSIST_DEBOUNCE_MS = 250;
 // unhide and lay out first. The fired callback re-reads recvVisible(), so a flip back to Send within the
 // delay cancels the focus; isTrusted/detail are captured-event properties, re-read only for convenience.
 const TAB_FOCUS_DELAY_MS = 50;
+// how long (ms) waitForIdle waits for an in-flight refresh() before giving up, and how often it
+// re-checks — the idle bound and poll cadence, named so they read as deliberate values (see waitForIdle).
+const WAIT_IDLE_TIMEOUT_MS = 30000, WAIT_IDLE_STEP_MS = 50;
 // is the Receive tab the one currently showing? Many title/focus/keyboard paths gate on this; name the
 // check so they read as intent ("receive is visible") rather than the inverted class test spelled out.
 const recvVisible = () => !$("#recv").classList.contains("hidden");
@@ -2550,9 +2553,6 @@ $("#chunks").addEventListener("copy", e=>{
 
 let debounce;
 function queueRefresh(){ clearTimeout(debounce); debounce = setTimeout(refresh, TUNE_DEBOUNCE_MS); }
-// how long waitForIdle waits before giving up, and how often it re-checks — named so the bound and the
-// poll cadence read as deliberate values rather than two bare literals buried in the signature.
-const WAIT_IDLE_TIMEOUT_MS = 30000, WAIT_IDLE_STEP_MS = 50;
 // wait for an in-flight refresh() to land. Polls with setTimeout, NOT requestAnimationFrame: browsers
 // stop firing rAF entirely in a hidden or backgrounded tab, so a user who started Auto-fit and switched
 // away came back to a button frozen on "Fitting…" — and, because the Esc handler keys on that button's
