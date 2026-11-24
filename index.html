@@ -1815,13 +1815,16 @@ const AUTOFIT_Q_STEPS = 7;
 // quality search bounds for the fit (0–1 WebP scale). The floor is deliberately above the slider's own
 // minimum — autofit won't chase a fit by driving quality all the way down.
 const AUTOFIT_Q_MIN = 0.25, AUTOFIT_Q_MAX = 0.92;
+// the max-dimension rungs autofit steps down, largest first — same set the #maxdim select offers. The
+// last rung is also the fallback dimension when nothing fits at any larger size.
+const DIM_LADDER = [1280,1024,768,512,384,256];
 // onProgress(d, i, total), called before each candidate encode — reports which dimension rung is being
 // tried and where the binary search is within it (i/total, 1-based). Deliberately NOT wired to aria-live:
 // up to 42 calls in a few seconds would be exactly the overlapping-announcement noise #232 just fixed for
 // the stats region. This is a sighted-progress affordance on the button's own text; aria-busy already
 // tells a screen reader user the button is working, which is the right amount of information there.
 async function autoFit(onProgress){
-  const dims = [1280,1024,768,512,384,256];
+  const dims = DIM_LADDER;
   // See isStale()'s comment for why this needs the token, not just !srcImage.
   const myToken = loadToken;
   const stale = () => isStale(myToken);
@@ -1850,7 +1853,7 @@ async function autoFit(onProgress){
     }
     if(pick) return pick;
   }
-  return { q:Math.round(AUTOFIT_Q_MIN*100), d:256, fallback:true };   // nothing fit at any rung — fall back to the search floor; flag it so a genuine floor fit isn't mistaken for this
+  return { q:Math.round(AUTOFIT_Q_MIN*100), d:DIM_LADDER[DIM_LADDER.length-1], fallback:true };   // nothing fit at any rung — fall back to the search floor and smallest rung; flag it so a genuine floor fit isn't mistaken for this
 }
 
 /* ---------- SEND ui ---------- */
