@@ -8,8 +8,13 @@ import assert from "node:assert/strict";
 const HTML = fileURLToPath(new URL("../index.html", import.meta.url));
 const html = readFileSync(HTML, "utf8");
 const store = new Map();
+// queuePersist reads PERSIST_DEBOUNCE_MS, which lives above the sliced block — inject the real
+// declaration (not a copy) so the test debounces by the same value the app does.
+const persistConst = /const PERSIST_DEBOUNCE_MS\s*=\s*\d+;/.exec(html);
+assert.ok(persistConst, "expected a PERSIST_DEBOUNCE_MS constant in index.html");
 const src = [
   "const lsSet = (k,v) => store.set(k, String(v));",
+  persistConst[0],
   html.slice(html.indexOf("let persistTimer"), html.indexOf('$("#quality").addEventListener')),
   "globalThis.__P = { queuePersist, flushPersist };",
 ].join("\n");
