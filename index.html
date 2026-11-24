@@ -531,6 +531,10 @@ const TUNE_DEBOUNCE_MS = 180;
 // how long (ms) the Copy-all button holds its "Copied ✓" / failure feedback before reverting to its
 // resting label — set from both the success and the error path, so name it once.
 const COPY_ALL_REVERT_MS = 2000;
+// how long (ms) a drop-zone error stays up before it auto-dismisses, so a stale error doesn't sit forever.
+const DROP_ERR_DISMISS_MS = 7000;
+// the delay (ms) tune-control persistence coalesces writes by before flushing to localStorage.
+const PERSIST_DEBOUNCE_MS = 250;
 // is the Receive tab the one currently showing? Many title/focus/keyboard paths gate on this; name the
 // check so they read as intent ("receive is visible") rather than the inverted class test spelled out.
 const recvVisible = () => !$("#recv").classList.contains("hidden");
@@ -2592,7 +2596,7 @@ function queuePersist(k, v){
   pendingPersist = pendingPersist || {};
   pendingPersist[k] = v;
   clearTimeout(persistTimer);
-  persistTimer = setTimeout(flushPersist, 250);
+  persistTimer = setTimeout(flushPersist, PERSIST_DEBOUNCE_MS);
 }
 function flushPersist(){
   clearTimeout(persistTimer);
@@ -3065,7 +3069,7 @@ document.addEventListener("paste", e=>{
   }
 });
 let dropErrTimer;
-function showDropErr(msg){ const e=$("#dropErr"); e.classList.remove("hidden"); e.textContent=msg; scrollIntoViewNearest(e); clearTimeout(dropErrTimer); dropErrTimer=setTimeout(clearDropErr, 7000); }   // don't leave a stale error sitting forever
+function showDropErr(msg){ const e=$("#dropErr"); e.classList.remove("hidden"); e.textContent=msg; scrollIntoViewNearest(e); clearTimeout(dropErrTimer); dropErrTimer=setTimeout(clearDropErr, DROP_ERR_DISMISS_MS); }
 function clearDropErr(){ clearTimeout(dropErrTimer); const e=$("#dropErr"); e.classList.add("hidden"); e.textContent=""; if(!srcImage) drop.setAttribute("aria-label",DROP_LABEL_DEFAULT); }
 async function handleFile(file){
   if(handling) return;
