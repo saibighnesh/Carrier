@@ -1850,7 +1850,7 @@ async function autoFit(onProgress){
     }
     if(pick) return pick;
   }
-  return { q:25, d:256, fallback:true };   // nothing fit at any rung — flag it so a genuine {25,256} fit isn't mistaken for this
+  return { q:Math.round(AUTOFIT_Q_MIN*100), d:256, fallback:true };   // nothing fit at any rung — fall back to the search floor; flag it so a genuine floor fit isn't mistaken for this
 }
 
 /* ---------- SEND ui ---------- */
