@@ -630,10 +630,14 @@ const localDate = (d = new Date()) => `${d.getFullYear()}-${pad2(d.getMonth()+1)
 const localStamp = (d = new Date()) => `${localDate(d)}-${pad2(d.getHours())}-${pad2(d.getMinutes())}-${pad2(d.getSeconds())}`;
 
 /* ---------- byte <-> base64 ---------- */
+// how many code units we hand String.fromCharCode in one call — spreading a whole big array (or applying
+// it) overflows the engine's argument-count limit, so every fromCharCode-over-a-large-array site slices
+// into blocks of this size. One name for the one limit, shared by the Base64 and Compact encoders.
+const FROMCHARCODE_MAX_ARGS = 0x8000;
 function bytesToB64(bytes){
-  let bin = "", chunk = 0x8000;
-  for(let i=0;i<bytes.length;i+=chunk)
-    bin += String.fromCharCode.apply(null, bytes.subarray(i, i+chunk));
+  let bin = "";
+  for(let i=0;i<bytes.length;i+=FROMCHARCODE_MAX_ARGS)
+    bin += String.fromCharCode.apply(null, bytes.subarray(i, i+FROMCHARCODE_MAX_ARGS));
   return btoa(bin);
 }
 function b64ToBytes(b64){
@@ -768,7 +772,7 @@ function bytesToDense2(bytes){
   if(nbits) out[o++] = DENSE_BASE + ((acc << (DENSE2_BITS - nbits)) & DENSE2_MASK);
   // build the string in bounded slices: fromCharCode(...whole) would blow the argument limit on big sends
   let str = "";
-  for(let i=0;i<chars;i+=0x4000) str += String.fromCharCode(...out.subarray(i, Math.min(chars, i+0x4000)));
+  for(let i=0;i<chars;i+=FROMCHARCODE_MAX_ARGS) str += String.fromCharCode(...out.subarray(i, Math.min(chars, i+FROMCHARCODE_MAX_ARGS)));
   return str;
 }
 // How many bytes a v2 payload holds, without decoding it. This is the whole of the cycle arithmetic

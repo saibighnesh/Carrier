@@ -8,7 +8,12 @@ import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 const HTML = fileURLToPath(new URL("../index.html", import.meta.url));
 const html = readFileSync(HTML, "utf8");
+// bytesToDense2 slices the string in FROMCHARCODE_MAX_ARGS-sized blocks, and that constant lives above
+// the dense region we eval here — inject the real declaration (not a copy) so the slice resolves it.
+const charcodeConst = /const FROMCHARCODE_MAX_ARGS\s*=\s*0x[0-9a-fA-F]+;/.exec(html);
+assert.ok(charcodeConst, "expected a FROMCHARCODE_MAX_ARGS constant in index.html");
 const src = [
+  charcodeConst[0],
   html.slice(html.indexOf("const DENSE_BASE ="), html.indexOf("/* ---------- CRC-32")),
   "globalThis.__DL = { bytesToDense2, dense2ToBytes, dense2ByteLength, DENSE_BASE, DENSE2_HDR };",
 ].join("\n");
