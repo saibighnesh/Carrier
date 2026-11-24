@@ -1,4 +1,4 @@
-// queuePersist/flushPersist batch every settings write behind one 250ms debounce so a quality-slider drag
+// queuePersist/flushPersist batch every settings write behind one PERSIST_DEBOUNCE_MS debounce so a quality-slider drag
 // doesn't hit localStorage on every pixel. Real logic (coalescing, last-write-wins per key, a manual flush
 // that must cancel the pending timer rather than double-write) with no prior test — DOM-free enough to run
 // with real timers under plain node, the same way test/responsiveness.mjs already waits on real setTimeout.
@@ -8,8 +8,13 @@ import assert from "node:assert/strict";
 const HTML = fileURLToPath(new URL("../index.html", import.meta.url));
 const html = readFileSync(HTML, "utf8");
 const store = new Map();
+// queuePersist reads PERSIST_DEBOUNCE_MS, which lives above the sliced block — inject the real
+// declaration (not a copy) so the test debounces by the same value the app does.
+const persistConst = /const PERSIST_DEBOUNCE_MS\s*=\s*\d+;/.exec(html);
+assert.ok(persistConst, "expected a PERSIST_DEBOUNCE_MS constant in index.html");
 const src = [
   "const lsSet = (k,v) => store.set(k, String(v));",
+  persistConst[0],
   html.slice(html.indexOf("let persistTimer"), html.indexOf('$("#quality").addEventListener')),
   "globalThis.__P = { queuePersist, flushPersist };",
 ].join("\n");
@@ -51,7 +56,7 @@ await t("each queuePersist call restarts the debounce clock — a steady drip ne
   store.clear();
   queuePersist("k", "1");
   await wait(150);
-  queuePersist("k", "2");   // restarts the 250ms window before the first one would have fired
+  queuePersist("k", "2");   // restarts the debounce window before the first one would have fired
   await wait(150);
   assert.equal(store.has("k"), false, "300ms of drip at 150ms intervals must not have flushed yet");
   await wait(150);
