@@ -533,6 +533,12 @@ const TUNE_DEBOUNCE_MS = 180;
 const COPY_ALL_REVERT_MS = 2000;
 // the same, shorter, for a single-chunk Copy button — one timer reverts the label after either outcome.
 const COPY_ONE_REVERT_MS = 1200;
+// how long (ms) a zoom-to-full-size blob URL lives before it's reclaimed — used by both the received
+// image and the compressed-preview zoom, so name it once rather than repeat the literal 60000 twice.
+const ZOOM_URL_REVOKE_MS = 60000;
+// the delay (ms) the inbox coalesces rapid typing by before re-parsing — the paste path parses
+// immediately instead (see the "paste" listener), so this only smooths the input/keystroke case.
+const INBOX_DEBOUNCE_MS = 80;
 // is the Receive tab the one currently showing? Many title/focus/keyboard paths gate on this; name the
 // check so they read as intent ("receive is visible") rather than the inverted class test spelled out.
 const recvVisible = () => !$("#recv").classList.contains("hidden");
@@ -3377,7 +3383,7 @@ let progDebounce;
 // supersede ANY prior reveal when the box is edited — keying on an "ok" note missed the warn (multiSession)
 // and err (wrong-password, which deliberately keeps the old image) states, leaving a stale image still wired
 // to Save while progress reported a different, newly-assembled message as ready
-$("#inbox").addEventListener("input", ()=>{ clearTimeout(progDebounce); progDebounce=setTimeout(updateProgress,80); if(recovered) clearReveal(); });
+$("#inbox").addEventListener("input", ()=>{ clearTimeout(progDebounce); progDebounce=setTimeout(updateProgress,INBOX_DEBOUNCE_MS); if(recovered) clearReveal(); });
 $("#inbox").addEventListener("blur", ()=>{ const v=$("#inbox").value; const t=v.trim(); if(t!==v){$("#inbox").value=t; clearTimeout(progDebounce); updateProgress();} });
 // manual Ctrl/Cmd+V into the box: after the paste settles, refresh progress and auto-reveal if complete+unlocked
 $("#inbox").addEventListener("paste", ()=>{ setTimeout(()=>{ clearTimeout(progDebounce); updateProgress(); maybeAutoReveal(); }, 0); });
@@ -3726,7 +3732,7 @@ function bindZoom(imgId, getUrl, noteId){
 bindZoom("rimg", ()=>{
   if(!recovered) return null;
   const u = URL.createObjectURL(new Blob([recovered.bytes], {type:recovered.mime}));
-  setTimeout(()=>URL.revokeObjectURL(u), 60000);
+  setTimeout(()=>URL.revokeObjectURL(u), ZOOM_URL_REVOKE_MS);
   return u;
 }, "rNote");
 // click the compressed preview to inspect it full size — the thumbnail is only 160px
@@ -3735,7 +3741,7 @@ bindZoom("rimg", ()=>{
 bindZoom("thumb", ()=>{
   if(!lastPreviewBytes) return null;
   const u = URL.createObjectURL(new Blob([lastPreviewBytes], {type:lastPreviewMime}));
-  setTimeout(()=>URL.revokeObjectURL(u), 60000);
+  setTimeout(()=>URL.revokeObjectURL(u), ZOOM_URL_REVOKE_MS);
   return u;
 }, "fitNote");
 $("#save").addEventListener("click", ()=>{
