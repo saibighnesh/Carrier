@@ -1325,11 +1325,14 @@ function parsePlain(bytes){
   const mime = new TextDecoder().decode(bytes.subarray(1,1+mlen));
   return { mime, img: bytes.subarray(1+mlen) };
 }
+// PBKDF2 work factor, deliberately high to slow passphrase brute-force (the cost is detailed at
+// deriveKey's callers). Both sides must use the same count or they derive different keys, so name it once.
+const PBKDF2_ITERATIONS = 250000;
 async function deriveKey(password, salt){
   const base = await crypto.subtle.importKey("raw",
     new TextEncoder().encode(password), "PBKDF2", false, ["deriveKey"]);
   return crypto.subtle.deriveKey(
-    { name:"PBKDF2", salt, iterations:250000, hash:"SHA-256" },
+    { name:"PBKDF2", salt, iterations:PBKDF2_ITERATIONS, hash:"SHA-256" },
     base, { name:"AES-GCM", length:256 }, false, ["encrypt","decrypt"]);
 }
 // PBKDF2 at 250k rounds costs hundreds of ms (1-2 s on a slow phone). refresh() re-packs on every
