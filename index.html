@@ -544,7 +544,8 @@ const DROP_ERR_DISMISS_MS = 7000;
 // the delay (ms) tune-control persistence coalesces writes by before flushing to localStorage.
 const PERSIST_DEBOUNCE_MS = 250;
 // the delay (ms) before moving focus into the inbox after a pointer-click into Receive — lets the panel
-// unhide and lay out first, and lets a re-checked recvVisible()/isTrusted guard cancel a stale switch.
+// unhide and lay out first. The fired callback re-reads recvVisible(), so a flip back to Send within the
+// delay cancels the focus; isTrusted/detail are captured-event properties, re-read only for convenience.
 const TAB_FOCUS_DELAY_MS = 50;
 // is the Receive tab the one currently showing? Many title/focus/keyboard paths gate on this; name the
 // check so they read as intent ("receive is visible") rather than the inverted class test spelled out.
