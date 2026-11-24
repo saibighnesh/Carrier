@@ -534,6 +534,8 @@ const COPY_ALL_REVERT_MS = 2000;
 // how long (ms) a zoom-to-full-size blob URL lives before it's reclaimed — used by both the received
 // image and the compressed-preview zoom, so name it once rather than repeat the literal 60000 twice.
 const ZOOM_URL_REVOKE_MS = 60000;
+// the delay (ms) the inbox debounces its live parse by, so a fast paste doesn't re-parse per keystroke.
+const INBOX_DEBOUNCE_MS = 80;
 // is the Receive tab the one currently showing? Many title/focus/keyboard paths gate on this; name the
 // check so they read as intent ("receive is visible") rather than the inverted class test spelled out.
 const recvVisible = () => !$("#recv").classList.contains("hidden");
@@ -3375,7 +3377,7 @@ let progDebounce;
 // supersede ANY prior reveal when the box is edited — keying on an "ok" note missed the warn (multiSession)
 // and err (wrong-password, which deliberately keeps the old image) states, leaving a stale image still wired
 // to Save while progress reported a different, newly-assembled message as ready
-$("#inbox").addEventListener("input", ()=>{ clearTimeout(progDebounce); progDebounce=setTimeout(updateProgress,80); if(recovered) clearReveal(); });
+$("#inbox").addEventListener("input", ()=>{ clearTimeout(progDebounce); progDebounce=setTimeout(updateProgress,INBOX_DEBOUNCE_MS); if(recovered) clearReveal(); });
 $("#inbox").addEventListener("blur", ()=>{ const v=$("#inbox").value; const t=v.trim(); if(t!==v){$("#inbox").value=t; clearTimeout(progDebounce); updateProgress();} });
 // manual Ctrl/Cmd+V into the box: after the paste settles, refresh progress and auto-reveal if complete+unlocked
 $("#inbox").addEventListener("paste", ()=>{ setTimeout(()=>{ clearTimeout(progDebounce); updateProgress(); maybeAutoReveal(); }, 0); });
