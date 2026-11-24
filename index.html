@@ -1814,6 +1814,9 @@ async function compressOnce(maxDim, quality){
 // up to 42 calls in a few seconds would be exactly the overlapping-announcement noise #232 just fixed for
 // the stats region. This is a sighted-progress affordance on the button's own text; aria-busy already
 // tells a screen reader user the button is working, which is the right amount of information there.
+// binary-search iterations per dimension rung — used as both the loop bound and the progress total, so
+// name it once rather than let the two 7s drift apart.
+const AUTOFIT_Q_STEPS = 7;
 async function autoFit(onProgress){
   const dims = [1280,1024,768,512,384,256];
   // See isStale()'s comment for why this needs the token, not just !srcImage.
@@ -1831,9 +1834,9 @@ async function autoFit(onProgress){
     if(stale()) return null;   // Start over — or Start over followed by a new load — ran mid-fit — abandon (don't deref null, and don't measure against an image this fit was never for)
     const cv = drawScaled(srcImage, d);
     let lo = 0.25, hi = 0.92, pick = null;
-    for(let i=0;i<7;i++){
+    for(let i=0;i<AUTOFIT_Q_STEPS;i++){
       const q = (lo+hi)/2;
-      if(onProgress) onProgress(d, i+1, 7);
+      if(onProgress) onProgress(d, i+1, AUTOFIT_Q_STEPS);
       const blob = await encodeCanvas(cv, q);
       if(stale()) return null;   // abandoned during the encode await
       // FLOOR, not round: the search parks q right at the budget edge, so rounding UP would make refresh
