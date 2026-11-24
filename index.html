@@ -547,6 +547,9 @@ const PERSIST_DEBOUNCE_MS = 250;
 // unhide and lay out first. The fired callback re-reads recvVisible(), so a flip back to Send within the
 // delay cancels the focus; isTrusted/detail are captured-event properties, re-read only for convenience.
 const TAB_FOCUS_DELAY_MS = 50;
+// how long (ms) waitForIdle waits for an in-flight refresh() before giving up, and how often it
+// re-checks — the idle bound and poll cadence, named so they read as deliberate values (see waitForIdle).
+const WAIT_IDLE_TIMEOUT_MS = 30000, WAIT_IDLE_STEP_MS = 50;
 // is the Receive tab the one currently showing? Many title/focus/keyboard paths gate on this; name the
 // check so they read as intent ("receive is visible") rather than the inverted class test spelled out.
 const recvVisible = () => !$("#recv").classList.contains("hidden");
@@ -2556,7 +2559,7 @@ function queueRefresh(){ clearTimeout(debounce); debounce = setTimeout(refresh, 
 // aria-busy to avoid wiping the session mid-fit, to a Send panel Esc couldn't reset either. setTimeout
 // keeps firing when hidden (throttled to ~1 s). Bounded, so a wedged refresh reports an error instead of
 // hanging forever. Resolves true when idle, false on timeout.
-function waitForIdle(timeoutMs = 30000, stepMs = 50){
+function waitForIdle(timeoutMs = WAIT_IDLE_TIMEOUT_MS, stepMs = WAIT_IDLE_STEP_MS){
   return new Promise(resolve=>{
     if(!refreshing) return resolve(true);
     const started = Date.now();
