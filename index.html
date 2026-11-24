@@ -1325,8 +1325,8 @@ function parsePlain(bytes){
   const mime = new TextDecoder().decode(bytes.subarray(1,1+mlen));
   return { mime, img: bytes.subarray(1+mlen) };
 }
-// PBKDF2 work factor — intentionally high (~hundreds of ms per derive) to slow brute-force on the
-// passphrase. Both sides must use the same count or they derive different keys, so name it once.
+// PBKDF2 work factor, deliberately high to slow passphrase brute-force (the cost is detailed at
+// deriveKey's callers). Both sides must use the same count or they derive different keys, so name it once.
 const PBKDF2_ITERATIONS = 250000;
 async function deriveKey(password, salt){
   const base = await crypto.subtle.importKey("raw",
