@@ -531,6 +531,9 @@ const TUNE_DEBOUNCE_MS = 180;
 // how long (ms) the Copy-all button holds its "Copied ✓" / failure feedback before reverting to its
 // resting label — set from both the success and the error path, so name it once.
 const COPY_ALL_REVERT_MS = 2000;
+// how long (ms) a zoom-to-full-size blob URL lives before it's reclaimed — used by both the received
+// image and the compressed-preview zoom, so name it once rather than repeat the literal 60000 twice.
+const ZOOM_URL_REVOKE_MS = 60000;
 // is the Receive tab the one currently showing? Many title/focus/keyboard paths gate on this; name the
 // check so they read as intent ("receive is visible") rather than the inverted class test spelled out.
 const recvVisible = () => !$("#recv").classList.contains("hidden");
@@ -3721,7 +3724,7 @@ function bindZoom(imgId, getUrl, noteId){
 bindZoom("rimg", ()=>{
   if(!recovered) return null;
   const u = URL.createObjectURL(new Blob([recovered.bytes], {type:recovered.mime}));
-  setTimeout(()=>URL.revokeObjectURL(u), 60000);
+  setTimeout(()=>URL.revokeObjectURL(u), ZOOM_URL_REVOKE_MS);
   return u;
 }, "rNote");
 // click the compressed preview to inspect it full size — the thumbnail is only 160px
@@ -3730,7 +3733,7 @@ bindZoom("rimg", ()=>{
 bindZoom("thumb", ()=>{
   if(!lastPreviewBytes) return null;
   const u = URL.createObjectURL(new Blob([lastPreviewBytes], {type:lastPreviewMime}));
-  setTimeout(()=>URL.revokeObjectURL(u), 60000);
+  setTimeout(()=>URL.revokeObjectURL(u), ZOOM_URL_REVOKE_MS);
   return u;
 }, "fitNote");
 $("#save").addEventListener("click", ()=>{
