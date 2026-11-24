@@ -27,6 +27,7 @@ Save the single `index.html` file and it works offline — on a plane, on a trai
   - [How much redundancy? (Auto)](#how-much-redundancy-auto)
   - [Payload format](#payload-format)
 - [Tech Stack](#tech-stack)
+  - [Browser support](#browser-support)
 - [Security Notes](#security-notes)
   - [Browser Privacy and Storage Isolation](#browser-privacy-and-storage-isolation)
   - [Content Security & Defense in Depth](#content-security--defense-in-depth)
