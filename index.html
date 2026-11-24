@@ -531,6 +531,8 @@ const TUNE_DEBOUNCE_MS = 180;
 // how long (ms) the Copy-all button holds its "Copied ✓" / failure feedback before reverting to its
 // resting label — set from both the success and the error path, so name it once.
 const COPY_ALL_REVERT_MS = 2000;
+// the same, shorter, for a single-chunk Copy button — one timer reverts the label after either outcome.
+const COPY_ONE_REVERT_MS = 1200;
 // how long (ms) a zoom-to-full-size blob URL lives before it's reclaimed — used by both the received
 // image and the compressed-preview zoom, so name it once rather than repeat the literal 60000 twice.
 const ZOOM_URL_REVOKE_MS = 60000;
@@ -577,6 +579,10 @@ const maxChunkIndexFor = (total, recoveryOn) => recoveryOn ? total * 2 : total;
 // image quality to hit it. The bits-per-char must come from the codec that will actually carry the text.
 const textBitsPerChar = () => textCodec === "dense" ? DENSE2_BITS : 6;
 const targetBytes = () => Math.floor((msgLimit - chunkPrefixLen(1)) * (textBitsPerChar() / 8) * 0.96);
+// a coarse floor (~) on the raw one-message byte budget below which no real WebP thumbnail fits — it's
+// compared against targetBytes() directly, before the envelope overhead budget() subtracts, so it's an
+// approximation, not an exact cutoff. Below it, "lower quality to fit" is impossible advice (e.g. SMS).
+const MIN_FITTABLE_BYTES = 1200;
 const CHUNK_RENDER_CAP = 200;     // cap DOM cards — tiny per-app limits (SMS) can produce thousands of chunks
 const CHUNK_PREVIEW = 280;        // chars of a chunk shown on a card; the full text is swapped in for printing
 // only these raster image types may be turned into a blob and opened — never text/html or svg (XSS)
@@ -2154,9 +2160,8 @@ async function refresh(){
     note.textContent = `Fits in a single ${app} message. ✓`;
   } else {
     note.className = "note warn";
-    // don't tell the user to "lower quality to fit in one message" when the chosen app's per-message
-    // budget is too small to ever hold an image — that advice is impossible to satisfy (e.g. SMS)
-    const canFitOne = targetBytes() >= 1200;   // ~ smallest a real WebP thumbnail encodes to
+    // below MIN_FITTABLE_BYTES "lower quality to fit" is impossible advice (e.g. SMS); see its definition.
+    const canFitOne = targetBytes() >= MIN_FITTABLE_BYTES;
     note.textContent = canFitOne
       ? `Sending as ${lastChunks.length} parts — lower quality or size to fit in one message.`
       : `Sending as ${lastChunks.length} parts — ${app}'s per-message limit is too small to fit an image in one message.`;
@@ -2481,7 +2486,7 @@ function renderChunks(){
       }catch{
         b.textContent = "Failed"; b.setAttribute("aria-label","Copy failed");
       }
-      copyoneTimers.set(b, setTimeout(()=>{ b.textContent="Copy"; b.setAttribute("aria-label",origLabel); },1200));
+      copyoneTimers.set(b, setTimeout(()=>{ b.textContent="Copy"; b.setAttribute("aria-label",origLabel); },COPY_ONE_REVERT_MS));
     };
   });
 }
