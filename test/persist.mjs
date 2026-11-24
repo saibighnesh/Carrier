@@ -1,4 +1,4 @@
-// queuePersist/flushPersist batch every settings write behind one 250ms debounce so a quality-slider drag
+// queuePersist/flushPersist batch every settings write behind one PERSIST_DEBOUNCE_MS debounce so a quality-slider drag
 // doesn't hit localStorage on every pixel. Real logic (coalescing, last-write-wins per key, a manual flush
 // that must cancel the pending timer rather than double-write) with no prior test — DOM-free enough to run
 // with real timers under plain node, the same way test/responsiveness.mjs already waits on real setTimeout.
@@ -56,7 +56,7 @@ await t("each queuePersist call restarts the debounce clock — a steady drip ne
   store.clear();
   queuePersist("k", "1");
   await wait(150);
-  queuePersist("k", "2");   // restarts the 250ms window before the first one would have fired
+  queuePersist("k", "2");   // restarts the debounce window before the first one would have fired
   await wait(150);
   assert.equal(store.has("k"), false, "300ms of drip at 150ms intervals must not have flushed yet");
   await wait(150);
