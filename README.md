@@ -300,7 +300,7 @@ node test/dense.mjs      # run a single suite while iterating on one area
 
 Each `test/*.mjs` file is a standalone script (plain `node:assert`, no framework), so you can run any one of them directly by path. Requires **Node 18+** (the suite is ESM and uses `node:`-prefixed built-ins). CI runs Node 22, pinned in [`.nvmrc`](.nvmrc) — run `nvm use` to match it locally.
 
-Runs every `test/*.mjs` suite and exits non-zero on any failure. CI runs the same command automatically on pushes/PRs that touch `index.html`, `test/**`, or the workflow file itself (`.github/workflows/test.yml`); docs-only changes don't trigger a run, and pushing again before a run finishes cancels the superseded one instead of queuing both to completion.
+`node test/run.mjs` runs every `test/*.mjs` suite and exits non-zero on any failure. CI runs the same command automatically on pushes/PRs that touch `index.html`, `test/**`, or the workflow file itself (`.github/workflows/test.yml`); docs-only changes don't trigger a run, and pushing again before a run finishes cancels the superseded one instead of queuing both to completion.
 
 The GitHub Actions used in CI are pinned by commit SHA (bumped manually when upstream releases). The workflow can also be run on demand from the repository's **Actions** tab (`workflow_dispatch`).
 
