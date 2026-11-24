@@ -598,7 +598,8 @@ t("renderChunks and setChunkText chunk rendering helpers are defined", () => {
 });
 
 t("waitForIdle and syncPresets background coordination helpers are defined", () => {
-  assert.match(html, /function waitForIdle\(timeoutMs\s*=\s*30000,\s*stepMs\s*=\s*50\)\{/, "waitForIdle function should be defined");
+  assert.match(html, /const WAIT_IDLE_TIMEOUT_MS\s*=\s*30000,\s*WAIT_IDLE_STEP_MS\s*=\s*50;/, "waitForIdle timing constants should be defined");
+  assert.match(html, /function waitForIdle\(timeoutMs\s*=\s*WAIT_IDLE_TIMEOUT_MS,\s*stepMs\s*=\s*WAIT_IDLE_STEP_MS\)\{/, "waitForIdle function should use the named timing constants");
   assert.match(html, /function syncPresets\(\)\{/, "syncPresets function should be defined");
 });
 
