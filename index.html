@@ -543,6 +543,10 @@ const INBOX_DEBOUNCE_MS = 80;
 const DROP_ERR_DISMISS_MS = 7000;
 // the delay (ms) tune-control persistence coalesces writes by before flushing to localStorage.
 const PERSIST_DEBOUNCE_MS = 250;
+// the delay (ms) before moving focus into the inbox after a pointer-click into Receive — lets the panel
+// unhide and lay out first. The fired callback re-reads recvVisible(), so a flip back to Send within the
+// delay cancels the focus; isTrusted/detail are captured-event properties, re-read only for convenience.
+const TAB_FOCUS_DELAY_MS = 50;
 // is the Receive tab the one currently showing? Many title/focus/keyboard paths gate on this; name the
 // check so they read as intent ("receive is visible") rather than the inverted class test spelled out.
 const recvVisible = () => !$("#recv").classList.contains("hidden");
@@ -3858,7 +3862,7 @@ modeBtns.forEach((btn, idx)=>{
     // move focus into the paste box only for a real POINTER click (e.detail > 0). Keyboard activation of
     // the tab (Enter/Space → click with detail 0) and arrow-key roving (synthetic, isTrusted false) must
     // keep focus ON the tab, per the ARIA tabs pattern — otherwise focus silently skips into the panel.
-    if(m === "recv") setTimeout(()=>{ if(recvVisible() && e.isTrusted && e.detail > 0) $("#inbox").focus(); }, 50);
+    if(m === "recv") setTimeout(()=>{ if(recvVisible() && e.isTrusted && e.detail > 0) $("#inbox").focus(); }, TAB_FOCUS_DELAY_MS);
     // set the resting title, then let updateProgress — which owns the "3/7 parts" title — recompute it.
     // Without this the count vanished on every mode switch and only came back on the next inbox edit,
     // leaving the tab contradicting a #prog that still read "Got 5 of 19 parts". Switching modes
