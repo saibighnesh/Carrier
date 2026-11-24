@@ -573,8 +573,9 @@ const maxChunkIndexFor = (total, recoveryOn) => recoveryOn ? total * 2 : total;
 // image quality to hit it. The bits-per-char must come from the codec that will actually carry the text.
 const textBitsPerChar = () => textCodec === "dense" ? DENSE2_BITS : 6;
 const targetBytes = () => Math.floor((msgLimit - chunkPrefixLen(1)) * (textBitsPerChar() / 8) * 0.96);
-// the smallest one-message byte budget that could ever hold a real WebP thumbnail; below it, "lower
-// quality to fit in one message" is impossible advice, so the fit note says the app's limit is too small.
+// a coarse floor (~) on the raw one-message byte budget below which no real WebP thumbnail fits — it's
+// compared against targetBytes() directly, before the envelope overhead budget() subtracts, so it's an
+// approximation, not an exact cutoff. Below it, "lower quality to fit" is impossible advice (e.g. SMS).
 const MIN_FITTABLE_BYTES = 1200;
 const CHUNK_RENDER_CAP = 200;     // cap DOM cards — tiny per-app limits (SMS) can produce thousands of chunks
 const CHUNK_PREVIEW = 280;        // chars of a chunk shown on a card; the full text is swapped in for printing
