@@ -412,7 +412,7 @@ t("denseVersionOf codec version dispatch helper is defined", () => {
 
 t("dec64 Base64 integer decoder helper is defined", () => {
   assert.match(html, /const dec64\s*=\s*str\s*=>\s*\{\s*let v\s*=\s*0;/, "dec64 helper should be defined");
-  assert.match(html, /const cc\s*=\s*str\.charCodeAt\(i\);\s*const d\s*=\s*cc\s*<\s*ASCII_MAX\s*\?\s*B64V\[cc\]\s*:\s*-1;/, "dec64 should guard ASCII range before B64V lookup");
+  assert.match(html, /const cc\s*=\s*str\.charCodeAt\(i\);\s*const d\s*=\s*cc\s*<\s*ASCII_CODE_COUNT\s*\?\s*B64V\[cc\]\s*:\s*-1;/, "dec64 should guard ASCII range before B64V lookup");
 });
 
 t("CRC32_TABLE and crc32 checksum helper are defined", () => {
@@ -421,7 +421,7 @@ t("CRC32_TABLE and crc32 checksum helper are defined", () => {
 });
 
 t("B64V reverse lookup table is initialized", () => {
-  assert.match(html, /const B64V\s*=\s*\(\(\)=>\{\s*const v\s*=\s*new Int8Array\(ASCII_MAX\)\.fill\(-1\);/, "B64V table should initialize ASCII_MAX elements filled with -1");
+  assert.match(html, /const B64V\s*=\s*\(\(\)=>\{\s*const v\s*=\s*new Int8Array\(ASCII_CODE_COUNT\)\.fill\(-1\);/, "B64V table should initialize ASCII_CODE_COUNT elements filled with -1");
 });
 
 t("GF14_EXP and GF14_LOG Galois field table allocations are defined", () => {
