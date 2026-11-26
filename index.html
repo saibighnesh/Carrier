@@ -827,7 +827,7 @@ function dense2ToBytes(text){
 const denseVersionOf = t => {
   if(!t.length) return 0;
   const off = t.charCodeAt(0) - DENSE_BASE;
-  return (off >= 0 && off <= 2) ? 1 : (off >= DENSE2_HDR && off < DENSE2_HDR + DENSE2_CYCLE_BYTES) ? 2 : 0;
+  return (off >= 0 && off < DENSE_CYCLE_BYTES) ? 1 : (off >= DENSE2_HDR && off < DENSE2_HDR + DENSE2_CYCLE_BYTES) ? 2 : 0;
 };
 const dense2CharCount = byteLen => 1 + Math.ceil(byteLen * 8 / DENSE2_BITS);
 // how many characters `bytes` will occupy in each encoding — used to price the choice for the user
