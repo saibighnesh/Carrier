@@ -884,7 +884,9 @@ const RS_HALF  = 32;   // Cauchy bases: parity rows below, data columns above. C
 const RS_BLOCK = 32;   // data parts per coding block — loss is bursty, so keep recovery local
 const RS_META  = 6;    // per-parity-part header: block(1) + row(1) + core length(4), all Base64 chars
 const B64A = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-const B64V = (()=>{ const v = new Int8Array(128).fill(-1); for(let i=0;i<64;i++) v[B64A.charCodeAt(i)] = i; return v; })();
+const B64_ALPHABET_SIZE = B64A.length;     // 64 symbols (= 2^B64_BITS) — the radix dec64 accumulates in
+const ASCII_MAX = 128;                     // B64V spans 7-bit ASCII; dec64 guards to it before indexing
+const B64V = (()=>{ const v = new Int8Array(ASCII_MAX).fill(-1); for(let i=0;i<B64_ALPHABET_SIZE;i++) v[B64A.charCodeAt(i)] = i; return v; })();
 
 // exp/log tables for GF(2^6) under x^6 + x + 1 (0x43); 2 is primitive, so it walks all 63 non-zero elements
 const GF_EXP = new Uint8Array(126), GF_LOG = new Uint8Array(64);
@@ -1566,7 +1568,7 @@ function enc64(v, width){
 // FALSE — so a CJK character walked straight past the guard and turned v into NaN, which then slipped
 // every `< 0` check downstream in rsRepair. A consistency check happened to catch it later; that was
 // luck, not design. Bound the index before the lookup.
-const dec64 = str => { let v = 0; for(let i=0;i<str.length;i++){ const cc = str.charCodeAt(i); const d = cc < 128 ? B64V[cc] : -1; if(d < 0) return -1; v = v * 64 + d; } return v; };
+const dec64 = str => { let v = 0; for(let i=0;i<str.length;i++){ const cc = str.charCodeAt(i); const d = cc < ASCII_MAX ? B64V[cc] : -1; if(d < 0) return -1; v = v * B64_ALPHABET_SIZE + d; } return v; };
 // reassemble() is called far more often than the text changes: a paste runs updateProgress() and
 // maybeAutoReveal(), which runs doReveal(), which re-reassembles after its await to detect the inbox
 // changing mid-derive — four full regex scans, match-array allocations, and payload concatenations over

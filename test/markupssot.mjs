@@ -282,6 +282,7 @@ t("DROP_TITLE_DEFAULT and DROP_LABEL_DEFAULT captured drop attributes are define
 });
 
 t("GF_EXP and GF_LOG Galois field tables are initialized", () => {
+  assert.match(html, /const B64_ALPHABET_SIZE\s*=\s*B64A\.length;/, "B64_ALPHABET_SIZE should derive from the alphabet");
   assert.match(html, /const GF_EXP\s*=\s*new Uint8Array\(126\),\s*GF_LOG\s*=\s*new Uint8Array\(64\);/, "GF_EXP and GF_LOG should have lengths 126 and 64");
 });
 
@@ -410,7 +411,7 @@ t("denseVersionOf codec version dispatch helper is defined", () => {
 
 t("dec64 Base64 integer decoder helper is defined", () => {
   assert.match(html, /const dec64\s*=\s*str\s*=>\s*\{\s*let v\s*=\s*0;/, "dec64 helper should be defined");
-  assert.match(html, /const cc\s*=\s*str\.charCodeAt\(i\);\s*const d\s*=\s*cc\s*<\s*128\s*\?\s*B64V\[cc\]\s*:\s*-1;/, "dec64 should guard ASCII range before B64V lookup");
+  assert.match(html, /const cc\s*=\s*str\.charCodeAt\(i\);\s*const d\s*=\s*cc\s*<\s*ASCII_MAX\s*\?\s*B64V\[cc\]\s*:\s*-1;/, "dec64 should guard ASCII range before B64V lookup");
 });
 
 t("CRC32_TABLE and crc32 checksum helper are defined", () => {
@@ -419,7 +420,7 @@ t("CRC32_TABLE and crc32 checksum helper are defined", () => {
 });
 
 t("B64V reverse lookup table is initialized", () => {
-  assert.match(html, /const B64V\s*=\s*\(\(\)=>\{\s*const v\s*=\s*new Int8Array\(128\)\.fill\(-1\);/, "B64V table should initialize 128 elements filled with -1");
+  assert.match(html, /const B64V\s*=\s*\(\(\)=>\{\s*const v\s*=\s*new Int8Array\(ASCII_MAX\)\.fill\(-1\);/, "B64V table should initialize ASCII_MAX elements filled with -1");
 });
 
 t("GF14_EXP and GF14_LOG Galois field table allocations are defined", () => {
