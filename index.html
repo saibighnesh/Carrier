@@ -1315,7 +1315,10 @@ function planParity(total, target, post, ceiling = RS_BLOCK_CEILING.b64){
 
 /* ---------- container (mime + image, optional encryption) ---------- */
 const FLAG_ENCRYPTED = 1;   // body is salt+iv+AES-256-GCM ciphertext
-const FLAG_CRC32     = 2;   // body carries a 4-byte big-endian CRC-32 trailer over everything before it
+const FLAG_CRC32     = 2;   // body carries a big-endian CRC-32 trailer (CRC_BYTES) over everything before it
+// width of the CRC-32 damage-detection trailer appended to an unlocked body. pack allocates and writes it,
+// unpack splits it back off — name it once so the trailer length can't disagree between the two sides.
+const CRC_BYTES = 4;
 // encrypted-body field sizes (bytes). The layout is salt | iv | ciphertext(+GCM tag), and pack writes
 // these offsets while unpack reads them back — name the sizes once so the two sides can't disagree, and
 // so the "too short to be real ciphertext" floor (salt+iv+tag) stays in step with them.
@@ -1389,7 +1392,7 @@ async function pack(img, mime, password){
     // JPEG (data ends at the EOI marker) ignore. Old receivers keep rendering these messages.
     flags = FLAG_CRC32;
     const crc = crc32(plain);
-    body = new Uint8Array(plain.length + 4);
+    body = new Uint8Array(plain.length + CRC_BYTES);
     body.set(plain, 0);
     body[plain.length]   = (crc >>> 24) & 0xFF;
     body[plain.length+1] = (crc >>> 16) & 0xFF;
@@ -1426,9 +1429,11 @@ async function unpack(text, password){
     catch { throw new Error("Wrong password — or the text was altered in transit."); }
     verified = true;   // GCM's authentication tag already proves the ciphertext arrived intact
   } else if(flags & FLAG_CRC32){
-    if(body.length < 6) throw new Error("This message is too short to hold an image — a part is probably missing.");
-    const data = body.subarray(0, body.length - 4);
-    const t = body.subarray(body.length - 4);
+    // CRC_BYTES for the trailer + 2 for parsePlain's own floor (it rejects a payload shorter than 2):
+    // below this the subarray split would hand parsePlain too few bytes to read even the mime-length byte.
+    if(body.length < CRC_BYTES + 2) throw new Error("This message is too short to hold an image — a part is probably missing.");
+    const data = body.subarray(0, body.length - CRC_BYTES);
+    const t = body.subarray(body.length - CRC_BYTES);
     const want = ((t[0] << 24) | (t[1] << 16) | (t[2] << 8) | t[3]) >>> 0;
     if(crc32(data) !== want) throw new Error("This message is damaged — some characters were changed or lost on the way. Ask the sender to resend it.");
     plain = data; verified = true;
