@@ -681,6 +681,7 @@ const DENSE_BITS = 12;
 const DENSE_MASK = (1 << DENSE_BITS) - 1;    // 0xFFF — tied to DENSE_BITS so the two can't drift
 // lcm(DENSE_BITS, 8) = 24 bits, so v1 repeats every 3 bytes <-> 2 characters (the v2 cycle's counterpart).
 const DENSE_CYCLE_BYTES = 3, DENSE_CYCLE_CHARS = 2;
+const DENSE_HDR = 0;   // v1 header offset base (DENSE2_HDR's counterpart): remainders occupy DENSE_BASE+0..2
 
 // Bytes -> dense text. The leading symbol carries byteLength mod DENSE_CYCLE_BYTES, which is the one bit of information
 // the character count cannot supply on its own: n and n+1 bytes can both round up to the same number of
@@ -827,7 +828,7 @@ function dense2ToBytes(text){
 const denseVersionOf = t => {
   if(!t.length) return 0;
   const off = t.charCodeAt(0) - DENSE_BASE;
-  return (off >= 0 && off < DENSE_CYCLE_BYTES) ? 1 : (off >= DENSE2_HDR && off < DENSE2_HDR + DENSE2_CYCLE_BYTES) ? 2 : 0;
+  return (off >= DENSE_HDR && off < DENSE_HDR + DENSE_CYCLE_BYTES) ? 1 : (off >= DENSE2_HDR && off < DENSE2_HDR + DENSE2_CYCLE_BYTES) ? 2 : 0;
 };
 const dense2CharCount = byteLen => 1 + Math.ceil(byteLen * 8 / DENSE2_BITS);
 // how many characters `bytes` will occupy in each encoding — used to price the choice for the user
