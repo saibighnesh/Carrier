@@ -3050,6 +3050,9 @@ function cancelFlash(btn){
   if(st.aria == null) btn.removeAttribute("aria-label"); else btn.setAttribute("aria-label", st.aria);
   flashState.delete(btn);
 }
+// cap on the source-image filename stem reused in the saved .txt name — keeps the download name tidy and
+// bounded no matter how long the original image's name was.
+const FILENAME_STEM_MAX = 40;
 $("#saveTxt").addEventListener("click", ()=>{
   if(!lastChunks.length) return;
   // prepend a human-readable header so a saved backup is self-documenting. The Receive parser only
@@ -3077,7 +3080,7 @@ $("#saveTxt").addEventListener("click", ()=>{
   if(lastTxtUrl) URL.revokeObjectURL(lastTxtUrl);
   const url = URL.createObjectURL(blob);
   lastTxtUrl = url;
-  const base = (srcImage && srcImage._name ? srcImage._name.replace(/\.[^.]+$/, "") : "carrier").replace(/[^\w.-]+/g, "_").slice(0, 40) || "carrier";
+  const base = (srcImage && srcImage._name ? srcImage._name.replace(/\.[^.]+$/, "") : "carrier").replace(/[^\w.-]+/g, "_").slice(0, FILENAME_STEM_MAX) || "carrier";
   const app = activeAppName("").toLowerCase().replace(/[^a-z0-9]+/g, "");   // record which app's per-message limit these chunks fit
   const appTag = app ? `-${app}` : "";
   // record the encoding in the name too. The header already explains it, but a folder listing doesn't
