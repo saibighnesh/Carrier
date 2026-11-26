@@ -299,7 +299,8 @@ t("RS14 field instantiation is defined with RS_HALF", () => {
 });
 
 t("RS14_META header size constant is defined", () => {
-  assert.match(html, /const RS14_META\s*=\s*4;/, "RS14_META should be 4");
+  assert.match(html, /const RS14_HDR_LEN\s*=\s*2;/, "dense core-length field width should be named");
+  assert.match(html, /const RS14_META\s*=\s*RS_HDR_BLK\s*\+\s*RS_HDR_ROW\s*\+\s*RS14_HDR_LEN;/, "RS14_META should be the sum of the dense field widths");
 });
 
 t("RS_BLOCK_CEILING codec ceiling map is defined", () => {

@@ -1097,7 +1097,8 @@ const symsToDense = syms => { let s = ""; for(let i=0;i<syms.length;i++) s += St
 // characters at 14 bits each address up to 2^28 — far beyond anything this app produces — against Base64
 // metadata's four characters at 6 bits (2^24); dense needs fewer header characters because its symbols
 // already carry more.
-const RS14_META = 4;
+const RS14_HDR_LEN = 2;   // dense core-length field width; block + row are one wire char each, as in Base64
+const RS14_META = RS_HDR_BLK + RS_HDR_ROW + RS14_HDR_LEN;   // 4
 function enc14(v, width){
   if(v < 0 || v >= Math.pow(GF14_ORDER, width)) return null;
   let s = "";
@@ -1548,7 +1549,7 @@ async function parityChunksB64(b64, sid, total, per, level, tag){
 async function parityChunksDense(text, sid, total, per, level, tag){
   const k = rsParityCount(Math.min(total, RS_BLOCK), level, lastPlan);
   if(!k || total < 2) return [];
-  const lenChars = enc14(text.length, 2);
+  const lenChars = enc14(text.length, RS14_HDR_LEN);
   if(lenChars === null) return [];   // beyond what 2 dense characters can address — skip parity, never mis-state it
   const out = [];
   let seq = 0;
@@ -1742,7 +1743,7 @@ function rsRepairDense(map, total, parityRaw){
   let coreLen = -1, per = -1;
   for(const raw of parityRaw){
     if(raw.length <= RS14_META) continue;
-    const blk = dec14(raw.slice(0,1)), row = dec14(raw.slice(1,2)), len = dec14(raw.slice(2,4));
+    const blk = dec14(raw.slice(0, RS_HDR_BLK)), row = dec14(raw.slice(RS_HDR_BLK, RS_HDR_BLK + RS_HDR_ROW)), len = dec14(raw.slice(RS_HDR_BLK + RS_HDR_ROW, RS14_META));
     if(blk < 0 || row < 0 || len < 0 || row >= RS_HALF) continue;
     // every parity part of a send states the same core length and shard size; a disagreement means parts
     // from two different packings are mixed in the box, and guessing between them would corrupt the image
