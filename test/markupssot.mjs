@@ -283,7 +283,8 @@ t("DROP_TITLE_DEFAULT and DROP_LABEL_DEFAULT captured drop attributes are define
 
 t("GF_EXP and GF_LOG Galois field tables are initialized", () => {
   assert.match(html, /const B64_ALPHABET_SIZE\s*=\s*B64A\.length;/, "B64_ALPHABET_SIZE should derive from the alphabet");
-  assert.match(html, /const GF_EXP\s*=\s*new Uint8Array\(126\),\s*GF_LOG\s*=\s*new Uint8Array\(64\);/, "GF_EXP and GF_LOG should have lengths 126 and 64");
+  assert.match(html, /const GF6_ORDER\s*=\s*B64_ALPHABET_SIZE,\s*GF6_N\s*=\s*GF6_ORDER\s*-\s*1;/, "GF6_ORDER should be the Base64 alphabet size");
+  assert.match(html, /const GF_EXP\s*=\s*new Uint8Array\(2\s*\*\s*GF6_N\),\s*GF_LOG\s*=\s*new Uint8Array\(GF6_ORDER\);/, "GF_EXP and GF_LOG should size from GF6_N / GF6_ORDER");
 });
 
 t("GF14_ORDER and GF14_N Galois field size constants are defined", () => {
@@ -335,7 +336,7 @@ t("dense2CharCount, denseCharCount, and b64CharCount helpers are defined", () =>
 
 t("gfMul and gfInv Galois field arithmetic helpers are defined", () => {
   assert.match(html, /const gfMul\s*=\s*\(a,b\)\s*=>\s*\(a\s*===\s*0\s*\|\|\s*b\s*===\s*0\)\s*\?\s*0\s*:\s*GF_EXP\[GF_LOG\[a\]\s*\+\s*GF_LOG\[b\]\];/, "gfMul should implement GF(64) multiplication");
-  assert.match(html, /const gfInv\s*=\s*a\s*=>\s*GF_EXP\[\(63\s*-\s*GF_LOG\[a\]\)\s*%\s*63\];/, "gfInv should implement GF(64) inversion");
+  assert.match(html, /const gfInv\s*=\s*a\s*=>\s*GF_EXP\[\(GF6_N\s*-\s*GF_LOG\[a\]\)\s*%\s*GF6_N\];/, "gfInv should implement GF(64) inversion");
 });
 
 t("gf14Mul and gf14Inv Galois field arithmetic helpers are defined", () => {

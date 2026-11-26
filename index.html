@@ -888,14 +888,18 @@ const B64_ALPHABET_SIZE = B64A.length;     // 64 symbols (= 2^B64_BITS) — the 
 const ASCII_MAX = 128;                     // B64V spans 7-bit ASCII; dec64 guards to it before indexing
 const B64V = (()=>{ const v = new Int8Array(ASCII_MAX).fill(-1); for(let i=0;i<B64_ALPHABET_SIZE;i++) v[B64A.charCodeAt(i)] = i; return v; })();
 
-// exp/log tables for GF(2^6) under x^6 + x + 1 (0x43); 2 is primitive, so it walks all 63 non-zero elements
-const GF_EXP = new Uint8Array(126), GF_LOG = new Uint8Array(64);
+// exp/log tables for GF(2^6) under x^6 + x + 1 (GF6_POLY); 2 is primitive, so it walks all 63 non-zero
+// elements. Named symmetrically to the GF(2^14) field below (GF14_POLY/ORDER/N) so the two can't drift:
+// order is the Base64 alphabet size (2^B64_BITS), the wire width that makes a parity symbol one Base64 char.
+const GF6_POLY = 0x43;
+const GF6_ORDER = B64_ALPHABET_SIZE, GF6_N = GF6_ORDER - 1;   // field order = the Base64 alphabet size: a parity symbol is one Base64 char
+const GF_EXP = new Uint8Array(2 * GF6_N), GF_LOG = new Uint8Array(GF6_ORDER);
 (()=>{ let x = 1;
-  for(let i=0;i<63;i++){ GF_EXP[i] = x; GF_LOG[x] = i; x <<= 1; if(x & 0x40) x ^= 0x43; }
-  for(let i=63;i<126;i++) GF_EXP[i] = GF_EXP[i-63];
+  for(let i=0;i<GF6_N;i++){ GF_EXP[i] = x; GF_LOG[x] = i; x <<= 1; if(x & GF6_ORDER) x ^= GF6_POLY; }
+  for(let i=GF6_N;i<2*GF6_N;i++) GF_EXP[i] = GF_EXP[i-GF6_N];
 })();
 const gfMul = (a,b) => (a === 0 || b === 0) ? 0 : GF_EXP[GF_LOG[a] + GF_LOG[b]];
-const gfInv = a => GF_EXP[(63 - GF_LOG[a]) % 63];
+const gfInv = a => GF_EXP[(GF6_N - GF_LOG[a]) % GF6_N];
 
 // Cauchy matrix A[i][j] = 1/(x_i ^ y_j). Every square submatrix of a Cauchy matrix is invertible, which is
 // exactly what erasure decoding needs: ANY k surviving parts decode, not some privileged subset.
