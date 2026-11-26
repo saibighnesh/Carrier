@@ -409,7 +409,7 @@ t("uncodedParts and isStale helpers are defined", () => {
 t("denseVersionOf codec version dispatch helper is defined", () => {
   assert.match(html, /const denseVersionOf\s*=\s*t\s*=>\s*\{/, "denseVersionOf helper should be defined");
   assert.match(html, /const off\s*=\s*t\.charCodeAt\(0\)\s*-\s*DENSE_BASE;/, "denseVersionOf should calculate offset from DENSE_BASE");
-  assert.match(html, /return\s*\(off\s*>=\s*0\s*&&\s*off\s*<=\s*2\)\s*\?\s*1\s*:\s*\(off\s*>=\s*DENSE2_HDR\s*&&\s*off\s*<\s*DENSE2_HDR\s*\+\s*DENSE2_CYCLE_BYTES\)\s*\?\s*2\s*:\s*0;/, "denseVersionOf should distinguish v1 (0..2), v2 (3..9), and invalid (0)");
+  assert.match(html, /return\s*\(off\s*>=\s*DENSE_HDR\s*&&\s*off\s*<\s*DENSE_HDR\s*\+\s*DENSE_CYCLE_BYTES\)\s*\?\s*1\s*:\s*\(off\s*>=\s*DENSE2_HDR\s*&&\s*off\s*<\s*DENSE2_HDR\s*\+\s*DENSE2_CYCLE_BYTES\)\s*\?\s*2\s*:\s*0;/, "denseVersionOf should distinguish v1 (0..2), v2 (3..9), and invalid (0)");
 });
 
 t("dec64 Base64 integer decoder helper is defined", () => {
