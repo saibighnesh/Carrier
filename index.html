@@ -679,12 +679,14 @@ function b64ToBytes(b64){
 const DENSE_BASE = 0x4E00;   // first symbol
 const DENSE_BITS = 12;
 const DENSE_MASK = (1 << DENSE_BITS) - 1;    // 0xFFF — tied to DENSE_BITS so the two can't drift
+// lcm(DENSE_BITS, 8) = 24 bits, so v1 repeats every 3 bytes <-> 2 characters (the v2 cycle's counterpart).
+const DENSE_CYCLE_BYTES = 3, DENSE_CYCLE_CHARS = 2;
 
-// Bytes -> dense text. The leading symbol carries byteLength mod 3, which is the one bit of information
+// Bytes -> dense text. The leading symbol carries byteLength mod DENSE_CYCLE_BYTES, which is the one bit of information
 // the character count cannot supply on its own: n and n+1 bytes can both round up to the same number of
 // characters, so without it the decoder could not tell a 2-byte tail from a 3-byte one.
 function bytesToDense(bytes){
-  const out = [String.fromCharCode(DENSE_BASE + (bytes.length % 3))];
+  const out = [String.fromCharCode(DENSE_BASE + (bytes.length % DENSE_CYCLE_BYTES))];
   let acc = 0, nbits = 0;
   for(let i=0;i<bytes.length;i++){
     acc = (acc << 8) | bytes[i];         // at most 8 + 11 = 19 bits live, well inside a safe integer
@@ -702,12 +704,12 @@ function bytesToDense(bytes){
 function denseToBytes(text){
   if(!text.length) throw new Error("Empty message.");
   const r = text.charCodeAt(0) - DENSE_BASE;
-  if(r < 0 || r > 2) throw new Error("This message's header is damaged.");
+  if(r < 0 || r >= DENSE_CYCLE_BYTES) throw new Error("This message's header is damaged.");
   const c = text.length - 1;
-  // invert the encoder: it emits ceil(2n/3) symbols, so the count plus the remainder pins n exactly
-  const n = r === 0 ? (c / 2) * 3
-          : r === 1 ? ((c - 1) / 2) * 3 + 1
-          :           (c / 2) * 3 - 1;
+  // invert the encoder: it emits ceil(DENSE_CYCLE_CHARS*n/DENSE_CYCLE_BYTES) symbols, so the count plus the remainder pins n exactly
+  const n = r === 0 ? (c / DENSE_CYCLE_CHARS) * DENSE_CYCLE_BYTES
+          : r === 1 ? ((c - 1) / DENSE_CYCLE_CHARS) * DENSE_CYCLE_BYTES + 1
+          :           (c / DENSE_CYCLE_CHARS) * DENSE_CYCLE_BYTES - 1;
   if(!Number.isInteger(n) || n < 0) throw new Error("This message is truncated — some characters are missing.");
   const out = new Uint8Array(n);
   let acc = 0, nbits = 0, o = 0;
@@ -761,7 +763,7 @@ function densePrefixBytes(text, want, bits = DENSE_BITS){
 // decoding is kept forever — saved .txt files and in-flight sends must stay readable.
 const DENSE2_BITS = 14;
 const DENSE2_MASK = (1 << DENSE2_BITS) - 1;      // 0x3FFF — tied to DENSE2_BITS so the two can't drift
-const DENSE2_HDR  = 3;           // header offset base: U+4E00+3 .. U+4E00+9 encode n mod 7
+const DENSE2_HDR  = 3;           // header offset base: the next DENSE2_CYCLE_BYTES symbols encode n mod DENSE2_CYCLE_BYTES
 // lcm(DENSE2_BITS, 8) = 56 bits, so the codec repeats every 7 bytes <-> 4 characters exactly. The whole
 // cycle arithmetic (header remainder, payload-char count, byte-length recovery) keys off this one pair.
 const DENSE2_CYCLE_BYTES = 7, DENSE2_CYCLE_CHARS = 4;
