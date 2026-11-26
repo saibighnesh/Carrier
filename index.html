@@ -1320,6 +1320,10 @@ const FLAG_CRC32     = 2;   // body carries a 4-byte big-endian CRC-32 trailer o
 // these offsets while unpack reads them back — name the sizes once so the two sides can't disagree, and
 // so the "too short to be real ciphertext" floor (salt+iv+tag) stays in step with them.
 const SALT_BYTES = 16, IV_BYTES = 12, GCM_TAG_BYTES = 16;
+// the container header is MAGIC (4 bytes) followed by one flags byte; the body starts right after it.
+// pack writes the header and unpack skips past it, so derive both from MAGIC.length rather than hardcoding
+// the "5" (header length) and "4" (flags offset) at each end.
+const HEADER_BYTES = MAGIC.length + 1;
 function buildPlain(mime, img){
   const m = new TextEncoder().encode(mime);
   // the mime length is stored in a single byte; a mime > 255 bytes would wrap mod-256 and desync
@@ -1389,8 +1393,8 @@ async function pack(img, mime, password){
     body[plain.length+2] = (crc >>> 8) & 0xFF;
     body[plain.length+3] =  crc & 0xFF;
   }
-  const c = new Uint8Array(5 + body.length);
-  c.set(MAGIC,0); c[4] = flags; c.set(body,5);
+  const c = new Uint8Array(HEADER_BYTES + body.length);
+  c.set(MAGIC,0); c[MAGIC.length] = flags; c.set(body,HEADER_BYTES);
   // the container bytes are identical either way — only the text they are carried in differs
   return textCodec === "dense" ? bytesToDense2(c) : bytesToB64(c);   // v2 on the wire; v1 decode kept below
 }
@@ -1403,8 +1407,8 @@ async function unpack(text, password){
   let c;
   try { c = dv === 2 ? dense2ToBytes(t) : dv === 1 ? denseToBytes(t) : b64ToBytes(t); }
   catch(e) { throw new Error(dv ? (e instanceof Error ? e.message : String(e)) : "That text isn't valid — a chunk may be missing or mistyped."); }
-  for(let i=0;i<4;i++) if(c[i]!==MAGIC[i]) throw new Error("This doesn't look like a Carrier message.");
-  const flags = c[4], body = c.subarray(5);
+  for(let i=0;i<MAGIC.length;i++) if(c[i]!==MAGIC[i]) throw new Error("This doesn't look like a Carrier message.");
+  const flags = c[MAGIC.length], body = c.subarray(HEADER_BYTES);
   let plain, verified = false;   // verified = the bytes were checked against an integrity value, not just parsed
   if(flags & FLAG_ENCRYPTED){
     if(!password) throw new Error("This message is locked. Enter the password.");
