@@ -320,7 +320,7 @@ t("maxChunkIndexFor and textBitsPerChar helpers are defined", () => {
 });
 
 t("fmtKB byte formatting helper is defined", () => {
-  assert.match(html, /const BYTES_PER_KB\s*=\s*1024,\s*BYTES_PER_MB\s*=\s*1024\s*\*\s*1024;/, "byte-size unit constants should be defined");
+  assert.match(html, /const BYTES_PER_KB\s*=\s*1024,\s*BYTES_PER_MB\s*=\s*BYTES_PER_KB\s*\*\s*BYTES_PER_KB;/, "byte-size unit constants should be defined (MB derived from KB)");
   assert.match(html, /const fmtKB\s*=\s*b\s*=>\s*b\s*<\s*BYTES_PER_KB\s*\?\s*b\s*\+\s*" B"/, "fmtKB should format bytes with B, KB, or MB units");
 });
 
