@@ -317,7 +317,8 @@ t("SID_LEN constant and chunkPrefixLen helper are defined", () => {
 
 t("maxChunkIndexFor and textBitsPerChar helpers are defined", () => {
   assert.match(html, /const maxChunkIndexFor\s*=\s*\(total,\s*recoveryOn\)\s*=>\s*recoveryOn\s*\?\s*total\s*\*\s*2\s*:\s*total;/, "maxChunkIndexFor should double total when recovery is enabled");
-  assert.match(html, /const textBitsPerChar\s*=\s*\(\)\s*=>\s*textCodec\s*===\s*"dense"\s*\?\s*DENSE2_BITS\s*:\s*6;/, "textBitsPerChar should return DENSE2_BITS for dense or 6 for base64");
+  assert.match(html, /const B64_BITS\s*=\s*6;/, "B64_BITS should name the Base64 bits-per-char");
+  assert.match(html, /const textBitsPerChar\s*=\s*\(\)\s*=>\s*textCodec\s*===\s*"dense"\s*\?\s*DENSE2_BITS\s*:\s*B64_BITS;/, "textBitsPerChar should return DENSE2_BITS for dense or B64_BITS for base64");
 });
 
 t("fmtKB byte formatting helper is defined", () => {
