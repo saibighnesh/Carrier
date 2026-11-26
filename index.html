@@ -2942,9 +2942,9 @@ $("#copyNext").addEventListener("click", async ()=>{
       const card = $("#chunks").querySelector(`.data[data-i="${i}"]`);
       if(card) scrollIntoViewNearest(card.closest(".chunk"));
     }
-    flashButton(btn, `Copied ${i+1} ✓`, `Copied message ${i+1} of ${chunksNow.length}`, 1200);
+    flashButton(btn, `Copied ${i+1} ✓`, `Copied message ${i+1} of ${chunksNow.length}`, COPY_ONE_REVERT_MS);
   }catch{
-    flashButton(btn, COPY_FAIL, COPY_FAIL_ARIA, 1200);
+    flashButton(btn, COPY_FAIL, COPY_FAIL_ARIA, COPY_ONE_REVERT_MS);
   }
 });
 // Ctrl/Cmd+Enter in Send copies the next part — the mirror of the same chord revealing in Receive. A
@@ -3050,6 +3050,10 @@ function cancelFlash(btn){
   if(st.aria == null) btn.removeAttribute("aria-label"); else btn.setAttribute("aria-label", st.aria);
   flashState.delete(btn);
 }
+// cap on the source-image filename stem reused in the saved .txt name — keeps the download name tidy and
+// bounded no matter how long the original image's name was. FALLBACK_STEM is the stem used when there is
+// no usable source name, and again when sanitising leaves it empty — one default for both paths.
+const FILENAME_STEM_MAX = 40, FALLBACK_STEM = "carrier";
 $("#saveTxt").addEventListener("click", ()=>{
   if(!lastChunks.length) return;
   // prepend a human-readable header so a saved backup is self-documenting. The Receive parser only
@@ -3077,7 +3081,7 @@ $("#saveTxt").addEventListener("click", ()=>{
   if(lastTxtUrl) URL.revokeObjectURL(lastTxtUrl);
   const url = URL.createObjectURL(blob);
   lastTxtUrl = url;
-  const base = (srcImage && srcImage._name ? srcImage._name.replace(/\.[^.]+$/, "") : "carrier").replace(/[^\w.-]+/g, "_").slice(0, 40) || "carrier";
+  const base = (srcImage && srcImage._name ? srcImage._name.replace(/\.[^.]+$/, "") : FALLBACK_STEM).replace(/[^\w.-]+/g, "_").slice(0, FILENAME_STEM_MAX) || FALLBACK_STEM;
   const app = activeAppName("").toLowerCase().replace(/[^a-z0-9]+/g, "");   // record which app's per-message limit these chunks fit
   const appTag = app ? `-${app}` : "";
   // record the encoding in the name too. The header already explains it, but a folder listing doesn't
