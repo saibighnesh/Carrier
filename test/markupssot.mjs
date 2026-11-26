@@ -218,7 +218,8 @@ t("dense v2 codec constants are defined", () => {
   assert.match(html, /const DENSE2_BITS\s*=\s*14;/, "DENSE2_BITS should be 14");
   assert.match(html, /const DENSE2_MASK\s*=\s*\(1\s*<<\s*DENSE2_BITS\)\s*-\s*1;/, "DENSE2_MASK should derive from DENSE2_BITS");
   assert.match(html, /const DENSE2_HDR\s*=\s*3;/, "DENSE2_HDR should be 3");
-  assert.match(html, /const D2_PAY\s*=\s*Array\.from\(\{length:7\},\s*\(_,r\)=>Math\.ceil\(4\*r\/7\)\);/, "D2_PAY should be computed correctly");
+  assert.match(html, /const DENSE2_CYCLE_BYTES\s*=\s*7,\s*DENSE2_CYCLE_CHARS\s*=\s*4;/, "dense v2 cycle should be 7 bytes <-> 4 chars");
+  assert.match(html, /const D2_PAY\s*=\s*Array\.from\(\{length:DENSE2_CYCLE_BYTES\},\s*\(_,r\)=>Math\.ceil\(DENSE2_CYCLE_CHARS\*r\/DENSE2_CYCLE_BYTES\)\);/, "D2_PAY should derive from the cycle constants");
 });
 
 t("RS_HALF, RS_BLOCK, and RS_META Reed-Solomon constants are defined", () => {
@@ -405,7 +406,7 @@ t("uncodedParts and isStale helpers are defined", () => {
 t("denseVersionOf codec version dispatch helper is defined", () => {
   assert.match(html, /const denseVersionOf\s*=\s*t\s*=>\s*\{/, "denseVersionOf helper should be defined");
   assert.match(html, /const off\s*=\s*t\.charCodeAt\(0\)\s*-\s*DENSE_BASE;/, "denseVersionOf should calculate offset from DENSE_BASE");
-  assert.match(html, /return\s*\(off\s*>=\s*0\s*&&\s*off\s*<=\s*2\)\s*\?\s*1\s*:\s*\(off\s*>=\s*DENSE2_HDR\s*&&\s*off\s*<=\s*DENSE2_HDR\s*\+\s*6\)\s*\?\s*2\s*:\s*0;/, "denseVersionOf should distinguish v1 (0..2), v2 (3..9), and invalid (0)");
+  assert.match(html, /return\s*\(off\s*>=\s*0\s*&&\s*off\s*<=\s*2\)\s*\?\s*1\s*:\s*\(off\s*>=\s*DENSE2_HDR\s*&&\s*off\s*<\s*DENSE2_HDR\s*\+\s*DENSE2_CYCLE_BYTES\)\s*\?\s*2\s*:\s*0;/, "denseVersionOf should distinguish v1 (0..2), v2 (3..9), and invalid (0)");
 });
 
 t("dec64 Base64 integer decoder helper is defined", () => {

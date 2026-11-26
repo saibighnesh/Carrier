@@ -762,13 +762,16 @@ function densePrefixBytes(text, want, bits = DENSE_BITS){
 const DENSE2_BITS = 14;
 const DENSE2_MASK = (1 << DENSE2_BITS) - 1;      // 0x3FFF — tied to DENSE2_BITS so the two can't drift
 const DENSE2_HDR  = 3;           // header offset base: U+4E00+3 .. U+4E00+9 encode n mod 7
-const D2_PAY = Array.from({length:7}, (_,r)=>Math.ceil(4*r/7));   // [0,1,2,2,3,3,4] — payload chars per remainder
+// lcm(DENSE2_BITS, 8) = 56 bits, so the codec repeats every 7 bytes <-> 4 characters exactly. The whole
+// cycle arithmetic (header remainder, payload-char count, byte-length recovery) keys off this one pair.
+const DENSE2_CYCLE_BYTES = 7, DENSE2_CYCLE_CHARS = 4;
+const D2_PAY = Array.from({length:DENSE2_CYCLE_BYTES}, (_,r)=>Math.ceil(DENSE2_CYCLE_CHARS*r/DENSE2_CYCLE_BYTES));   // [0,1,2,2,3,3,4] — payload chars per remainder
 
 function bytesToDense2(bytes){
   const n = bytes.length;
   const chars = 1 + Math.ceil(n * 8 / DENSE2_BITS);
   const out = new Uint16Array(chars);                 // exact-size, filled once — no string growth
-  out[0] = DENSE_BASE + DENSE2_HDR + (n % 7);
+  out[0] = DENSE_BASE + DENSE2_HDR + (n % DENSE2_CYCLE_BYTES);
   let acc = 0, nbits = 0, o = 1;
   for(let i=0;i<n;i++){
     acc = ((acc << 8) | bytes[i]) >>> 0;              // <= 21 live bits, safely inside int32
@@ -798,11 +801,11 @@ function bytesToDense2(bytes){
 function dense2ByteLength(text){
   if(!text.length) throw new Error("Empty message.");
   const r = text.charCodeAt(0) - DENSE_BASE - DENSE2_HDR;
-  if(r < 0 || r > 6) throw new Error("This message's header is damaged.");
+  if(r < 0 || r >= DENSE2_CYCLE_BYTES) throw new Error("This message's header is damaged.");
   const c = text.length - 1;
   const k4 = c - D2_PAY[r];                           // 4k, per the cycle arithmetic above
-  if(k4 < 0 || k4 % 4 !== 0) throw new Error("This message is truncated — some characters are missing.");
-  return (k4 / 4) * 7 + r;
+  if(k4 < 0 || k4 % DENSE2_CYCLE_CHARS !== 0) throw new Error("This message is truncated — some characters are missing.");
+  return (k4 / DENSE2_CYCLE_CHARS) * DENSE2_CYCLE_BYTES + r;
 }
 function dense2ToBytes(text){
   const n = dense2ByteLength(text);
@@ -822,7 +825,7 @@ function dense2ToBytes(text){
 const denseVersionOf = t => {
   if(!t.length) return 0;
   const off = t.charCodeAt(0) - DENSE_BASE;
-  return (off >= 0 && off <= 2) ? 1 : (off >= DENSE2_HDR && off <= DENSE2_HDR + 6) ? 2 : 0;
+  return (off >= 0 && off <= 2) ? 1 : (off >= DENSE2_HDR && off < DENSE2_HDR + DENSE2_CYCLE_BYTES) ? 2 : 0;
 };
 const dense2CharCount = byteLen => 1 + Math.ceil(byteLen * 8 / DENSE2_BITS);
 // how many characters `bytes` will occupy in each encoding — used to price the choice for the user
