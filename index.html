@@ -678,7 +678,7 @@ function b64ToBytes(b64){
 // the chat app rather than left as a trap.
 const DENSE_BASE = 0x4E00;   // first symbol
 const DENSE_BITS = 12;
-const DENSE_MASK = 0xFFF;    // 2^12 - 1
+const DENSE_MASK = (1 << DENSE_BITS) - 1;    // 0xFFF — tied to DENSE_BITS so the two can't drift
 
 // Bytes -> dense text. The leading symbol carries byteLength mod 3, which is the one bit of information
 // the character count cannot supply on its own: n and n+1 bytes can both round up to the same number of
@@ -760,7 +760,7 @@ function densePrefixBytes(text, want, bits = DENSE_BITS){
 // payload states its own version, so decode dispatch is a fact read off the text, never a guess. v1
 // decoding is kept forever — saved .txt files and in-flight sends must stay readable.
 const DENSE2_BITS = 14;
-const DENSE2_MASK = 0x3FFF;      // 2^14 - 1
+const DENSE2_MASK = (1 << DENSE2_BITS) - 1;      // 0x3FFF — tied to DENSE2_BITS so the two can't drift
 const DENSE2_HDR  = 3;           // header offset base: U+4E00+3 .. U+4E00+9 encode n mod 7
 const D2_PAY = Array.from({length:7}, (_,r)=>Math.ceil(4*r/7));   // [0,1,2,2,3,3,4] — payload chars per remainder
 

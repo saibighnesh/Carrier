@@ -211,12 +211,12 @@ t("pad2, localDate, and localStamp format local calendar dates and timestamps", 
 t("dense v1 codec constants are defined", () => {
   assert.match(html, /const DENSE_BASE\s*=\s*0x4E00;/, "DENSE_BASE should be 0x4E00");
   assert.match(html, /const DENSE_BITS\s*=\s*12;/, "DENSE_BITS should be 12");
-  assert.match(html, /const DENSE_MASK\s*=\s*0xFFF;/, "DENSE_MASK should be 0xFFF");
+  assert.match(html, /const DENSE_MASK\s*=\s*\(1\s*<<\s*DENSE_BITS\)\s*-\s*1;/, "DENSE_MASK should derive from DENSE_BITS");
 });
 
 t("dense v2 codec constants are defined", () => {
   assert.match(html, /const DENSE2_BITS\s*=\s*14;/, "DENSE2_BITS should be 14");
-  assert.match(html, /const DENSE2_MASK\s*=\s*0x3FFF;/, "DENSE2_MASK should be 0x3FFF");
+  assert.match(html, /const DENSE2_MASK\s*=\s*\(1\s*<<\s*DENSE2_BITS\)\s*-\s*1;/, "DENSE2_MASK should derive from DENSE2_BITS");
   assert.match(html, /const DENSE2_HDR\s*=\s*3;/, "DENSE2_HDR should be 3");
   assert.match(html, /const D2_PAY\s*=\s*Array\.from\(\{length:7\},\s*\(_,r\)=>Math\.ceil\(4\*r\/7\)\);/, "D2_PAY should be computed correctly");
 });
