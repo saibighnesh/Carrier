@@ -1319,6 +1319,9 @@ const FLAG_CRC32     = 2;   // body carries a 4-byte big-endian CRC-32 trailer o
 // encrypted-body field sizes (bytes). The layout is salt | iv | ciphertext(+GCM tag), and pack writes
 // these offsets while unpack reads them back — name the sizes once so the two sides can't disagree, and
 // so the "too short to be real ciphertext" floor (salt+iv+tag) stays in step with them.
+// GCM_TAG_BYTES must match the authentication tag Web Crypto appends to the ciphertext: encrypt() passes
+// no tagLength, so it uses the AES-GCM default of 128 bits = 16 bytes. It is used only in the short-body
+// floor (the tag rides inside ct.length), so pin it to that default here rather than leave it implicit.
 const SALT_BYTES = 16, IV_BYTES = 12, GCM_TAG_BYTES = 16;
 // the container header is MAGIC (4 bytes) followed by one flags byte; the body starts right after it.
 // pack writes the header and unpack skips past it, so derive both from MAGIC.length rather than hardcoding
@@ -1412,9 +1415,10 @@ async function unpack(text, password){
   let plain, verified = false;   // verified = the bytes were checked against an integrity value, not just parsed
   if(flags & FLAG_ENCRYPTED){
     if(!password) throw new Error("This message is locked. Enter the password.");
-    // salt(16) + iv(12) + GCM tag(16) is the floor for any valid ciphertext; a body shorter than that can
-    // only be a truncated send (a missing/mangled part), never a real payload — say so plainly instead of
-    // letting a short IV reach crypto.subtle.decrypt() and surface as a misleading "wrong password" below.
+    // SALT_BYTES + IV_BYTES + GCM_TAG_BYTES is the floor for any valid ciphertext; a body shorter than
+    // that can only be a truncated send (a missing/mangled part), never a real payload — say so plainly
+    // instead of letting a short IV reach crypto.subtle.decrypt() and surface as a misleading "wrong
+    // password" below.
     if(body.length < SALT_BYTES + IV_BYTES + GCM_TAG_BYTES) throw new Error("This message is too short to hold an image — a part is probably missing.");
     const salt = body.subarray(0,SALT_BYTES), iv = body.subarray(SALT_BYTES, SALT_BYTES + IV_BYTES), ct = body.subarray(SALT_BYTES + IV_BYTES);
     const key = await deriveKey(password, salt);
