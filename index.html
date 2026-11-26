@@ -1316,6 +1316,10 @@ function planParity(total, target, post, ceiling = RS_BLOCK_CEILING.b64){
 /* ---------- container (mime + image, optional encryption) ---------- */
 const FLAG_ENCRYPTED = 1;   // body is salt+iv+AES-256-GCM ciphertext
 const FLAG_CRC32     = 2;   // body carries a 4-byte big-endian CRC-32 trailer over everything before it
+// encrypted-body field sizes (bytes). The layout is salt | iv | ciphertext(+GCM tag), and pack writes
+// these offsets while unpack reads them back — name the sizes once so the two sides can't disagree, and
+// so the "too short to be real ciphertext" floor (salt+iv+tag) stays in step with them.
+const SALT_BYTES = 16, IV_BYTES = 12, GCM_TAG_BYTES = 16;
 function buildPlain(mime, img){
   const m = new TextEncoder().encode(mime);
   // the mime length is stored in a single byte; a mime > 255 bytes would wrap mod-256 and desync
@@ -1353,7 +1357,7 @@ async function deriveKey(password, salt){
 let keyCache = null;   // { password, salt, key }
 async function getKeyMaterial(password){
   if(keyCache && keyCache.password === password) return keyCache;
-  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const salt = crypto.getRandomValues(new Uint8Array(SALT_BYTES));
   const key  = await deriveKey(password, salt);
   keyCache = { password, salt, key };
   return keyCache;
@@ -1364,10 +1368,10 @@ async function pack(img, mime, password){
   if(password){
     flags = FLAG_ENCRYPTED;
     const { salt, key } = await getKeyMaterial(password);
-    const iv = crypto.getRandomValues(new Uint8Array(12));   // unique per encryption — never cached
+    const iv = crypto.getRandomValues(new Uint8Array(IV_BYTES));   // unique per encryption — never cached
     const ct = new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv}, key, plain));
-    body = new Uint8Array(28 + ct.length);
-    body.set(salt,0); body.set(iv,16); body.set(ct,28);
+    body = new Uint8Array(SALT_BYTES + IV_BYTES + ct.length);
+    body.set(salt,0); body.set(iv,SALT_BYTES); body.set(ct,SALT_BYTES + IV_BYTES);
   } else {
     // An unlocked payload has no GCM tag, so nothing catches a chunk that arrived mangled: the Base64
     // still decodes, MAGIC still matches, parsePlain still "succeeds", and the receiver is left with a
@@ -1407,8 +1411,8 @@ async function unpack(text, password){
     // salt(16) + iv(12) + GCM tag(16) is the floor for any valid ciphertext; a body shorter than that can
     // only be a truncated send (a missing/mangled part), never a real payload — say so plainly instead of
     // letting a short IV reach crypto.subtle.decrypt() and surface as a misleading "wrong password" below.
-    if(body.length < 44) throw new Error("This message is too short to hold an image — a part is probably missing.");
-    const salt = body.subarray(0,16), iv = body.subarray(16,28), ct = body.subarray(28);
+    if(body.length < SALT_BYTES + IV_BYTES + GCM_TAG_BYTES) throw new Error("This message is too short to hold an image — a part is probably missing.");
+    const salt = body.subarray(0,SALT_BYTES), iv = body.subarray(SALT_BYTES, SALT_BYTES + IV_BYTES), ct = body.subarray(SALT_BYTES + IV_BYTES);
     const key = await deriveKey(password, salt);
     try { plain = new Uint8Array(await crypto.subtle.decrypt({name:"AES-GCM",iv}, key, ct)); }
     catch { throw new Error("Wrong password — or the text was altered in transit."); }
