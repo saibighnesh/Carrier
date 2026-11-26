@@ -1429,6 +1429,8 @@ async function unpack(text, password){
     catch { throw new Error("Wrong password — or the text was altered in transit."); }
     verified = true;   // GCM's authentication tag already proves the ciphertext arrived intact
   } else if(flags & FLAG_CRC32){
+    // CRC_BYTES for the trailer + 2 for parsePlain's own floor (it rejects a payload shorter than 2):
+    // below this the subarray split would hand parsePlain too few bytes to read even the mime-length byte.
     if(body.length < CRC_BYTES + 2) throw new Error("This message is too short to hold an image — a part is probably missing.");
     const data = body.subarray(0, body.length - CRC_BYTES);
     const t = body.subarray(body.length - CRC_BYTES);
