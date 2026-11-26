@@ -2942,9 +2942,9 @@ $("#copyNext").addEventListener("click", async ()=>{
       const card = $("#chunks").querySelector(`.data[data-i="${i}"]`);
       if(card) scrollIntoViewNearest(card.closest(".chunk"));
     }
-    flashButton(btn, `Copied ${i+1} ✓`, `Copied message ${i+1} of ${chunksNow.length}`, 1200);
+    flashButton(btn, `Copied ${i+1} ✓`, `Copied message ${i+1} of ${chunksNow.length}`, COPY_ONE_REVERT_MS);
   }catch{
-    flashButton(btn, COPY_FAIL, COPY_FAIL_ARIA, 1200);
+    flashButton(btn, COPY_FAIL, COPY_FAIL_ARIA, COPY_ONE_REVERT_MS);
   }
 });
 // Ctrl/Cmd+Enter in Send copies the next part — the mirror of the same chord revealing in Receive. A
