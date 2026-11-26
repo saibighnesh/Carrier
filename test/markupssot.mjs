@@ -226,7 +226,8 @@ t("dense v2 codec constants are defined", () => {
 t("RS_HALF, RS_BLOCK, and RS_META Reed-Solomon constants are defined", () => {
   assert.match(html, /const RS_HALF\s*=\s*32;/, "RS_HALF should be 32");
   assert.match(html, /const RS_BLOCK\s*=\s*32;/, "RS_BLOCK should be 32");
-  assert.match(html, /const RS_META\s*=\s*6;/, "RS_META should be 6");
+  assert.match(html, /const RS_HDR_BLK\s*=\s*1,\s*RS_HDR_ROW\s*=\s*1,\s*RS_HDR_LEN\s*=\s*4;/, "parity-header field widths should be named");
+  assert.match(html, /const RS_META\s*=\s*RS_HDR_BLK\s*\+\s*RS_HDR_ROW\s*\+\s*RS_HDR_LEN;/, "RS_META should be the sum of the field widths");
 });
 
 t("B64A Base64 alphabet string is defined", () => {

@@ -888,7 +888,10 @@ async function yieldToMain(){
 // Carrier build that predates this ignores parity parts completely and just sees the send it understands.
 const RS_HALF  = 32;   // Cauchy bases: parity rows below, data columns above. Caps n and k at 32 each.
 const RS_BLOCK = 32;   // data parts per coding block — loss is bursty, so keep recovery local
-const RS_META  = 6;    // per-parity-part header: block(1) + row(1) + core length(4), all Base64 chars
+// per-parity-part header field widths (Base64 chars): block + row + core-length. RS_META is their sum,
+// so the slice offsets below and this total can't drift apart.
+const RS_HDR_BLK = 1, RS_HDR_ROW = 1, RS_HDR_LEN = 4;
+const RS_META  = RS_HDR_BLK + RS_HDR_ROW + RS_HDR_LEN;   // 6
 const B64A = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 const B64_ALPHABET_SIZE = B64A.length;     // 64 symbols (= 2^B64_BITS) — the radix dec64 accumulates in
 const ASCII_CODE_COUNT = 128;              // B64V has one slot per 7-bit code; dec64 guards to this before indexing
@@ -1515,7 +1518,7 @@ async function parityChunksB64(b64, sid, total, per, level, tag){
   // Coding runs over the payload with Base64 padding removed: '=' is not one of the 64 field elements.
   // Shard boundaries still line up with chunk boundaries because the stripped core is a PREFIX of b64.
   const core = b64.replace(/=+$/, "");
-  const lenChars = enc64(core.length, 4);
+  const lenChars = enc64(core.length, RS_HDR_LEN);
   if(lenChars === null) return [];   // beyond what 4 Base64 chars can address — skip parity, never mis-state it
   const out = [];
   let seq = 0;
@@ -1677,7 +1680,7 @@ function rsRepairB64(map, total, parityRaw){
   let coreLen = -1, per = -1;
   for(const raw of parityRaw){
     if(raw.length <= RS_META) continue;
-    const blk = dec64(raw.slice(0,1)), row = dec64(raw.slice(1,2)), len = dec64(raw.slice(2,6));
+    const blk = dec64(raw.slice(0, RS_HDR_BLK)), row = dec64(raw.slice(RS_HDR_BLK, RS_HDR_BLK + RS_HDR_ROW)), len = dec64(raw.slice(RS_HDR_BLK + RS_HDR_ROW, RS_META));
     if(blk < 0 || row < 0 || len < 0 || row >= RS_HALF) continue;
     // every parity part of a send states the same core length and shard size; a disagreement means parts
     // from two different packings are mixed in the box, and guessing between them would corrupt the image
