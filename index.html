@@ -584,12 +584,18 @@ const chunkPrefixLen = total => 4 + SID_LEN + 3 + 2 * String(total).length;
 // (e.g. total=9 with parity pushing indices into double digits) emitted parity chunks one character over
 // msgLimit — exactly what a fixed-reserve prefix was replaced to prevent for data chunks.
 const maxChunkIndexFor = (total, recoveryOn) => recoveryOn ? total * 2 : total;
-// bytes that fit one message = (chars available) x (bits each char carries) / 8, with a 4% safety margin.
-// This hardcoded Base64's ratio (6/8 x 0.96 = 0.72) even after Compact shipped 14-bit characters — so
-// "Auto-fit to 1 message" under Compact aimed at a budget 2.33x smaller than the real one and crushed
-// image quality to hit it. The bits-per-char must come from the codec that will actually carry the text.
-const textBitsPerChar = () => textCodec === "dense" ? DENSE2_BITS : 6;
-const targetBytes = () => Math.floor((msgLimit - chunkPrefixLen(1)) * (textBitsPerChar() / 8) * 0.96);
+// bits one Base64 wire character carries (2^6 alphabet) — the counterpart to DENSE_BITS / DENSE2_BITS,
+// named so the Base64 branch below isn't the only codec width left as a bare literal.
+const B64_BITS = 6;
+// bytes that fit one message = (chars available) x (bits each char carries) / 8, times a safety margin.
+// This hardcoded Base64's ratio (B64_BITS/8 x WIRE_FILL_RATIO) even after Compact shipped 14-bit
+// characters — so "Auto-fit to 1 message" under Compact aimed at a budget 2.33x smaller than the real one
+// and crushed image quality to hit it. The bits-per-char must come from the codec that carries the text.
+const textBitsPerChar = () => textCodec === "dense" ? DENSE2_BITS : B64_BITS;
+// headroom on the one-message byte budget, so a chunk sized at the budget doesn't tip just over msgLimit
+// once the transport counts it slightly differently. Named so the 4%-off margin isn't a lone literal.
+const WIRE_FILL_RATIO = 0.96;
+const targetBytes = () => Math.floor((msgLimit - chunkPrefixLen(1)) * (textBitsPerChar() / 8) * WIRE_FILL_RATIO);
 // a coarse floor (~) on the raw one-message byte budget below which no real WebP thumbnail fits — it's
 // compared against targetBytes() directly, before the envelope overhead budget() subtracts, so it's an
 // approximation, not an exact cutoff. Below it, "lower quality to fit" is impossible advice (e.g. SMS).

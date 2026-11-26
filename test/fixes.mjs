@@ -22,6 +22,7 @@ let pass = 0; const t=async(n,f)=>{await f();console.log("  ok  "+n);pass++;};
     "const maxChunkIndexFor = (total, recoveryOn) => recoveryOn ? total * 2 : total;",
     "const MAGIC=[0x50,0x58,0x54,0x31];",
     "const lsGet=k=>store.has(k)?store.get(k):null; const lsSet=(k,v)=>store.set(k,String(v)); const lsRemove=k=>store.delete(k);",
+    slice("const B64_BITS", "const textBitsPerChar"),   // textBitsPerChar reads B64_BITS, which sits just above the slice below
     html.slice(html.indexOf("const textBitsPerChar"), html.indexOf("const CHUNK_RENDER_CAP")),
     slice("/* ---------- byte <-> base64 ---------- */","/* ---------- CRC-32"),
     slice("/* ---------- CRC-32","/* ---------- Reed-Solomon"),
@@ -39,7 +40,7 @@ await t("auto-fit budget under Compact is 14/6 of the Base64 budget — not equa
   setCodec("b64");   const b = targetBytes();
   setCodec("dense"); const d = targetBytes();
   assert.ok(Math.abs(d / b - DENSE2_BITS / 6) < 0.01, `ratio ${(d/b).toFixed(3)}, expected ${(DENSE2_BITS/6).toFixed(3)}`);
-  // and the Base64 budget is exactly what it always was: 0.75 * 0.96 = 0.72
+  // and the Base64 budget is exactly what it always was: 0.75 * WIRE_FILL_RATIO (0.96) = 0.72
   assert.equal(b, Math.floor((60000 - 15) * 0.72), "the Base64 budget must not move");
   console.log(`      (b64 ${b} B, dense ${d} B per message)`);
 });

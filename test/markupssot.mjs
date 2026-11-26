@@ -306,7 +306,8 @@ t("LOSS_PRIOR_A and LOSS_PRIOR_B beta prior constants are defined", () => {
 });
 
 t("targetBytes chunk payload formula is defined", () => {
-  assert.match(html, /const targetBytes\s*=\s*\(\)\s*=>\s*Math\.floor\(\(msgLimit\s*-\s*chunkPrefixLen\(1\)\)\s*\*\s*\(textBitsPerChar\(\)\s*\/\s*8\)\s*\*\s*0\.96\);/, "targetBytes formula should account for prefix, bits per char, and 96% headroom");
+  assert.match(html, /const WIRE_FILL_RATIO\s*=\s*0\.96;/, "WIRE_FILL_RATIO headroom constant should be defined");
+  assert.match(html, /const targetBytes\s*=\s*\(\)\s*=>\s*Math\.floor\(\(msgLimit\s*-\s*chunkPrefixLen\(1\)\)\s*\*\s*\(textBitsPerChar\(\)\s*\/\s*8\)\s*\*\s*WIRE_FILL_RATIO\);/, "targetBytes formula should account for prefix, bits per char, and WIRE_FILL_RATIO headroom");
 });
 
 t("SID_LEN constant and chunkPrefixLen helper are defined", () => {
@@ -316,7 +317,8 @@ t("SID_LEN constant and chunkPrefixLen helper are defined", () => {
 
 t("maxChunkIndexFor and textBitsPerChar helpers are defined", () => {
   assert.match(html, /const maxChunkIndexFor\s*=\s*\(total,\s*recoveryOn\)\s*=>\s*recoveryOn\s*\?\s*total\s*\*\s*2\s*:\s*total;/, "maxChunkIndexFor should double total when recovery is enabled");
-  assert.match(html, /const textBitsPerChar\s*=\s*\(\)\s*=>\s*textCodec\s*===\s*"dense"\s*\?\s*DENSE2_BITS\s*:\s*6;/, "textBitsPerChar should return DENSE2_BITS for dense or 6 for base64");
+  assert.match(html, /const B64_BITS\s*=\s*6;/, "B64_BITS should name the Base64 bits-per-char");
+  assert.match(html, /const textBitsPerChar\s*=\s*\(\)\s*=>\s*textCodec\s*===\s*"dense"\s*\?\s*DENSE2_BITS\s*:\s*B64_BITS;/, "textBitsPerChar should return DENSE2_BITS for dense or B64_BITS for base64");
 });
 
 t("fmtKB byte formatting helper is defined", () => {
