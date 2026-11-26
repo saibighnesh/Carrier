@@ -267,7 +267,7 @@ t("TUNE_CONTROLS lists all 5 tune control selectors", () => {
 });
 
 t("TXT_MAX and REVEAL_BUSY_NOTE constants are defined", () => {
-  assert.match(html, /const TXT_MAX\s*=\s*8\s*\*\s*1024\s*\*\s*1024;/, "TXT_MAX should be 8MB");
+  assert.match(html, /const TXT_MAX\s*=\s*8\s*\*\s*BYTES_PER_MB;/, "TXT_MAX should be 8MB");
   assert.match(html, /const REVEAL_BUSY_NOTE\s*=\s*"Still revealing the previous message — wait a moment and try again\.";/, "REVEAL_BUSY_NOTE should inform the user a reveal is underway");
 });
 
@@ -320,7 +320,8 @@ t("maxChunkIndexFor and textBitsPerChar helpers are defined", () => {
 });
 
 t("fmtKB byte formatting helper is defined", () => {
-  assert.match(html, /const fmtKB\s*=\s*b\s*=>\s*b\s*<\s*1024\s*\?\s*b\s*\+\s*" B"/, "fmtKB should format bytes with B, KB, or MB units");
+  assert.match(html, /const BYTES_PER_KB\s*=\s*1024,\s*BYTES_PER_MB\s*=\s*BYTES_PER_KB\s*\*\s*BYTES_PER_KB;/, "byte-size unit constants should be defined (MB derived from KB)");
+  assert.match(html, /const fmtKB\s*=\s*b\s*=>\s*b\s*<\s*BYTES_PER_KB\s*\?\s*b\s*\+\s*" B"/, "fmtKB should format bytes with B, KB, or MB units");
 });
 
 t("dense2CharCount, denseCharCount, and b64CharCount helpers are defined", () => {
