@@ -16,7 +16,7 @@ const src = [
   "const __st = new Map(); const lsGet = k => __st.has(k) ? __st.get(k) : null; const lsSet = (k,v) => __st.set(k,String(v)); const lsRemove = k => __st.delete(k);",
   "let msgLimit = 60000; let textCodec = 'b64';",
   "let recoveryLevel = 'off';",
-  "const SID_LEN = 6;",
+  "const SID_LEN = 6;", "const HEX_PER_BYTE = 2;",
   "const chunkPrefixLen = total => 4 + SID_LEN + 3 + 2 * String(total).length;",
   "const maxChunkIndexFor = (total, recoveryOn) => recoveryOn ? total * 2 : total;",
   "const MAGIC = [0x50,0x58,0x54,0x31];",
