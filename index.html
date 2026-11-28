@@ -679,6 +679,8 @@ function b64ToBytes(b64){
 const DENSE_BASE = 0x4E00;   // first symbol
 const DENSE_BITS = 12;
 const DENSE_MASK = (1 << DENSE_BITS) - 1;    // 0xFFF — tied to DENSE_BITS so the two can't drift
+const BITS_PER_BYTE = 8;                      // one byte = 8 bits; used by the codecs and the CRC trailer
+const BYTE_MASK = (1 << BITS_PER_BYTE) - 1;   // 0xFF — isolates one output byte from the bit accumulator
 // lcm(DENSE_BITS, 8) = 24 bits, so v1 repeats every 3 bytes <-> 2 characters (the v2 cycle's counterpart).
 const DENSE_CYCLE_BYTES = 3, DENSE_CYCLE_CHARS = 2;
 const DENSE_HDR = 0;   // v1 header offset base (DENSE2_HDR's counterpart): remainders occupy DENSE_BASE+0..2
@@ -722,7 +724,7 @@ function denseToBytes(text){
     nbits += DENSE_BITS;
     while(nbits >= 8 && o < n){
       nbits -= 8;
-      out[o++] = (acc >> nbits) & 0xFF;
+      out[o++] = (acc >> nbits) & BYTE_MASK;
     }
   }
   if(o !== n) throw new Error("This message is truncated — some characters are missing.");
@@ -741,7 +743,7 @@ function densePrefixBytes(text, want, bits = DENSE_BITS){
     if(v < 0 || v > mask) return null;
     acc = (acc << bits) | v;
     nbits += bits;
-    while(nbits >= 8 && o < want){ nbits -= 8; out[o++] = (acc >> nbits) & 0xFF; }
+    while(nbits >= 8 && o < want){ nbits -= 8; out[o++] = (acc >> nbits) & BYTE_MASK; }
   }
   return o < want ? null : out;
 }
@@ -820,7 +822,7 @@ function dense2ToBytes(text){
     if(v < 0 || v > DENSE2_MASK) throw new Error("This message contains characters that aren't part of it — the chat app may have altered the text.");
     acc = ((acc << DENSE2_BITS) | v) >>> 0;
     nbits += DENSE2_BITS;
-    while(nbits >= 8 && o < n){ nbits -= 8; out[o++] = (acc >>> nbits) & 0xFF; }
+    while(nbits >= 8 && o < n){ nbits -= 8; out[o++] = (acc >>> nbits) & BYTE_MASK; }
   }
   if(o !== n) throw new Error("This message is truncated — some characters are missing.");
   return out;
@@ -1428,10 +1430,8 @@ async function pack(img, mime, password){
     const crc = crc32(plain);
     body = new Uint8Array(plain.length + CRC_BYTES);
     body.set(plain, 0);
-    body[plain.length]   = (crc >>> 24) & 0xFF;
-    body[plain.length+1] = (crc >>> 16) & 0xFF;
-    body[plain.length+2] = (crc >>> 8) & 0xFF;
-    body[plain.length+3] =  crc & 0xFF;
+    // big-endian: most-significant byte first, CRC_BYTES bytes wide
+    for(let i=0;i<CRC_BYTES;i++) body[plain.length + i] = (crc >>> ((CRC_BYTES - 1 - i) * BITS_PER_BYTE)) & BYTE_MASK;
   }
   const c = new Uint8Array(HEADER_BYTES + body.length);
   c.set(MAGIC,0); c[MAGIC.length] = flags; c.set(body,HEADER_BYTES);
@@ -1468,7 +1468,9 @@ async function unpack(text, password){
     if(body.length < CRC_BYTES + 2) throw new Error("This message is too short to hold an image — a part is probably missing.");
     const data = body.subarray(0, body.length - CRC_BYTES);
     const t = body.subarray(body.length - CRC_BYTES);
-    const want = ((t[0] << 24) | (t[1] << 16) | (t[2] << 8) | t[3]) >>> 0;
+    let want = 0;
+    for(let i=0;i<CRC_BYTES;i++) want = (want << BITS_PER_BYTE) | t[i];   // big-endian, matches the pack side
+    want >>>= 0;   // one unsigned coercion; intermediate int32 sign bits are harmless for the bitwise rebuild
     if(crc32(data) !== want) throw new Error("This message is damaged — some characters were changed or lost on the way. Ask the sender to resend it.");
     plain = data; verified = true;
   } else plain = body;   // a pre-checksum sender: nothing to verify against, parse as before
