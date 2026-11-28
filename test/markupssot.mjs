@@ -420,7 +420,9 @@ t("dec64 Base64 integer decoder helper is defined", () => {
 });
 
 t("CRC32_TABLE and crc32 checksum helper are defined", () => {
+  assert.match(html, /const CRC_TABLE_SIZE\s*=\s*1\s*<<\s*8;/, "CRC_TABLE_SIZE should name the per-byte-value entry count");
   assert.match(html, /const CRC32_TABLE\s*=\s*\(\(\)=>\{/, "CRC32_TABLE precomputation should be defined");
+  assert.match(html, /const t\s*=\s*new Uint32Array\(CRC_TABLE_SIZE\);/, "CRC32_TABLE should size from CRC_TABLE_SIZE");
   assert.match(html, /function crc32\(bytes\)\{/, "crc32 function should be defined");
 });
 
