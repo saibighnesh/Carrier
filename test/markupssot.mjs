@@ -215,6 +215,15 @@ t("dense v1 codec constants are defined", () => {
   assert.match(html, /const BITS_PER_BYTE\s*=\s*8;/, "BITS_PER_BYTE should be named");
   assert.match(html, /const BYTE_MASK\s*=\s*\(1\s*<<\s*BITS_PER_BYTE\)\s*-\s*1;/, "BYTE_MASK should derive from BITS_PER_BYTE");
   assert.match(html, /const DENSE_CYCLE_BYTES\s*=\s*3,\s*DENSE_CYCLE_CHARS\s*=\s*2;/, "dense v1 cycle should be 3 bytes <-> 2 chars");
+  // the dense v1 encoder feeds the bit accumulator one byte at a time — that width is BITS_PER_BYTE, not a loose 8
+  assert.match(html, /acc = \(acc << BITS_PER_BYTE\) \| bytes\[i\];/, "bytesToDense should shift in BITS_PER_BYTE, not a literal 8");
+  assert.match(html, /nbits \+= BITS_PER_BYTE;/, "bytesToDense should count bits in BITS_PER_BYTE units");
+  // the v1 decoders drain the accumulator one byte at a time — same BITS_PER_BYTE width, no bare 8
+  assert.match(html, /while\(nbits >= BITS_PER_BYTE && o < n\)\{\s*\n\s*nbits -= BITS_PER_BYTE;/, "denseToBytes should drain in BITS_PER_BYTE units");
+  assert.match(html, /while\(nbits >= BITS_PER_BYTE && o < want\)\{ nbits -= BITS_PER_BYTE;/, "densePrefixBytes should drain in BITS_PER_BYTE units");
+  // v1's header symbol should carry the declared DENSE_HDR offset explicitly, mirroring v2's DENSE2_HDR
+  assert.match(html, /String\.fromCharCode\(DENSE_BASE \+ DENSE_HDR \+ \(bytes\.length % DENSE_CYCLE_BYTES\)\)/, "bytesToDense header should add DENSE_HDR");
+  assert.match(html, /const r = text\.charCodeAt\(0\) - DENSE_BASE - DENSE_HDR;/, "denseToBytes should subtract DENSE_HDR from the header symbol");
 });
 
 t("dense v2 codec constants are defined", () => {
