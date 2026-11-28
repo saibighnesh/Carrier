@@ -333,8 +333,9 @@ t("fmtKB byte formatting helper is defined", () => {
 });
 
 t("dense2CharCount, denseCharCount, and b64CharCount helpers are defined", () => {
-  assert.match(html, /const dense2CharCount\s*=\s*byteLen\s*=>\s*1\s*\+\s*Math\.ceil\(byteLen\s*\*\s*8\s*\/\s*DENSE2_BITS\);/, "dense2CharCount should calculate header plus ceiling 14-bit symbols");
-  assert.match(html, /const denseCharCount\s*=\s*byteLen\s*=>\s*1\s*\+\s*Math\.ceil\(byteLen\s*\*\s*8\s*\/\s*DENSE_BITS\);/, "denseCharCount should calculate header plus ceiling 12-bit symbols");
+  assert.match(html, /const DENSE_HDR_CHARS\s*=\s*1;/, "DENSE_HDR_CHARS should name the one leading header symbol");
+  assert.match(html, /const dense2CharCount\s*=\s*byteLen\s*=>\s*DENSE_HDR_CHARS\s*\+\s*Math\.ceil\(byteLen\s*\*\s*8\s*\/\s*DENSE2_BITS\);/, "dense2CharCount should calculate header plus ceiling 14-bit symbols");
+  assert.match(html, /const denseCharCount\s*=\s*byteLen\s*=>\s*DENSE_HDR_CHARS\s*\+\s*Math\.ceil\(byteLen\s*\*\s*8\s*\/\s*DENSE_BITS\);/, "denseCharCount should calculate header plus ceiling 12-bit symbols");
   assert.match(html, /const b64CharCount\s*=\s*byteLen\s*=>\s*Math\.ceil\(byteLen\s*\/\s*3\)\s*\*\s*4;/, "b64CharCount should calculate 4 Base64 chars per 3 bytes");
 });
 
@@ -420,7 +421,9 @@ t("dec64 Base64 integer decoder helper is defined", () => {
 });
 
 t("CRC32_TABLE and crc32 checksum helper are defined", () => {
+  assert.match(html, /const CRC_TABLE_SIZE\s*=\s*1\s*<<\s*8;/, "CRC_TABLE_SIZE should name the per-byte-value entry count");
   assert.match(html, /const CRC32_TABLE\s*=\s*\(\(\)=>\{/, "CRC32_TABLE precomputation should be defined");
+  assert.match(html, /const t\s*=\s*new Uint32Array\(CRC_TABLE_SIZE\);/, "CRC32_TABLE should size from CRC_TABLE_SIZE");
   assert.match(html, /function crc32\(bytes\)\{/, "crc32 function should be defined");
 });
 

@@ -7,7 +7,12 @@ import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 const HTML = fileURLToPath(new URL("../index.html", import.meta.url));
 const html = readFileSync(HTML, "utf8");
+// DENSE_HDR_CHARS (the one leading header symbol) is declared up in the dense v1 region, above the slice
+// below — inject the real declaration (not a copy) so the char-count helpers resolve the same value.
+const hdrCharsConst = /const DENSE_HDR_CHARS\s*=\s*\d+;/.exec(html);
+assert.ok(hdrCharsConst, "expected a DENSE_HDR_CHARS constant in index.html");
 const src = [
+  hdrCharsConst[0],
   html.slice(html.indexOf("let textCodec"), html.indexOf("const targetBytes")),
   html.slice(html.indexOf("/* ---------- dense v2"), html.indexOf("/* ---------- CRC-32")),
   "globalThis.__DC = { dense2CharCount, textBitsPerChar, DENSE2_BITS, setCodec: v => { textCodec = v; } };",
