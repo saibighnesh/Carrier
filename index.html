@@ -3463,8 +3463,8 @@ function headerFlags(s){
     // bits each, 3 at v2's 14, or 8 for Base64's 6.
     const dv = denseVersionOf(s);
     const h = dv ? densePrefixBytes(s, 5, dv === 2 ? DENSE2_BITS : DENSE_BITS) : b64ToBytes(s.slice(0, 8));
-    if(!h || h.length < 5 || !MAGIC.every((m,i)=>h[i]===m)) return null;
-    return h[4];
+    if(!h || h.length < HEADER_BYTES || !MAGIC.every((m,i)=>h[i]===m)) return null;
+    return h[MAGIC.length];   // flags byte sits right after MAGIC — the offset pack() writes it at
   }catch{ return null; }
 }
 // after a bulk insert (paste/load/drop), reveal automatically when the message is complete AND unlocked;
