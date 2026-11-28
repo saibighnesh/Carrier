@@ -315,7 +315,7 @@ t("LOSS_PRIOR_A and LOSS_PRIOR_B beta prior constants are defined", () => {
 
 t("targetBytes chunk payload formula is defined", () => {
   assert.match(html, /const WIRE_FILL_RATIO\s*=\s*0\.96;/, "WIRE_FILL_RATIO headroom constant should be defined");
-  assert.match(html, /const targetBytes\s*=\s*\(\)\s*=>\s*Math\.floor\(\(msgLimit\s*-\s*chunkPrefixLen\(1\)\)\s*\*\s*\(textBitsPerChar\(\)\s*\/\s*8\)\s*\*\s*WIRE_FILL_RATIO\);/, "targetBytes formula should account for prefix, bits per char, and WIRE_FILL_RATIO headroom");
+  assert.match(html, /const targetBytes\s*=\s*\(\)\s*=>\s*Math\.floor\(\(msgLimit\s*-\s*chunkPrefixLen\(1\)\)\s*\*\s*\(textBitsPerChar\(\)\s*\/\s*BITS_PER_BYTE\)\s*\*\s*WIRE_FILL_RATIO\);/, "targetBytes should convert bits per char to bytes via BITS_PER_BYTE, not a literal 8");
 });
 
 t("SID_LEN constant and chunkPrefixLen helper are defined", () => {
