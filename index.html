@@ -1869,7 +1869,7 @@ function detectAlpha(img){
     return false;
   }catch{ return false; }   // never let a probe for an advisory warning break the load
 }
-const QUALITY_SCALE = 100;   // the quality slider runs 0..100; canvas encodeCanvas wants a 0..1 fraction
+const QUALITY_SCALE = 100;   // quality is a 0..100 percentage (the slider picks 20..92 of it); canvas wants the 0..1 fraction
 async function compressOnce(maxDim, quality){
   const cv = drawScaled(srcImage, maxDim);
   const blob = await encodeCanvas(cv, quality/QUALITY_SCALE);
