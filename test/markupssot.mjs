@@ -509,6 +509,8 @@ t("lossPosterior and observeSend Bayesian loss learning helpers are defined", ()
 t("deriveKey and getKeyMaterial Web Crypto helpers are defined", () => {
   assert.match(html, /async function deriveKey\(password,\s*salt\)\{/, "deriveKey function should be defined");
   assert.match(html, /async function getKeyMaterial\(password\)\{/, "getKeyMaterial function should be defined");
+  assert.match(html, /const AES_KEY_BITS\s*=\s*256;/, "AES_KEY_BITS should name the 256-bit key length");
+  assert.match(html, /name:"AES-GCM",\s*length:AES_KEY_BITS\s*\}/, "deriveKey should use AES_KEY_BITS");
 });
 
 t("pack and unpack payload envelope functions are defined", () => {
@@ -541,6 +543,9 @@ t("planParity parity planning helper is defined", () => {
 t("buildPlain and parsePlain envelope helpers are defined", () => {
   assert.match(html, /function buildPlain\(mime,\s*img\)\{/, "buildPlain function should be defined");
   assert.match(html, /function parsePlain\(bytes\)\{/, "parsePlain function should be defined");
+  assert.match(html, /const MIMELEN_FIELD\s*=\s*1;/, "MIMELEN_FIELD should name the one-byte length prefix");
+  assert.match(html, /const MIMELEN_MAX\s*=\s*\(1\s*<<\s*8\)\s*-\s*1;/, "MIMELEN_MAX should be the one-byte maximum");
+  assert.match(html, /if\(m\.length\s*>\s*MIMELEN_MAX\)/, "buildPlain should guard against MIMELEN_MAX");
 });
 
 t("parityChunksB64 and parityChunksDense parity chunk generators are defined", () => {
