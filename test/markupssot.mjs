@@ -232,6 +232,10 @@ t("dense v2 codec constants are defined", () => {
   assert.match(html, /const DENSE2_HDR\s*=\s*3;/, "DENSE2_HDR should be 3");
   assert.match(html, /const DENSE2_CYCLE_BYTES\s*=\s*7,\s*DENSE2_CYCLE_CHARS\s*=\s*4;/, "dense v2 cycle should be 7 bytes <-> 4 chars");
   assert.match(html, /const D2_PAY\s*=\s*Array\.from\(\{length:DENSE2_CYCLE_BYTES\},\s*\(_,r\)=>Math\.ceil\(DENSE2_CYCLE_CHARS\*r\/DENSE2_CYCLE_BYTES\)\);/, "D2_PAY should derive from the cycle constants");
+  // the v2 codec feeds/drains the accumulator in BITS_PER_BYTE units, and prices chars from byteLen * BITS_PER_BYTE
+  assert.match(html, /acc = \(\(acc << BITS_PER_BYTE\) \| bytes\[i\]\) >>> 0;/, "bytesToDense2 should shift in BITS_PER_BYTE");
+  assert.match(html, /while\(nbits >= BITS_PER_BYTE && o < n\)\{ nbits -= BITS_PER_BYTE; out\[o\+\+\] = \(acc >>> nbits\) & BYTE_MASK; \}/, "dense2ToBytes should drain in BITS_PER_BYTE units");
+  assert.match(html, /const dense2CharCount = byteLen => DENSE_HDR_CHARS \+ Math\.ceil\(byteLen \* BITS_PER_BYTE \/ DENSE2_BITS\);/, "dense2CharCount should price in BITS_PER_BYTE units");
 });
 
 t("RS_HALF, RS_BLOCK, and RS_META Reed-Solomon constants are defined", () => {
@@ -349,8 +353,8 @@ t("fmtKB byte formatting helper is defined", () => {
 
 t("dense2CharCount, denseCharCount, and b64CharCount helpers are defined", () => {
   assert.match(html, /const DENSE_HDR_CHARS\s*=\s*1;/, "DENSE_HDR_CHARS should name the one leading header symbol");
-  assert.match(html, /const dense2CharCount\s*=\s*byteLen\s*=>\s*DENSE_HDR_CHARS\s*\+\s*Math\.ceil\(byteLen\s*\*\s*8\s*\/\s*DENSE2_BITS\);/, "dense2CharCount should calculate header plus ceiling 14-bit symbols");
-  assert.match(html, /const denseCharCount\s*=\s*byteLen\s*=>\s*DENSE_HDR_CHARS\s*\+\s*Math\.ceil\(byteLen\s*\*\s*8\s*\/\s*DENSE_BITS\);/, "denseCharCount should calculate header plus ceiling 12-bit symbols");
+  assert.match(html, /const dense2CharCount\s*=\s*byteLen\s*=>\s*DENSE_HDR_CHARS\s*\+\s*Math\.ceil\(byteLen\s*\*\s*BITS_PER_BYTE\s*\/\s*DENSE2_BITS\);/, "dense2CharCount should calculate header plus ceiling 14-bit symbols");
+  assert.match(html, /const denseCharCount\s*=\s*byteLen\s*=>\s*DENSE_HDR_CHARS\s*\+\s*Math\.ceil\(byteLen\s*\*\s*BITS_PER_BYTE\s*\/\s*DENSE_BITS\);/, "denseCharCount should calculate header plus ceiling 12-bit symbols");
   assert.match(html, /const B64_CYCLE_BYTES\s*=\s*3,\s*B64_CYCLE_CHARS\s*=\s*4;/, "Base64 3-byte<->4-char cycle should be named");
   assert.match(html, /const b64CharCount\s*=\s*byteLen\s*=>\s*Math\.ceil\(byteLen\s*\/\s*B64_CYCLE_BYTES\)\s*\*\s*B64_CYCLE_CHARS;/, "b64CharCount should derive from the Base64 cycle");
 });

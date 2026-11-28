@@ -777,13 +777,13 @@ const D2_PAY = Array.from({length:DENSE2_CYCLE_BYTES}, (_,r)=>Math.ceil(DENSE2_C
 
 function bytesToDense2(bytes){
   const n = bytes.length;
-  const chars = DENSE_HDR_CHARS + Math.ceil(n * 8 / DENSE2_BITS);
+  const chars = DENSE_HDR_CHARS + Math.ceil(n * BITS_PER_BYTE / DENSE2_BITS);
   const out = new Uint16Array(chars);                 // exact-size, filled once — no string growth
   out[0] = DENSE_BASE + DENSE2_HDR + (n % DENSE2_CYCLE_BYTES);
   let acc = 0, nbits = 0, o = 1;
   for(let i=0;i<n;i++){
-    acc = ((acc << 8) | bytes[i]) >>> 0;              // <= 21 live bits, safely inside int32
-    nbits += 8;
+    acc = ((acc << BITS_PER_BYTE) | bytes[i]) >>> 0;  // <= 21 live bits, safely inside int32
+    nbits += BITS_PER_BYTE;
     if(nbits >= DENSE2_BITS){
       nbits -= DENSE2_BITS;
       out[o++] = DENSE_BASE + ((acc >>> nbits) & DENSE2_MASK);
@@ -824,7 +824,7 @@ function dense2ToBytes(text){
     if(v < 0 || v > DENSE2_MASK) throw new Error("This message contains characters that aren't part of it — the chat app may have altered the text.");
     acc = ((acc << DENSE2_BITS) | v) >>> 0;
     nbits += DENSE2_BITS;
-    while(nbits >= 8 && o < n){ nbits -= 8; out[o++] = (acc >>> nbits) & BYTE_MASK; }
+    while(nbits >= BITS_PER_BYTE && o < n){ nbits -= BITS_PER_BYTE; out[o++] = (acc >>> nbits) & BYTE_MASK; }
   }
   if(o !== n) throw new Error("This message is truncated — some characters are missing.");
   return out;
@@ -835,9 +835,9 @@ const denseVersionOf = t => {
   const off = t.charCodeAt(0) - DENSE_BASE;
   return (off >= DENSE_HDR && off < DENSE_HDR + DENSE_CYCLE_BYTES) ? 1 : (off >= DENSE2_HDR && off < DENSE2_HDR + DENSE2_CYCLE_BYTES) ? 2 : 0;
 };
-const dense2CharCount = byteLen => DENSE_HDR_CHARS + Math.ceil(byteLen * 8 / DENSE2_BITS);
+const dense2CharCount = byteLen => DENSE_HDR_CHARS + Math.ceil(byteLen * BITS_PER_BYTE / DENSE2_BITS);
 // how many characters `bytes` will occupy in each encoding — used to price the choice for the user
-const denseCharCount = byteLen => DENSE_HDR_CHARS + Math.ceil(byteLen * 8 / DENSE_BITS);
+const denseCharCount = byteLen => DENSE_HDR_CHARS + Math.ceil(byteLen * BITS_PER_BYTE / DENSE_BITS);
 // Base64 packs 3 bytes into 4 characters (lcm(6,8)=24 bits), the counterpart to the dense codecs' cycles.
 const B64_CYCLE_BYTES = 3, B64_CYCLE_CHARS = 4;
 const b64CharCount = byteLen => Math.ceil(byteLen / B64_CYCLE_BYTES) * B64_CYCLE_CHARS;
