@@ -523,6 +523,8 @@ t("deriveKey and getKeyMaterial Web Crypto helpers are defined", () => {
   assert.match(html, /async function getKeyMaterial\(password\)\{/, "getKeyMaterial function should be defined");
   assert.match(html, /const AES_KEY_BITS\s*=\s*256;/, "AES_KEY_BITS should name the 256-bit key length");
   assert.match(html, /name:"AES-GCM",\s*length:AES_KEY_BITS\s*\}/, "deriveKey should use AES_KEY_BITS");
+  assert.match(html, /const GCM_TAG_BITS\s*=\s*128;/, "GCM_TAG_BITS should name the 128-bit AES-GCM tag");
+  assert.match(html, /const SALT_BYTES\s*=\s*16,\s*IV_BYTES\s*=\s*12,\s*GCM_TAG_BYTES\s*=\s*GCM_TAG_BITS\s*\/\s*BITS_PER_BYTE;/, "GCM_TAG_BYTES should derive from GCM_TAG_BITS via BITS_PER_BYTE");
 });
 
 t("pack and unpack payload envelope functions are defined", () => {

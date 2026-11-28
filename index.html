@@ -1359,7 +1359,10 @@ const CRC_BYTES = 4;
 // GCM_TAG_BYTES must match the authentication tag Web Crypto appends to the ciphertext: encrypt() passes
 // no tagLength, so it uses the AES-GCM default of 128 bits = 16 bytes. It is used only in the short-body
 // floor (the tag rides inside ct.length), so pin it to that default here rather than leave it implicit.
-const SALT_BYTES = 16, IV_BYTES = 12, GCM_TAG_BYTES = 16;
+// Name the 128-bit default and divide by BITS_PER_BYTE so the byte count can't drift from the bit length
+// the comment explains.
+const GCM_TAG_BITS = 128;
+const SALT_BYTES = 16, IV_BYTES = 12, GCM_TAG_BYTES = GCM_TAG_BITS / BITS_PER_BYTE;
 // the container header is MAGIC (4 bytes) followed by one flags byte; the body starts right after it.
 // pack writes the header and unpack skips past it, so derive both from MAGIC.length rather than hardcoding
 // the "5" (header length) and "4" (flags offset) at each end.
