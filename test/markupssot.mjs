@@ -593,6 +593,8 @@ t("compressOnce and autoFit image compression pipeline functions are defined", (
   assert.match(html, /encodeCanvas\(cv,\s*quality\/QUALITY_SCALE\)/, "compressOnce should convert quality via QUALITY_SCALE");
   assert.match(html, /async function compressOnce\(maxDim,\s*quality\)\{/, "compressOnce function should be defined");
   assert.match(html, /async function autoFit\(onProgress\)\{/, "autoFit function should be defined");
+  assert.match(html, /const ENC_OVERHEAD\s*=\s*SALT_BYTES\s*\+\s*IV_BYTES\s*\+\s*GCM_TAG_BYTES;/, "ENC_OVERHEAD should derive from the encrypted field sizes");
+  assert.match(html, /const budget\s*=\s*\(\)\s*=>\s*targetBytes\(\)\s*-\s*\(HEADER_BYTES\s*\+\s*MIMELEN_FIELD\s*\+\s*MIME_LEN_EST\s*\+\s*\(\$\("#pass"\)\.value\s*\?\s*ENC_OVERHEAD\s*:\s*CRC_BYTES\)\);/, "autoFit budget should subtract named container overhead, not magic literals");
 });
 
 t("updateSendTitle and paintSent transmission UI helpers are defined", () => {
