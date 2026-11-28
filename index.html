@@ -2774,14 +2774,15 @@ $("#pass").addEventListener("input", ()=>{ keyCache = null; });
 $("#pass").addEventListener("input", queueRefresh);
 // advisory passphrase-strength meter: scores length + character variety, purely a nudge (never blocks)
 const PW_LABELS = ["", "Weak", "Fair", "Good", "Strong"];
+// character-count thresholds the meter rewards: one length point per threshold reached (8, 12, 16 chars)
+const PW_LEN_TIERS = [8, 12, 16];
+// variety bonus kicks in at this many of the four character classes {lower, upper, digit, symbol}
+const PW_VARIETY_MIN = 3;
 function pwScore(v){
   if(!v) return 0;
-  let len = 0;
-  if(v.length >= 8) len++;
-  if(v.length >= 12) len++;
-  if(v.length >= 16) len++;
+  const len = PW_LEN_TIERS.reduce((a, t) => a + (v.length >= t ? 1 : 0), 0);
   const variety = (/[a-z]/.test(v)?1:0) + (/[A-Z]/.test(v)?1:0) + (/\d/.test(v)?1:0) + (/[^A-Za-z0-9]/.test(v)?1:0);
-  const s = len + (variety >= 3 ? 1 : 0);      // 0–4
+  const s = len + (variety >= PW_VARIETY_MIN ? 1 : 0);      // 0–4
   return Math.max(1, Math.min(4, s));          // any non-empty password is at least Weak
 }
 let lastPwScore = -1;

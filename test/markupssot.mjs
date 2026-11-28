@@ -663,6 +663,10 @@ t("parseCustomLimit and applyCustomLimit character limit helpers are defined", (
 
 t("pwScore and pwTruncNote password validation helpers are defined", () => {
   assert.match(html, /function pwScore\(v\)\{/, "pwScore function should be defined");
+  assert.match(html, /const PW_LEN_TIERS\s*=\s*\[8,\s*12,\s*16\];/, "PW_LEN_TIERS should name the length thresholds");
+  assert.match(html, /const len = PW_LEN_TIERS\.reduce\(\(a, t\) => a \+ \(v\.length >= t \? 1 : 0\), 0\);/, "pwScore should score length by counting PW_LEN_TIERS reached");
+  assert.match(html, /const PW_VARIETY_MIN\s*=\s*3;/, "PW_VARIETY_MIN should name the variety-bonus threshold");
+  assert.match(html, /variety >= PW_VARIETY_MIN \? 1 : 0/, "pwScore should gate the variety bonus on PW_VARIETY_MIN");
   assert.match(html, /function pwTruncNote\(id,\s*noteId\)\{/, "pwTruncNote function should be defined");
 });
 
