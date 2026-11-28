@@ -1359,17 +1359,21 @@ const CRC_BYTES = 4;
 // GCM_TAG_BYTES must match the authentication tag Web Crypto appends to the ciphertext: encrypt() passes
 // no tagLength, so it uses the AES-GCM default of 128 bits = 16 bytes. It is used only in the short-body
 // floor (the tag rides inside ct.length), so pin it to that default here rather than leave it implicit.
-const SALT_BYTES = 16, IV_BYTES = 12, GCM_TAG_BYTES = 16;
+// Name the 128-bit default and divide by BITS_PER_BYTE so the byte count can't drift from the bit length
+// the comment explains.
+const GCM_TAG_BITS = 128;
+const SALT_BYTES = 16, IV_BYTES = 12, GCM_TAG_BYTES = GCM_TAG_BITS / BITS_PER_BYTE;
 // the container header is MAGIC (4 bytes) followed by one flags byte; the body starts right after it.
 // pack writes the header and unpack skips past it, so derive both from MAGIC.length rather than hardcoding
-// the "5" (header length) and "4" (flags offset) at each end.
-const HEADER_BYTES = MAGIC.length + 1;
+// the "5" (header length) and "4" (flags offset) at each end. FLAGS_BYTES names the one-byte flags field.
+const FLAGS_BYTES = 1;
+const HEADER_BYTES = MAGIC.length + FLAGS_BYTES;
 // mime-length prefix: exactly one byte (written and read as out[0] / bytes[0]), so the value it can hold
 // caps at one byte's worth. MIMELEN_FIELD names that one-byte offset the image bytes start after;
 // MIMELEN_MAX is the guard the single length byte imposes. buildPlain and parsePlain read the framing off
 // both, so the offset and the guard can't drift.
 const MIMELEN_FIELD = 1;                 // width of the length prefix, in bytes — fixed by the byte read/write
-const MIMELEN_MAX = (1 << 8) - 1;        // 255 — the largest value one byte can hold
+const MIMELEN_MAX = (1 << BITS_PER_BYTE) - 1;   // 255 — the largest value one byte can hold
 function buildPlain(mime, img){
   const m = new TextEncoder().encode(mime);
   // the mime length is stored in MIMELEN_FIELD byte(s); a mime > MIMELEN_MAX bytes would wrap and desync
@@ -3459,8 +3463,8 @@ function headerFlags(s){
     // bits each, 3 at v2's 14, or 8 for Base64's 6.
     const dv = denseVersionOf(s);
     const h = dv ? densePrefixBytes(s, 5, dv === 2 ? DENSE2_BITS : DENSE_BITS) : b64ToBytes(s.slice(0, 8));
-    if(!h || h.length < 5 || !MAGIC.every((m,i)=>h[i]===m)) return null;
-    return h[4];
+    if(!h || h.length < HEADER_BYTES || !MAGIC.every((m,i)=>h[i]===m)) return null;
+    return h[MAGIC.length];   // flags byte sits right after MAGIC — the offset pack() writes it at
   }catch{ return null; }
 }
 // after a bulk insert (paste/load/drop), reveal automatically when the message is complete AND unlocked;

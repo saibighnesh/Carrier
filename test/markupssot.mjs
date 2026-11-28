@@ -536,6 +536,9 @@ t("deriveKey and getKeyMaterial Web Crypto helpers are defined", () => {
   assert.match(html, /async function getKeyMaterial\(password\)\{/, "getKeyMaterial function should be defined");
   assert.match(html, /const AES_KEY_BITS\s*=\s*256;/, "AES_KEY_BITS should name the 256-bit key length");
   assert.match(html, /name:"AES-GCM",\s*length:AES_KEY_BITS\s*\}/, "deriveKey should use AES_KEY_BITS");
+  assert.match(html, /return h\[MAGIC\.length\];/, "headerFlags should read the flags byte at MAGIC.length, matching where pack writes it");
+  assert.match(html, /const GCM_TAG_BITS\s*=\s*128;/, "GCM_TAG_BITS should name the 128-bit AES-GCM tag");
+  assert.match(html, /const SALT_BYTES\s*=\s*16,\s*IV_BYTES\s*=\s*12,\s*GCM_TAG_BYTES\s*=\s*GCM_TAG_BITS\s*\/\s*BITS_PER_BYTE;/, "GCM_TAG_BYTES should derive from GCM_TAG_BITS via BITS_PER_BYTE");
 });
 
 t("pack and unpack payload envelope functions are defined", () => {
@@ -568,8 +571,10 @@ t("planParity parity planning helper is defined", () => {
 t("buildPlain and parsePlain envelope helpers are defined", () => {
   assert.match(html, /function buildPlain\(mime,\s*img\)\{/, "buildPlain function should be defined");
   assert.match(html, /function parsePlain\(bytes\)\{/, "parsePlain function should be defined");
+  assert.match(html, /const FLAGS_BYTES\s*=\s*1;/, "FLAGS_BYTES should name the one-byte flags field");
+  assert.match(html, /const HEADER_BYTES\s*=\s*MAGIC\.length\s*\+\s*FLAGS_BYTES;/, "HEADER_BYTES should derive from MAGIC.length + FLAGS_BYTES");
   assert.match(html, /const MIMELEN_FIELD\s*=\s*1;/, "MIMELEN_FIELD should name the one-byte length prefix");
-  assert.match(html, /const MIMELEN_MAX\s*=\s*\(1\s*<<\s*8\)\s*-\s*1;/, "MIMELEN_MAX should be the one-byte maximum");
+  assert.match(html, /const MIMELEN_MAX\s*=\s*\(1\s*<<\s*BITS_PER_BYTE\)\s*-\s*1;/, "MIMELEN_MAX should be the one-byte maximum, derived from BITS_PER_BYTE");
   assert.match(html, /if\(m\.length\s*>\s*MIMELEN_MAX\)/, "buildPlain should guard against MIMELEN_MAX");
 });
 
