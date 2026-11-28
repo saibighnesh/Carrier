@@ -1355,22 +1355,25 @@ const SALT_BYTES = 16, IV_BYTES = 12, GCM_TAG_BYTES = 16;
 // pack writes the header and unpack skips past it, so derive both from MAGIC.length rather than hardcoding
 // the "5" (header length) and "4" (flags offset) at each end.
 const HEADER_BYTES = MAGIC.length + 1;
+// mime-length prefix: one byte, so the value it can hold caps at MIMELEN_MAX. buildPlain and parsePlain
+// both read the framing off these two names, so the width and the guard that protects it can't drift.
+const MIMELEN_FIELD = 1, MIMELEN_MAX = (1 << (8 * MIMELEN_FIELD)) - 1;   // 255
 function buildPlain(mime, img){
   const m = new TextEncoder().encode(mime);
-  // the mime length is stored in a single byte; a mime > 255 bytes would wrap mod-256 and desync
+  // the mime length is stored in MIMELEN_FIELD byte(s); a mime > MIMELEN_MAX bytes would wrap and desync
   // parsePlain, silently corrupting the payload. Today mime is always a short encoder type (≤10 B), so
   // this only fires if a future change routes some other string here — fail loudly instead of corrupting.
-  if(m.length > 255) throw new Error("MIME type too long to encode.");
-  const out = new Uint8Array(1 + m.length + img.length);
-  out[0] = m.length; out.set(m,1); out.set(img,1+m.length);
+  if(m.length > MIMELEN_MAX) throw new Error("MIME type too long to encode.");
+  const out = new Uint8Array(MIMELEN_FIELD + m.length + img.length);
+  out[0] = m.length; out.set(m, MIMELEN_FIELD); out.set(img, MIMELEN_FIELD + m.length);
   return out;
 }
 function parsePlain(bytes){
-  if(bytes.length < 2) throw new Error("Payload too short to parse");
+  if(bytes.length < MIMELEN_FIELD + 1) throw new Error("Payload too short to parse");
   const mlen = bytes[0];
-  if(1 + mlen > bytes.length) throw new Error("Payload truncated: mime length exceeds data");
-  const mime = new TextDecoder().decode(bytes.subarray(1,1+mlen));
-  return { mime, img: bytes.subarray(1+mlen) };
+  if(MIMELEN_FIELD + mlen > bytes.length) throw new Error("Payload truncated: mime length exceeds data");
+  const mime = new TextDecoder().decode(bytes.subarray(MIMELEN_FIELD, MIMELEN_FIELD + mlen));
+  return { mime, img: bytes.subarray(MIMELEN_FIELD + mlen) };
 }
 // PBKDF2 work factor, deliberately high to slow passphrase brute-force (the cost is detailed at
 // deriveKey's callers). Both sides must use the same count or they derive different keys, so name it once.

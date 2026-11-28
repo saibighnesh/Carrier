@@ -543,6 +543,8 @@ t("planParity parity planning helper is defined", () => {
 t("buildPlain and parsePlain envelope helpers are defined", () => {
   assert.match(html, /function buildPlain\(mime,\s*img\)\{/, "buildPlain function should be defined");
   assert.match(html, /function parsePlain\(bytes\)\{/, "parsePlain function should be defined");
+  assert.match(html, /const MIMELEN_FIELD\s*=\s*1,\s*MIMELEN_MAX\s*=\s*\(1\s*<<\s*\(8\s*\*\s*MIMELEN_FIELD\)\)\s*-\s*1;/, "mime-length framing should be named");
+  assert.match(html, /if\(m\.length\s*>\s*MIMELEN_MAX\)/, "buildPlain should guard against MIMELEN_MAX");
 });
 
 t("parityChunksB64 and parityChunksDense parity chunk generators are defined", () => {
