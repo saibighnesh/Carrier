@@ -563,7 +563,8 @@ let msgLimit = 60000;             // chars per message for the chosen chat app (
 let recoveryLevel = "off";        // Reed-Solomon redundancy: off | light | strong (see rsParityCount)
 let textCodec = "b64";            // wire text encoding: b64 (universal) | dense (14 bits/char on the wire, opt-in)
 const MSG_LIMITS = { 60000:"WhatsApp", 4096:"Telegram", 4000:"Slack", 2000:"Discord", 160:"SMS" };
-const SID_LEN = 6;   // chunkify's session id: 3 random bytes rendered as hex
+const HEX_PER_BYTE = 2;   // two hex digits encode one byte
+const SID_LEN = 6;   // chunkify's session id: 3 random bytes rendered as hex (SID_LEN / HEX_PER_BYTE bytes)
 // exact length of a chunk's "PXT/<sid>/<index>/<total>/" prefix. index ≤ total, so both numbers fit in
 // total's digit-count. Three call sites used to hardcode 24 for this: too generous at one message (the
 // real prefix is 15, so the fit budget was 9 chars tighter than needed) and too small once a tiny
@@ -836,7 +837,9 @@ const denseVersionOf = t => {
 const dense2CharCount = byteLen => DENSE_HDR_CHARS + Math.ceil(byteLen * 8 / DENSE2_BITS);
 // how many characters `bytes` will occupy in each encoding — used to price the choice for the user
 const denseCharCount = byteLen => DENSE_HDR_CHARS + Math.ceil(byteLen * 8 / DENSE_BITS);
-const b64CharCount = byteLen => Math.ceil(byteLen / 3) * 4;
+// Base64 packs 3 bytes into 4 characters (lcm(6,8)=24 bits), the counterpart to the dense codecs' cycles.
+const B64_CYCLE_BYTES = 3, B64_CYCLE_CHARS = 4;
+const b64CharCount = byteLen => Math.ceil(byteLen / B64_CYCLE_BYTES) * B64_CYCLE_CHARS;
 
 /* ---------- CRC-32 (IEEE 802.3) ---------- */
 // table built once at load; the classic byte-at-a-time loop clears a few MB in single-digit milliseconds,
@@ -1480,7 +1483,7 @@ async function unpack(text, password){
 
 /* ---------- chunking ---------- */
 async function chunkify(b64, level = recoveryLevel){
-  const sid = Array.from(crypto.getRandomValues(new Uint8Array(SID_LEN/2)), b => b.toString(16).padStart(2,'0')).join('');
+  const sid = Array.from(crypto.getRandomValues(new Uint8Array(SID_LEN/HEX_PER_BYTE)), b => b.toString(16).padStart(HEX_PER_BYTE,'0')).join('');
   const dense = textCodec === "dense";
   // the prefix length grows with the digit-count of index and total, so a chunk sized against a fixed
   // reserve can exceed msgLimit once the part count gets long — and a transport may split or truncate

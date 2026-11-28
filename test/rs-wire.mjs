@@ -8,7 +8,7 @@ const slice = (a,b)=>{const i=html.indexOf(a),j=html.indexOf(b);if(i<0||j<0)thro
 const src = [
   "const __st = new Map(); const lsGet = k => __st.has(k) ? __st.get(k) : null; const lsSet = (k,v) => __st.set(k,String(v)); const lsRemove = k => __st.delete(k);",
   "let msgLimit = 60000; let recoveryLevel = 'off'; let textCodec = 'b64';",
-  "const SID_LEN = 6;",
+  "const SID_LEN = 6;", "const HEX_PER_BYTE = 2;",
   "const chunkPrefixLen = total => 4 + SID_LEN + 3 + 2 * String(total).length;",
   "const maxChunkIndexFor = (total, recoveryOn) => recoveryOn ? total * 2 : total;",
   "const crypto = globalThis.crypto;",

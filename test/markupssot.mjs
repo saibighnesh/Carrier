@@ -319,7 +319,9 @@ t("targetBytes chunk payload formula is defined", () => {
 });
 
 t("SID_LEN constant and chunkPrefixLen helper are defined", () => {
+  assert.match(html, /const HEX_PER_BYTE\s*=\s*2;/, "HEX_PER_BYTE should name the two-hex-digits-per-byte ratio");
   assert.match(html, /const SID_LEN\s*=\s*6;/, "SID_LEN should be 6");
+  assert.match(html, /new Uint8Array\(SID_LEN\/HEX_PER_BYTE\)/, "sid byte count should derive from SID_LEN / HEX_PER_BYTE");
   assert.match(html, /const chunkPrefixLen\s*=\s*total\s*=>\s*4\s*\+\s*SID_LEN\s*\+\s*3\s*\+\s*2\s*\*\s*String\(total\)\.length;/, "chunkPrefixLen formula should account for brackets, SID, slash, and indices");
 });
 
@@ -338,7 +340,8 @@ t("dense2CharCount, denseCharCount, and b64CharCount helpers are defined", () =>
   assert.match(html, /const DENSE_HDR_CHARS\s*=\s*1;/, "DENSE_HDR_CHARS should name the one leading header symbol");
   assert.match(html, /const dense2CharCount\s*=\s*byteLen\s*=>\s*DENSE_HDR_CHARS\s*\+\s*Math\.ceil\(byteLen\s*\*\s*8\s*\/\s*DENSE2_BITS\);/, "dense2CharCount should calculate header plus ceiling 14-bit symbols");
   assert.match(html, /const denseCharCount\s*=\s*byteLen\s*=>\s*DENSE_HDR_CHARS\s*\+\s*Math\.ceil\(byteLen\s*\*\s*8\s*\/\s*DENSE_BITS\);/, "denseCharCount should calculate header plus ceiling 12-bit symbols");
-  assert.match(html, /const b64CharCount\s*=\s*byteLen\s*=>\s*Math\.ceil\(byteLen\s*\/\s*3\)\s*\*\s*4;/, "b64CharCount should calculate 4 Base64 chars per 3 bytes");
+  assert.match(html, /const B64_CYCLE_BYTES\s*=\s*3,\s*B64_CYCLE_CHARS\s*=\s*4;/, "Base64 3-byte<->4-char cycle should be named");
+  assert.match(html, /const b64CharCount\s*=\s*byteLen\s*=>\s*Math\.ceil\(byteLen\s*\/\s*B64_CYCLE_BYTES\)\s*\*\s*B64_CYCLE_CHARS;/, "b64CharCount should derive from the Base64 cycle");
 });
 
 t("gfMul and gfInv Galois field arithmetic helpers are defined", () => {
