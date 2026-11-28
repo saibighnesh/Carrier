@@ -842,6 +842,7 @@ const b64CharCount = byteLen => Math.ceil(byteLen / 3) * 4;
 // table built once at load; the classic byte-at-a-time loop clears a few MB in single-digit milliseconds,
 // so adding it to every pack/unpack costs nothing the user can perceive
 const CRC_TABLE_SIZE = 1 << 8;   // one precomputed entry per possible byte value (0..255)
+const CRC32_INIT = 0xFFFFFFFF;   // CRC-32/IEEE all-ones register; the same value XORs the result out
 const CRC32_TABLE = (()=>{
   const t = new Uint32Array(CRC_TABLE_SIZE);
   for(let n=0;n<CRC_TABLE_SIZE;n++){
@@ -852,9 +853,9 @@ const CRC32_TABLE = (()=>{
   return t;
 })();
 function crc32(bytes){
-  let c = 0xFFFFFFFF;
+  let c = CRC32_INIT;
   for(let i=0;i<bytes.length;i++) c = CRC32_TABLE[(c ^ bytes[i]) & (CRC_TABLE_SIZE - 1)] ^ (c >>> 8);
-  return (c ^ 0xFFFFFFFF) >>> 0;
+  return (c ^ CRC32_INIT) >>> 0;
 }
 
 /* ---------- Reed-Solomon erasure coding over GF(2^6) ---------- */
