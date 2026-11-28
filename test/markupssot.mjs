@@ -221,6 +221,9 @@ t("dense v1 codec constants are defined", () => {
   // the v1 decoders drain the accumulator one byte at a time — same BITS_PER_BYTE width, no bare 8
   assert.match(html, /while\(nbits >= BITS_PER_BYTE && o < n\)\{\s*\n\s*nbits -= BITS_PER_BYTE;/, "denseToBytes should drain in BITS_PER_BYTE units");
   assert.match(html, /while\(nbits >= BITS_PER_BYTE && o < want\)\{ nbits -= BITS_PER_BYTE;/, "densePrefixBytes should drain in BITS_PER_BYTE units");
+  // v1's header symbol should carry the declared DENSE_HDR offset explicitly, mirroring v2's DENSE2_HDR
+  assert.match(html, /String\.fromCharCode\(DENSE_BASE \+ DENSE_HDR \+ \(bytes\.length % DENSE_CYCLE_BYTES\)\)/, "bytesToDense header should add DENSE_HDR");
+  assert.match(html, /const r = text\.charCodeAt\(0\) - DENSE_BASE - DENSE_HDR;/, "denseToBytes should subtract DENSE_HDR from the header symbol");
 });
 
 t("dense v2 codec constants are defined", () => {

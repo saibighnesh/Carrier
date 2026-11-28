@@ -692,7 +692,7 @@ const DENSE_HDR_CHARS = 1;   // both dense codecs prepend exactly one leading he
 // the character count cannot supply on its own: n and n+1 bytes can both round up to the same number of
 // characters, so without it the decoder could not tell a 2-byte tail from a 3-byte one.
 function bytesToDense(bytes){
-  const out = [String.fromCharCode(DENSE_BASE + (bytes.length % DENSE_CYCLE_BYTES))];
+  const out = [String.fromCharCode(DENSE_BASE + DENSE_HDR + (bytes.length % DENSE_CYCLE_BYTES))];
   let acc = 0, nbits = 0;
   for(let i=0;i<bytes.length;i++){
     acc = (acc << BITS_PER_BYTE) | bytes[i];   // at most BITS_PER_BYTE + (DENSE_BITS - 1) = 19 bits live, well inside a safe integer
@@ -709,7 +709,7 @@ function bytesToDense(bytes){
 // even one character must fail loudly rather than decode into plausible rubbish.
 function denseToBytes(text){
   if(!text.length) throw new Error("Empty message.");
-  const r = text.charCodeAt(0) - DENSE_BASE;
+  const r = text.charCodeAt(0) - DENSE_BASE - DENSE_HDR;
   if(r < 0 || r >= DENSE_CYCLE_BYTES) throw new Error("This message's header is damaged.");
   const c = text.length - DENSE_HDR_CHARS;
   // invert the encoder: it emits ceil(DENSE_CYCLE_CHARS*n/DENSE_CYCLE_BYTES) symbols, so the count plus the remainder pins n exactly
