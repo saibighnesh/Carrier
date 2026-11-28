@@ -11,8 +11,13 @@ const html = readFileSync(HTML, "utf8");
 // below — inject the real declaration (not a copy) so the char-count helpers resolve the same value.
 const hdrCharsConst = /const DENSE_HDR_CHARS\s*=\s*\d+;/.exec(html);
 assert.ok(hdrCharsConst, "expected a DENSE_HDR_CHARS constant in index.html");
+// dense2CharCount derives its char count from byteLen * BITS_PER_BYTE, and that constant lives up in the
+// dense v1 region above this v2-only slice — inject the real declaration so the helper resolves it.
+const bitsPerByteConst = /const BITS_PER_BYTE\s*=\s*\d+;/.exec(html);
+assert.ok(bitsPerByteConst, "expected a BITS_PER_BYTE constant in index.html");
 const src = [
   hdrCharsConst[0],
+  bitsPerByteConst[0],
   html.slice(html.indexOf("let textCodec"), html.indexOf("const targetBytes")),
   html.slice(html.indexOf("/* ---------- dense v2"), html.indexOf("/* ---------- CRC-32")),
   "globalThis.__DC = { dense2CharCount, textBitsPerChar, DENSE2_BITS, setCodec: v => { textCodec = v; } };",
