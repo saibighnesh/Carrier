@@ -1885,6 +1885,13 @@ const AUTOFIT_Q_MIN = 0.25, AUTOFIT_Q_MAX = 0.92;
 // the max-dimension rungs autofit steps down, largest first — same set the #maxdim select offers. The
 // last rung is also the fallback dimension when nothing fits at any larger size.
 const DIM_LADDER = [1280,1024,768,512,384,256];
+// the packed-container overhead autofit must budget for, named from the container field sizes rather than
+// re-spelled as literals here: HEADER_BYTES (MAGIC+flags) + MIMELEN_FIELD + an upper estimate of the mime
+// string, plus the body trailer — the full salt+iv+GCM-tag when encrypting, or the CRC-32 when unlocked.
+// ENC_OVERHEAD stays in step with the three encrypted-field sizes so this can't drift from what pack()
+// actually writes; MIME_LEN_EST is a conservative ceiling on the short encoder mime ("image/webp" = 10).
+const ENC_OVERHEAD = SALT_BYTES + IV_BYTES + GCM_TAG_BYTES;
+const MIME_LEN_EST = 10;
 // onProgress(d, i, total), called before each candidate encode — reports which dimension rung is being
 // tried and where the binary search is within it (i/total, 1-based). Deliberately NOT wired to aria-live:
 // up to 42 calls in a few seconds would be exactly the overlapping-announcement noise #232 just fixed for
@@ -1895,14 +1902,14 @@ async function autoFit(onProgress){
   // See isStale()'s comment for why this needs the token, not just !srcImage.
   const myToken = loadToken;
   const stale = () => isStale(myToken);
-  // the packed payload is bigger than the raw image blob: MAGIC(4)+flags(1) + mimeLen(1)+mime + , when a
-  // password is set, salt(16)+iv(12)+GCM tag(16)=44. Comparing the raw blob to targetBytes() ignored all
-  // of it, so "Auto-fit to 1 message" could still split into 2 parts (mostly with a password, on small-
-  // limit apps). Subtract the overhead from the budget so the fit accounts for what actually ships.
-  // read the password INSIDE the budget, not once up front: the field isn't disabled during the multi-
-  // encode fit, so a password typed/cleared mid-fit would otherwise leave the overhead off by 44 bytes
-  // (salt+iv+tag) versus what refresh() actually packs, quietly missing the one-message goal.
-  const budget = () => targetBytes() - (5 + 1 + 10 + ($("#pass").value ? 44 : 4));   // 10 ≈ longest mime; pw adds salt+iv+tag, unlocked adds the CRC-32 trailer
+  // the packed payload is bigger than the raw image blob: the container header + mime prefix, plus (with a
+  // password) ENC_OVERHEAD = salt+iv+GCM tag, or the CRC-32 trailer when unlocked. Comparing the raw blob
+  // to targetBytes() ignored all of it, so "Auto-fit to 1 message" could still split into 2 parts (mostly
+  // with a password, on small-limit apps). Subtract the overhead from the budget so the fit accounts for
+  // what actually ships. read the password INSIDE the budget, not once up front: the field isn't disabled
+  // during the multi-encode fit, so a password typed/cleared mid-fit would otherwise leave the overhead
+  // off by ENC_OVERHEAD - CRC_BYTES versus what refresh() actually packs, quietly missing the one-msg goal.
+  const budget = () => targetBytes() - (HEADER_BYTES + MIMELEN_FIELD + MIME_LEN_EST + ($("#pass").value ? ENC_OVERHEAD : CRC_BYTES));   // pw adds salt+iv+tag, unlocked adds the CRC-32 trailer
   for(const d of dims){
     if(stale()) return null;   // Start over — or Start over followed by a new load — ran mid-fit — abandon (don't deref null, and don't measure against an image this fit was never for)
     const cv = drawScaled(srcImage, d);
