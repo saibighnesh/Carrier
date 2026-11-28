@@ -851,10 +851,11 @@ const CRC32_TABLE = (()=>{
   }
   return t;
 })();
+const CRC32_INIT = 0xFFFFFFFF;   // CRC-32/IEEE all-ones register; the same value XORs the result out
 function crc32(bytes){
-  let c = 0xFFFFFFFF;
+  let c = CRC32_INIT;
   for(let i=0;i<bytes.length;i++) c = CRC32_TABLE[(c ^ bytes[i]) & (CRC_TABLE_SIZE - 1)] ^ (c >>> 8);
-  return (c ^ 0xFFFFFFFF) >>> 0;
+  return (c ^ CRC32_INIT) >>> 0;
 }
 
 /* ---------- Reed-Solomon erasure coding over GF(2^6) ---------- */
