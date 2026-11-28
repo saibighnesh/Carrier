@@ -1902,13 +1902,13 @@ async function autoFit(onProgress){
   // See isStale()'s comment for why this needs the token, not just !srcImage.
   const myToken = loadToken;
   const stale = () => isStale(myToken);
-  // the packed payload is bigger than the raw image blob: MAGIC(4)+flags(1) + mimeLen(1)+mime + , when a
-  // password is set, salt(16)+iv(12)+GCM tag(16)=44. Comparing the raw blob to targetBytes() ignored all
-  // of it, so "Auto-fit to 1 message" could still split into 2 parts (mostly with a password, on small-
-  // limit apps). Subtract the overhead from the budget so the fit accounts for what actually ships.
-  // read the password INSIDE the budget, not once up front: the field isn't disabled during the multi-
-  // encode fit, so a password typed/cleared mid-fit would otherwise leave the overhead off by 44 bytes
-  // (salt+iv+tag) versus what refresh() actually packs, quietly missing the one-message goal.
+  // the packed payload is bigger than the raw image blob: the container header + mime prefix, plus (with a
+  // password) ENC_OVERHEAD = salt+iv+GCM tag, or the CRC-32 trailer when unlocked. Comparing the raw blob
+  // to targetBytes() ignored all of it, so "Auto-fit to 1 message" could still split into 2 parts (mostly
+  // with a password, on small-limit apps). Subtract the overhead from the budget so the fit accounts for
+  // what actually ships. read the password INSIDE the budget, not once up front: the field isn't disabled
+  // during the multi-encode fit, so a password typed/cleared mid-fit would otherwise leave the overhead
+  // off by ENC_OVERHEAD - CRC_BYTES versus what refresh() actually packs, quietly missing the one-msg goal.
   const budget = () => targetBytes() - (HEADER_BYTES + MIMELEN_FIELD + MIME_LEN_EST + ($("#pass").value ? ENC_OVERHEAD : CRC_BYTES));   // pw adds salt+iv+tag, unlocked adds the CRC-32 trailer
   for(const d of dims){
     if(stale()) return null;   // Start over — or Start over followed by a new load — ran mid-fit — abandon (don't deref null, and don't measure against an image this fit was never for)
