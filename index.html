@@ -1372,7 +1372,7 @@ const HEADER_BYTES = MAGIC.length + 1;
 // MIMELEN_MAX is the guard the single length byte imposes. buildPlain and parsePlain read the framing off
 // both, so the offset and the guard can't drift.
 const MIMELEN_FIELD = 1;                 // width of the length prefix, in bytes — fixed by the byte read/write
-const MIMELEN_MAX = (1 << 8) - 1;        // 255 — the largest value one byte can hold
+const MIMELEN_MAX = (1 << BITS_PER_BYTE) - 1;   // 255 — the largest value one byte can hold
 function buildPlain(mime, img){
   const m = new TextEncoder().encode(mime);
   // the mime length is stored in MIMELEN_FIELD byte(s); a mime > MIMELEN_MAX bytes would wrap and desync
