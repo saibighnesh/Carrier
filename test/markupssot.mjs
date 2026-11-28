@@ -212,6 +212,7 @@ t("dense v1 codec constants are defined", () => {
   assert.match(html, /const DENSE_BASE\s*=\s*0x4E00;/, "DENSE_BASE should be 0x4E00");
   assert.match(html, /const DENSE_BITS\s*=\s*12;/, "DENSE_BITS should be 12");
   assert.match(html, /const DENSE_MASK\s*=\s*\(1\s*<<\s*DENSE_BITS\)\s*-\s*1;/, "DENSE_MASK should derive from DENSE_BITS");
+  assert.match(html, /const BYTE_MASK\s*=\s*0xFF;/, "BYTE_MASK should name the low-byte mask");
   assert.match(html, /const DENSE_CYCLE_BYTES\s*=\s*3,\s*DENSE_CYCLE_CHARS\s*=\s*2;/, "dense v1 cycle should be 3 bytes <-> 2 chars");
 });
 
