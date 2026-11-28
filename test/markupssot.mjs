@@ -587,6 +587,8 @@ t("drawScaled and encodeCanvas canvas rendering helpers are defined", () => {
 });
 
 t("compressOnce and autoFit image compression pipeline functions are defined", () => {
+  assert.match(html, /const QUALITY_SCALE\s*=\s*100;/, "QUALITY_SCALE should name the 0..100 quality slider range");
+  assert.match(html, /encodeCanvas\(cv,\s*quality\/QUALITY_SCALE\)/, "compressOnce should convert quality via QUALITY_SCALE");
   assert.match(html, /async function compressOnce\(maxDim,\s*quality\)\{/, "compressOnce function should be defined");
   assert.match(html, /async function autoFit\(onProgress\)\{/, "autoFit function should be defined");
 });
