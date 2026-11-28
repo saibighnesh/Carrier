@@ -588,15 +588,15 @@ const maxChunkIndexFor = (total, recoveryOn) => recoveryOn ? total * 2 : total;
 // bits one Base64 wire character carries (2^6 alphabet) — the counterpart to DENSE_BITS / DENSE2_BITS,
 // named so the Base64 branch below isn't the only codec width left as a bare literal.
 const B64_BITS = 6;
-// bytes that fit one message = (chars available) x (bits each char carries) / 8, times a safety margin.
-// This hardcoded Base64's ratio (B64_BITS/8 x WIRE_FILL_RATIO) even after Compact shipped 14-bit
+// bytes that fit one message = (chars available) x (bits each char carries) / BITS_PER_BYTE, times a margin.
+// This hardcoded Base64's ratio (B64_BITS/BITS_PER_BYTE x WIRE_FILL_RATIO) even after Compact shipped 14-bit
 // characters — so "Auto-fit to 1 message" under Compact aimed at a budget 2.33x smaller than the real one
 // and crushed image quality to hit it. The bits-per-char must come from the codec that carries the text.
 const textBitsPerChar = () => textCodec === "dense" ? DENSE2_BITS : B64_BITS;
 // headroom on the one-message byte budget, so a chunk sized at the budget doesn't tip just over msgLimit
 // once the transport counts it slightly differently. Named so the 4%-off margin isn't a lone literal.
 const WIRE_FILL_RATIO = 0.96;
-const targetBytes = () => Math.floor((msgLimit - chunkPrefixLen(1)) * (textBitsPerChar() / 8) * WIRE_FILL_RATIO);
+const targetBytes = () => Math.floor((msgLimit - chunkPrefixLen(1)) * (textBitsPerChar() / BITS_PER_BYTE) * WIRE_FILL_RATIO);
 // a coarse floor (~) on the raw one-message byte budget below which no real WebP thumbnail fits — it's
 // compared against targetBytes() directly, before the envelope overhead budget() subtracts, so it's an
 // approximation, not an exact cutoff. Below it, "lower quality to fit" is impossible advice (e.g. SMS).
@@ -3423,10 +3423,10 @@ function updateProgress(){
 // figure made every dense payload report half its real size, in the direction that costs a receiver on a
 // metered connection, and left the pre-reveal estimate contradicting the caption that followed it.
 // The dense form is exact rather than a second approximation: the encoder emits one header symbol plus
-// ceil(8n/12), so this inverts precisely what it produced.
+// ceil(BITS_PER_BYTE*n/12), so this inverts precisely what it produced.
 function payloadBytes(r){
   return r.dense
-    ? Math.floor(Math.max(0, r.s.length - 1) * (r.denseBits || DENSE_BITS) / 8)
+    ? Math.floor(Math.max(0, r.s.length - 1) * (r.denseBits || DENSE_BITS) / BITS_PER_BYTE)
     : Math.floor(r.s.length * 3 / 4);
 }
 // peek the header flags byte without decrypting: null = not a valid Carrier header, else the flags byte
