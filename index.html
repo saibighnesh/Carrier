@@ -707,7 +707,7 @@ function denseToBytes(text){
   if(!text.length) throw new Error("Empty message.");
   const r = text.charCodeAt(0) - DENSE_BASE;
   if(r < 0 || r >= DENSE_CYCLE_BYTES) throw new Error("This message's header is damaged.");
-  const c = text.length - 1;
+  const c = text.length - DENSE_HDR_CHARS;
   // invert the encoder: it emits ceil(DENSE_CYCLE_CHARS*n/DENSE_CYCLE_BYTES) symbols, so the count plus the remainder pins n exactly
   const n = r === 0 ? (c / DENSE_CYCLE_CHARS) * DENSE_CYCLE_BYTES
           : r === 1 ? ((c - 1) / DENSE_CYCLE_CHARS) * DENSE_CYCLE_BYTES + 1
@@ -715,7 +715,7 @@ function denseToBytes(text){
   if(!Number.isInteger(n) || n < 0) throw new Error("This message is truncated — some characters are missing.");
   const out = new Uint8Array(n);
   let acc = 0, nbits = 0, o = 0;
-  for(let i=1;i<text.length;i++){
+  for(let i=DENSE_HDR_CHARS;i<text.length;i++){
     const v = text.charCodeAt(i) - DENSE_BASE;
     if(v < 0 || v > DENSE_MASK) throw new Error("This message contains characters that aren't part of it — the chat app may have altered the text.");
     acc = (acc << DENSE_BITS) | v;
@@ -736,7 +736,7 @@ function densePrefixBytes(text, want, bits = DENSE_BITS){
   const mask = (1 << bits) - 1;
   const out = new Uint8Array(want);
   let acc = 0, nbits = 0, o = 0;
-  for(let i=1;i<text.length && o<want;i++){          // skip [0], the length header
+  for(let i=DENSE_HDR_CHARS;i<text.length && o<want;i++){          // skip the one-char header
     const v = text.charCodeAt(i) - DENSE_BASE;
     if(v < 0 || v > mask) return null;
     acc = (acc << bits) | v;
@@ -806,7 +806,7 @@ function dense2ByteLength(text){
   if(!text.length) throw new Error("Empty message.");
   const r = text.charCodeAt(0) - DENSE_BASE - DENSE2_HDR;
   if(r < 0 || r >= DENSE2_CYCLE_BYTES) throw new Error("This message's header is damaged.");
-  const c = text.length - 1;
+  const c = text.length - DENSE_HDR_CHARS;
   const k4 = c - D2_PAY[r];                           // 4k, per the cycle arithmetic above
   if(k4 < 0 || k4 % DENSE2_CYCLE_CHARS !== 0) throw new Error("This message is truncated — some characters are missing.");
   return (k4 / DENSE2_CYCLE_CHARS) * DENSE2_CYCLE_BYTES + r;
@@ -815,7 +815,7 @@ function dense2ToBytes(text){
   const n = dense2ByteLength(text);
   const out = new Uint8Array(n);
   let acc = 0, nbits = 0, o = 0;
-  for(let i=1;i<text.length;i++){
+  for(let i=DENSE_HDR_CHARS;i<text.length;i++){
     const v = text.charCodeAt(i) - DENSE_BASE;
     if(v < 0 || v > DENSE2_MASK) throw new Error("This message contains characters that aren't part of it — the chat app may have altered the text.");
     acc = ((acc << DENSE2_BITS) | v) >>> 0;
@@ -851,7 +851,7 @@ const CRC32_TABLE = (()=>{
 })();
 function crc32(bytes){
   let c = 0xFFFFFFFF;
-  for(let i=0;i<bytes.length;i++) c = CRC32_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+  for(let i=0;i<bytes.length;i++) c = CRC32_TABLE[(c ^ bytes[i]) & (CRC_TABLE_SIZE - 1)] ^ (c >>> 8);
   return (c ^ 0xFFFFFFFF) >>> 0;
 }
 
