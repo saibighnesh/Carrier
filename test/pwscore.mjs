@@ -12,9 +12,13 @@ const lenTiersConst = /const PW_LEN_TIERS\s*=\s*\[[^\]]*\];/.exec(html);
 assert.ok(lenTiersConst, "expected a PW_LEN_TIERS constant in index.html");
 const varietyMinConst = /const PW_VARIETY_MIN\s*=\s*\d+;/.exec(html);
 assert.ok(varietyMinConst, "expected a PW_VARIETY_MIN constant in index.html");
+// pwScore clamps its result to the last PW_LABELS index, so the scorer needs the real label array too.
+const labelsConst = /const PW_LABELS\s*=\s*\[[^\]]*\];/.exec(html);
+assert.ok(labelsConst, "expected a PW_LABELS constant in index.html");
 const src = [
   lenTiersConst[0],
   varietyMinConst[0],
+  labelsConst[0],
   html.slice(html.indexOf("function pwScore"), html.indexOf("let lastPwScore")),
   "globalThis.__PW = { pwScore };",
 ].join("\n");

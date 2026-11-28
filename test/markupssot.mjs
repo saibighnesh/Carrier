@@ -667,6 +667,7 @@ t("pwScore and pwTruncNote password validation helpers are defined", () => {
   assert.match(html, /const len = PW_LEN_TIERS\.reduce\(\(a, t\) => a \+ \(v\.length >= t \? 1 : 0\), 0\);/, "pwScore should score length by counting PW_LEN_TIERS reached");
   assert.match(html, /const PW_VARIETY_MIN\s*=\s*3;/, "PW_VARIETY_MIN should name the variety-bonus threshold");
   assert.match(html, /variety >= PW_VARIETY_MIN \? 1 : 0/, "pwScore should gate the variety bonus on PW_VARIETY_MIN");
+  assert.match(html, /return Math\.max\(1, Math\.min\(PW_LABELS\.length - 1, s\)\);/, "pwScore should clamp to the last PW_LABELS index, not a literal 4");
   assert.match(html, /function pwTruncNote\(id,\s*noteId\)\{/, "pwTruncNote function should be defined");
 });
 
