@@ -3423,10 +3423,10 @@ function updateProgress(){
 // figure made every dense payload report half its real size, in the direction that costs a receiver on a
 // metered connection, and left the pre-reveal estimate contradicting the caption that followed it.
 // The dense form is exact rather than a second approximation: the encoder emits one header symbol plus
-// ceil(8n/12), so this inverts precisely what it produced.
+// ceil(BITS_PER_BYTE*n/12), so this inverts precisely what it produced.
 function payloadBytes(r){
   return r.dense
-    ? Math.floor(Math.max(0, r.s.length - 1) * (r.denseBits || DENSE_BITS) / 8)
+    ? Math.floor(Math.max(0, r.s.length - 1) * (r.denseBits || DENSE_BITS) / BITS_PER_BYTE)
     : Math.floor(r.s.length * 3 / 4);
 }
 // peek the header flags byte without decrypting: null = not a valid Carrier header, else the flags byte
