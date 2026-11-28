@@ -557,6 +557,8 @@ t("planParity parity planning helper is defined", () => {
 t("buildPlain and parsePlain envelope helpers are defined", () => {
   assert.match(html, /function buildPlain\(mime,\s*img\)\{/, "buildPlain function should be defined");
   assert.match(html, /function parsePlain\(bytes\)\{/, "parsePlain function should be defined");
+  assert.match(html, /const FLAGS_BYTES\s*=\s*1;/, "FLAGS_BYTES should name the one-byte flags field");
+  assert.match(html, /const HEADER_BYTES\s*=\s*MAGIC\.length\s*\+\s*FLAGS_BYTES;/, "HEADER_BYTES should derive from MAGIC.length + FLAGS_BYTES");
   assert.match(html, /const MIMELEN_FIELD\s*=\s*1;/, "MIMELEN_FIELD should name the one-byte length prefix");
   assert.match(html, /const MIMELEN_MAX\s*=\s*\(1\s*<<\s*BITS_PER_BYTE\)\s*-\s*1;/, "MIMELEN_MAX should be the one-byte maximum, derived from BITS_PER_BYTE");
   assert.match(html, /if\(m\.length\s*>\s*MIMELEN_MAX\)/, "buildPlain should guard against MIMELEN_MAX");

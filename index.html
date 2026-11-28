@@ -1365,8 +1365,9 @@ const GCM_TAG_BITS = 128;
 const SALT_BYTES = 16, IV_BYTES = 12, GCM_TAG_BYTES = GCM_TAG_BITS / BITS_PER_BYTE;
 // the container header is MAGIC (4 bytes) followed by one flags byte; the body starts right after it.
 // pack writes the header and unpack skips past it, so derive both from MAGIC.length rather than hardcoding
-// the "5" (header length) and "4" (flags offset) at each end.
-const HEADER_BYTES = MAGIC.length + 1;
+// the "5" (header length) and "4" (flags offset) at each end. FLAGS_BYTES names the one-byte flags field.
+const FLAGS_BYTES = 1;
+const HEADER_BYTES = MAGIC.length + FLAGS_BYTES;
 // mime-length prefix: exactly one byte (written and read as out[0] / bytes[0]), so the value it can hold
 // caps at one byte's worth. MIMELEN_FIELD names that one-byte offset the image bytes start after;
 // MIMELEN_MAX is the guard the single length byte imposes. buildPlain and parsePlain read the framing off
