@@ -215,6 +215,9 @@ t("dense v1 codec constants are defined", () => {
   assert.match(html, /const BITS_PER_BYTE\s*=\s*8;/, "BITS_PER_BYTE should be named");
   assert.match(html, /const BYTE_MASK\s*=\s*\(1\s*<<\s*BITS_PER_BYTE\)\s*-\s*1;/, "BYTE_MASK should derive from BITS_PER_BYTE");
   assert.match(html, /const DENSE_CYCLE_BYTES\s*=\s*3,\s*DENSE_CYCLE_CHARS\s*=\s*2;/, "dense v1 cycle should be 3 bytes <-> 2 chars");
+  // the dense v1 encoder feeds the bit accumulator one byte at a time — that width is BITS_PER_BYTE, not a loose 8
+  assert.match(html, /acc = \(acc << BITS_PER_BYTE\) \| bytes\[i\];/, "bytesToDense should shift in BITS_PER_BYTE, not a literal 8");
+  assert.match(html, /nbits \+= BITS_PER_BYTE;/, "bytesToDense should count bits in BITS_PER_BYTE units");
 });
 
 t("dense v2 codec constants are defined", () => {

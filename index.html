@@ -695,8 +695,8 @@ function bytesToDense(bytes){
   const out = [String.fromCharCode(DENSE_BASE + (bytes.length % DENSE_CYCLE_BYTES))];
   let acc = 0, nbits = 0;
   for(let i=0;i<bytes.length;i++){
-    acc = (acc << 8) | bytes[i];         // at most 8 + 11 = 19 bits live, well inside a safe integer
-    nbits += 8;
+    acc = (acc << BITS_PER_BYTE) | bytes[i];   // at most BITS_PER_BYTE + 11 = 19 bits live, well inside a safe integer
+    nbits += BITS_PER_BYTE;
     while(nbits >= DENSE_BITS){
       nbits -= DENSE_BITS;
       out.push(String.fromCharCode(DENSE_BASE + ((acc >> nbits) & DENSE_MASK)));
