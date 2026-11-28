@@ -1347,6 +1347,7 @@ const FLAG_CRC32     = 2;   // body carries a big-endian CRC-32 trailer (CRC_BYT
 // width of the CRC-32 damage-detection trailer appended to an unlocked body. pack allocates and writes it,
 // unpack splits it back off — name it once so the trailer length can't disagree between the two sides.
 const CRC_BYTES = 4;
+const BITS_PER_BYTE = 8;   // used to place/read the CRC-32 trailer's bytes in big-endian order
 // encrypted-body field sizes (bytes). The layout is salt | iv | ciphertext(+GCM tag), and pack writes
 // these offsets while unpack reads them back — name the sizes once so the two sides can't disagree, and
 // so the "too short to be real ciphertext" floor (salt+iv+tag) stays in step with them.
@@ -1429,10 +1430,8 @@ async function pack(img, mime, password){
     const crc = crc32(plain);
     body = new Uint8Array(plain.length + CRC_BYTES);
     body.set(plain, 0);
-    body[plain.length]   = (crc >>> 24) & 0xFF;
-    body[plain.length+1] = (crc >>> 16) & 0xFF;
-    body[plain.length+2] = (crc >>> 8) & 0xFF;
-    body[plain.length+3] =  crc & 0xFF;
+    // big-endian: most-significant byte first, CRC_BYTES bytes wide
+    for(let i=0;i<CRC_BYTES;i++) body[plain.length + i] = (crc >>> ((CRC_BYTES - 1 - i) * BITS_PER_BYTE)) & BYTE_MASK;
   }
   const c = new Uint8Array(HEADER_BYTES + body.length);
   c.set(MAGIC,0); c[MAGIC.length] = flags; c.set(body,HEADER_BYTES);
@@ -1469,7 +1468,8 @@ async function unpack(text, password){
     if(body.length < CRC_BYTES + 2) throw new Error("This message is too short to hold an image — a part is probably missing.");
     const data = body.subarray(0, body.length - CRC_BYTES);
     const t = body.subarray(body.length - CRC_BYTES);
-    const want = ((t[0] << 24) | (t[1] << 16) | (t[2] << 8) | t[3]) >>> 0;
+    let want = 0;
+    for(let i=0;i<CRC_BYTES;i++) want = ((want << BITS_PER_BYTE) | t[i]) >>> 0;   // big-endian, matches the pack side
     if(crc32(data) !== want) throw new Error("This message is damaged — some characters were changed or lost on the way. Ask the sender to resend it.");
     plain = data; verified = true;
   } else plain = body;   // a pre-checksum sender: nothing to verify against, parse as before
