@@ -836,7 +836,9 @@ const denseVersionOf = t => {
 const dense2CharCount = byteLen => DENSE_HDR_CHARS + Math.ceil(byteLen * 8 / DENSE2_BITS);
 // how many characters `bytes` will occupy in each encoding — used to price the choice for the user
 const denseCharCount = byteLen => DENSE_HDR_CHARS + Math.ceil(byteLen * 8 / DENSE_BITS);
-const b64CharCount = byteLen => Math.ceil(byteLen / 3) * 4;
+// Base64 packs 3 bytes into 4 characters (the counterpart to the dense codecs' cycles).
+const B64_CYCLE_BYTES = 3, B64_CYCLE_CHARS = 4;
+const b64CharCount = byteLen => Math.ceil(byteLen / B64_CYCLE_BYTES) * B64_CYCLE_CHARS;
 
 /* ---------- CRC-32 (IEEE 802.3) ---------- */
 // table built once at load; the classic byte-at-a-time loop clears a few MB in single-digit milliseconds,

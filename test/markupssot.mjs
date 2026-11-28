@@ -338,7 +338,8 @@ t("dense2CharCount, denseCharCount, and b64CharCount helpers are defined", () =>
   assert.match(html, /const DENSE_HDR_CHARS\s*=\s*1;/, "DENSE_HDR_CHARS should name the one leading header symbol");
   assert.match(html, /const dense2CharCount\s*=\s*byteLen\s*=>\s*DENSE_HDR_CHARS\s*\+\s*Math\.ceil\(byteLen\s*\*\s*8\s*\/\s*DENSE2_BITS\);/, "dense2CharCount should calculate header plus ceiling 14-bit symbols");
   assert.match(html, /const denseCharCount\s*=\s*byteLen\s*=>\s*DENSE_HDR_CHARS\s*\+\s*Math\.ceil\(byteLen\s*\*\s*8\s*\/\s*DENSE_BITS\);/, "denseCharCount should calculate header plus ceiling 12-bit symbols");
-  assert.match(html, /const b64CharCount\s*=\s*byteLen\s*=>\s*Math\.ceil\(byteLen\s*\/\s*3\)\s*\*\s*4;/, "b64CharCount should calculate 4 Base64 chars per 3 bytes");
+  assert.match(html, /const B64_CYCLE_BYTES\s*=\s*3,\s*B64_CYCLE_CHARS\s*=\s*4;/, "Base64 3-byte<->4-char cycle should be named");
+  assert.match(html, /const b64CharCount\s*=\s*byteLen\s*=>\s*Math\.ceil\(byteLen\s*\/\s*B64_CYCLE_BYTES\)\s*\*\s*B64_CYCLE_CHARS;/, "b64CharCount should derive from the Base64 cycle");
 });
 
 t("gfMul and gfInv Galois field arithmetic helpers are defined", () => {
