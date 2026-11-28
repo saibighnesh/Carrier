@@ -6,7 +6,12 @@ import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 const HTML = fileURLToPath(new URL("../index.html", import.meta.url));
 const html = readFileSync(HTML, "utf8");
+// PW_LEN_TIERS (the length thresholds pwScore rewards) is declared just above the sliced function —
+// inject the real declaration (not a copy) so the scorer reads the same thresholds the app uses.
+const lenTiersConst = /const PW_LEN_TIERS\s*=\s*\[[^\]]*\];/.exec(html);
+assert.ok(lenTiersConst, "expected a PW_LEN_TIERS constant in index.html");
 const src = [
+  lenTiersConst[0],
   html.slice(html.indexOf("function pwScore"), html.indexOf("let lastPwScore")),
   "globalThis.__PW = { pwScore };",
 ].join("\n");
