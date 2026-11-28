@@ -38,10 +38,10 @@ t("under the 100 KB threshold: 1 decimal place", () => {
   assert.equal(fmtKB(51200), "50.0 KB");   // 50 KiB exactly
 });
 
-t("right at the 100 KB threshold, from below: rounds up to 100.0 while still in the 1-decimal regime", () => {
-  // 102399 / 1024 = 99.999...; toFixed(1) rounds to "100.0" one byte before the formula actually
-  // switches to 0-decimal formatting — a real rounding artifact of a deliberately simple formatter,
-  // not a bug, and worth pinning down explicitly so it doesn't look like one later
+t("right at the KB_WHOLE_FROM threshold, from below: rounds up to 100.0 while still in the 1-decimal regime", () => {
+  // 102399 / 1024 = 99.999...; toFixed(1) rounds to "100.0" one byte before the formula crosses
+  // KB_WHOLE_FROM * BYTES_PER_KB and switches to 0-decimal formatting — a real rounding artifact of a
+  // deliberately simple formatter, not a bug, and worth pinning down explicitly so it doesn't look like one
   assert.equal(fmtKB(102399), "100.0 KB");
 });
 

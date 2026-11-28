@@ -630,7 +630,7 @@ const lsRemove = k => { try { localStorage.removeItem(k); } catch {} };
 // byte-size units for human-readable sizes and the oversized-input limits. Named once so fmtKB's
 // thresholds and every "over N MB" message divide by the same values rather than repeating 1048576.
 const BYTES_PER_KB = 1024, BYTES_PER_MB = BYTES_PER_KB * BYTES_PER_KB;
-const KB_WHOLE_FROM = 100;   // at/above 100 KB, drop the decimal — three digits of KB don't need a tenth
+const KB_WHOLE_FROM = 100;   // in KB: at/above 100 KB, drop the decimal — three digits of KB don't need a tenth
 const fmtKB = b => b < BYTES_PER_KB ? b + " B" : b < BYTES_PER_MB ? (b/BYTES_PER_KB).toFixed(b < KB_WHOLE_FROM*BYTES_PER_KB ? 1 : 0) + " KB" : (b/BYTES_PER_MB).toFixed(1) + " MB";
 // stamp saved files with the LOCAL calendar date/time, never toISOString(). ISO renders the moment in
 // UTC, so a user behind UTC saving in the evening got tomorrow's date in both the .txt header ("saved
