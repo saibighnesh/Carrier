@@ -333,7 +333,9 @@ t("maxChunkIndexFor and textBitsPerChar helpers are defined", () => {
 
 t("fmtKB byte formatting helper is defined", () => {
   assert.match(html, /const BYTES_PER_KB\s*=\s*1024,\s*BYTES_PER_MB\s*=\s*BYTES_PER_KB\s*\*\s*BYTES_PER_KB;/, "byte-size unit constants should be defined (MB derived from KB)");
+  assert.match(html, /const KB_WHOLE_FROM\s*=\s*100;/, "KB_WHOLE_FROM should name the whole-number KB threshold");
   assert.match(html, /const fmtKB\s*=\s*b\s*=>\s*b\s*<\s*BYTES_PER_KB\s*\?\s*b\s*\+\s*" B"/, "fmtKB should format bytes with B, KB, or MB units");
+  assert.match(html, /\.toFixed\(b\s*<\s*KB_WHOLE_FROM\s*\*\s*BYTES_PER_KB\s*\?\s*1\s*:\s*0\)/, "fmtKB should switch decimals at KB_WHOLE_FROM");
 });
 
 t("dense2CharCount, denseCharCount, and b64CharCount helpers are defined", () => {

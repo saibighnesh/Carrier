@@ -6,12 +6,15 @@ import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 const HTML = fileURLToPath(new URL("../index.html", import.meta.url));
 const html = readFileSync(HTML, "utf8");
-// fmtKB divides by BYTES_PER_KB / BYTES_PER_MB, declared just above it — inject the real declaration
-// (not a copy) so the sliced helper resolves the same units the app uses.
+// fmtKB divides by BYTES_PER_KB / BYTES_PER_MB and switches decimals at KB_WHOLE_FROM, all declared just
+// above it — inject the real declarations (not copies) so the sliced helper resolves the same values.
 const unitsConst = /const BYTES_PER_KB\s*=\s*\d+,\s*BYTES_PER_MB\s*=\s*[^;]+;/.exec(html);
 assert.ok(unitsConst, "expected BYTES_PER_KB / BYTES_PER_MB constants in index.html");
+const wholeFromConst = /const KB_WHOLE_FROM\s*=\s*\d+;/.exec(html);
+assert.ok(wholeFromConst, "expected a KB_WHOLE_FROM constant in index.html");
 const src = [
   unitsConst[0],
+  wholeFromConst[0],
   html.slice(html.indexOf("const fmtKB"), html.indexOf("// stamp saved files")),
   "globalThis.__FK = { fmtKB };",
 ].join("\n");
@@ -35,10 +38,10 @@ t("under the 100 KB threshold: 1 decimal place", () => {
   assert.equal(fmtKB(51200), "50.0 KB");   // 50 KiB exactly
 });
 
-t("right at the 100 KB threshold, from below: rounds up to 100.0 while still in the 1-decimal regime", () => {
-  // 102399 / 1024 = 99.999...; toFixed(1) rounds to "100.0" one byte before the formula actually
-  // switches to 0-decimal formatting — a real rounding artifact of a deliberately simple formatter,
-  // not a bug, and worth pinning down explicitly so it doesn't look like one later
+t("right at the KB_WHOLE_FROM threshold, from below: rounds up to 100.0 while still in the 1-decimal regime", () => {
+  // 102399 / 1024 = 99.999...; toFixed(1) rounds to "100.0" one byte before the formula crosses
+  // KB_WHOLE_FROM * BYTES_PER_KB and switches to 0-decimal formatting — a real rounding artifact of a
+  // deliberately simple formatter, not a bug, and worth pinning down explicitly so it doesn't look like one
   assert.equal(fmtKB(102399), "100.0 KB");
 });
 
