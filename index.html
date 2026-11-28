@@ -2783,7 +2783,7 @@ function pwScore(v){
   const len = PW_LEN_TIERS.reduce((a, t) => a + (v.length >= t ? 1 : 0), 0);
   const variety = (/[a-z]/.test(v)?1:0) + (/[A-Z]/.test(v)?1:0) + (/\d/.test(v)?1:0) + (/[^A-Za-z0-9]/.test(v)?1:0);
   const s = len + (variety >= PW_VARIETY_MIN ? 1 : 0);      // 0–4
-  return Math.max(1, Math.min(4, s));          // any non-empty password is at least Weak
+  return Math.max(1, Math.min(PW_LABELS.length - 1, s));   // clamp to the last PW_LABELS index; any non-empty password is at least Weak
 }
 let lastPwScore = -1;
 const PW_MAX = 128;   // the maxlength on both password fields — effectively part of the wire format
