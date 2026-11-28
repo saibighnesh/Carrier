@@ -724,8 +724,8 @@ function denseToBytes(text){
     if(v < 0 || v > DENSE_MASK) throw new Error("This message contains characters that aren't part of it — the chat app may have altered the text.");
     acc = (acc << DENSE_BITS) | v;
     nbits += DENSE_BITS;
-    while(nbits >= 8 && o < n){
-      nbits -= 8;
+    while(nbits >= BITS_PER_BYTE && o < n){
+      nbits -= BITS_PER_BYTE;
       out[o++] = (acc >> nbits) & BYTE_MASK;
     }
   }
@@ -745,7 +745,7 @@ function densePrefixBytes(text, want, bits = DENSE_BITS){
     if(v < 0 || v > mask) return null;
     acc = (acc << bits) | v;
     nbits += bits;
-    while(nbits >= 8 && o < want){ nbits -= 8; out[o++] = (acc >> nbits) & BYTE_MASK; }
+    while(nbits >= BITS_PER_BYTE && o < want){ nbits -= BITS_PER_BYTE; out[o++] = (acc >> nbits) & BYTE_MASK; }
   }
   return o < want ? null : out;
 }
