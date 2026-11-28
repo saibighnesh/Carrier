@@ -212,7 +212,8 @@ t("dense v1 codec constants are defined", () => {
   assert.match(html, /const DENSE_BASE\s*=\s*0x4E00;/, "DENSE_BASE should be 0x4E00");
   assert.match(html, /const DENSE_BITS\s*=\s*12;/, "DENSE_BITS should be 12");
   assert.match(html, /const DENSE_MASK\s*=\s*\(1\s*<<\s*DENSE_BITS\)\s*-\s*1;/, "DENSE_MASK should derive from DENSE_BITS");
-  assert.match(html, /const BYTE_MASK\s*=\s*0xFF;/, "BYTE_MASK should name the low-byte mask");
+  assert.match(html, /const BITS_PER_BYTE\s*=\s*8;/, "BITS_PER_BYTE should be named");
+  assert.match(html, /const BYTE_MASK\s*=\s*\(1\s*<<\s*BITS_PER_BYTE\)\s*-\s*1;/, "BYTE_MASK should derive from BITS_PER_BYTE");
   assert.match(html, /const DENSE_CYCLE_BYTES\s*=\s*3,\s*DENSE_CYCLE_CHARS\s*=\s*2;/, "dense v1 cycle should be 3 bytes <-> 2 chars");
 });
 
@@ -423,7 +424,6 @@ t("dec64 Base64 integer decoder helper is defined", () => {
 
 t("CRC32_TABLE and crc32 checksum helper are defined", () => {
   assert.match(html, /const CRC_TABLE_SIZE\s*=\s*1\s*<<\s*8;/, "CRC_TABLE_SIZE should name the per-byte-value entry count");
-  assert.match(html, /const BITS_PER_BYTE\s*=\s*8;/, "BITS_PER_BYTE should be named for the CRC trailer layout");
   assert.match(html, /for\(let i=0;i<CRC_BYTES;i\+\+\) body\[plain\.length \+ i\] = \(crc >>> \(\(CRC_BYTES - 1 - i\) \* BITS_PER_BYTE\)\) & BYTE_MASK;/, "CRC trailer should be written big-endian off CRC_BYTES/BITS_PER_BYTE/BYTE_MASK");
   assert.match(html, /const CRC32_TABLE\s*=\s*\(\(\)=>\{/, "CRC32_TABLE precomputation should be defined");
   assert.match(html, /const t\s*=\s*new Uint32Array\(CRC_TABLE_SIZE\);/, "CRC32_TABLE should size from CRC_TABLE_SIZE");

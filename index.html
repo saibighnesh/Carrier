@@ -679,7 +679,8 @@ function b64ToBytes(b64){
 const DENSE_BASE = 0x4E00;   // first symbol
 const DENSE_BITS = 12;
 const DENSE_MASK = (1 << DENSE_BITS) - 1;    // 0xFFF — tied to DENSE_BITS so the two can't drift
-const BYTE_MASK = 0xFF;   // low 8 bits — isolates one output byte from the bit accumulator
+const BITS_PER_BYTE = 8;                      // one byte = 8 bits; used by the codecs and the CRC trailer
+const BYTE_MASK = (1 << BITS_PER_BYTE) - 1;   // 0xFF — isolates one output byte from the bit accumulator
 // lcm(DENSE_BITS, 8) = 24 bits, so v1 repeats every 3 bytes <-> 2 characters (the v2 cycle's counterpart).
 const DENSE_CYCLE_BYTES = 3, DENSE_CYCLE_CHARS = 2;
 const DENSE_HDR = 0;   // v1 header offset base (DENSE2_HDR's counterpart): remainders occupy DENSE_BASE+0..2
@@ -1347,7 +1348,6 @@ const FLAG_CRC32     = 2;   // body carries a big-endian CRC-32 trailer (CRC_BYT
 // width of the CRC-32 damage-detection trailer appended to an unlocked body. pack allocates and writes it,
 // unpack splits it back off — name it once so the trailer length can't disagree between the two sides.
 const CRC_BYTES = 4;
-const BITS_PER_BYTE = 8;   // used to place/read the CRC-32 trailer's bytes in big-endian order
 // encrypted-body field sizes (bytes). The layout is salt | iv | ciphertext(+GCM tag), and pack writes
 // these offsets while unpack reads them back — name the sizes once so the two sides can't disagree, and
 // so the "too short to be real ciphertext" floor (salt+iv+tag) stays in step with them.
@@ -1469,7 +1469,8 @@ async function unpack(text, password){
     const data = body.subarray(0, body.length - CRC_BYTES);
     const t = body.subarray(body.length - CRC_BYTES);
     let want = 0;
-    for(let i=0;i<CRC_BYTES;i++) want = ((want << BITS_PER_BYTE) | t[i]) >>> 0;   // big-endian, matches the pack side
+    for(let i=0;i<CRC_BYTES;i++) want = (want << BITS_PER_BYTE) | t[i];   // big-endian, matches the pack side
+    want >>>= 0;   // one unsigned coercion; intermediate int32 sign bits are harmless for the bitwise rebuild
     if(crc32(data) !== want) throw new Error("This message is damaged — some characters were changed or lost on the way. Ask the sender to resend it.");
     plain = data; verified = true;
   } else plain = body;   // a pre-checksum sender: nothing to verify against, parse as before
