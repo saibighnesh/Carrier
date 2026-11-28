@@ -319,7 +319,9 @@ t("targetBytes chunk payload formula is defined", () => {
 });
 
 t("SID_LEN constant and chunkPrefixLen helper are defined", () => {
+  assert.match(html, /const HEX_PER_BYTE\s*=\s*2;/, "HEX_PER_BYTE should name the two-hex-digits-per-byte ratio");
   assert.match(html, /const SID_LEN\s*=\s*6;/, "SID_LEN should be 6");
+  assert.match(html, /new Uint8Array\(SID_LEN\/HEX_PER_BYTE\)/, "sid byte count should derive from SID_LEN / HEX_PER_BYTE");
   assert.match(html, /const chunkPrefixLen\s*=\s*total\s*=>\s*4\s*\+\s*SID_LEN\s*\+\s*3\s*\+\s*2\s*\*\s*String\(total\)\.length;/, "chunkPrefixLen formula should account for brackets, SID, slash, and indices");
 });
 
