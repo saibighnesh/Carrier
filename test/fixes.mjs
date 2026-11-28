@@ -17,7 +17,7 @@ let pass = 0; const t=async(n,f)=>{await f();console.log("  ok  "+n);pass++;};
   const store = new Map();
   const src = [
     "let msgLimit = 60000; let recoveryLevel='off'; let textCodec = 'b64';",
-    "const SID_LEN = 6;", "const HEX_PER_BYTE = 2;", "const BITS_PER_BYTE = 8;",   // targetBytes divides bits-per-char by BITS_PER_BYTE (declared in the dense region, above this slice)
+    "const SID_LEN = 6;", "const HEX_PER_BYTE = 2;",   // BITS_PER_BYTE (used by targetBytes) comes in with the byte<->base64..CRC slice below, which spans the dense region where it's declared
     "const chunkPrefixLen = total => 4 + SID_LEN + 3 + 2 * String(total).length;",
     "const maxChunkIndexFor = (total, recoveryOn) => recoveryOn ? total * 2 : total;",
     "const MAGIC=[0x50,0x58,0x54,0x31];",
