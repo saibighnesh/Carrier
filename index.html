@@ -1355,9 +1355,12 @@ const SALT_BYTES = 16, IV_BYTES = 12, GCM_TAG_BYTES = 16;
 // pack writes the header and unpack skips past it, so derive both from MAGIC.length rather than hardcoding
 // the "5" (header length) and "4" (flags offset) at each end.
 const HEADER_BYTES = MAGIC.length + 1;
-// mime-length prefix: one byte, so the value it can hold caps at MIMELEN_MAX. buildPlain and parsePlain
-// both read the framing off these two names, so the width and the guard that protects it can't drift.
-const MIMELEN_FIELD = 1, MIMELEN_MAX = (1 << (8 * MIMELEN_FIELD)) - 1;   // 255
+// mime-length prefix: exactly one byte (written and read as out[0] / bytes[0]), so the value it can hold
+// caps at one byte's worth. MIMELEN_FIELD names that one-byte offset the image bytes start after;
+// MIMELEN_MAX is the guard the single length byte imposes. buildPlain and parsePlain read the framing off
+// both, so the offset and the guard can't drift.
+const MIMELEN_FIELD = 1;                 // width of the length prefix, in bytes — fixed by the byte read/write
+const MIMELEN_MAX = (1 << 8) - 1;        // 255 — the largest value one byte can hold
 function buildPlain(mime, img){
   const m = new TextEncoder().encode(mime);
   // the mime length is stored in MIMELEN_FIELD byte(s); a mime > MIMELEN_MAX bytes would wrap and desync
